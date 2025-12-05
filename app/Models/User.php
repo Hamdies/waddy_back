@@ -50,6 +50,7 @@ class User extends Authenticatable
         'wallet_balance' => 'float',
         'loyalty_point' => 'integer',
         'ref_by' => 'integer',
+        'hide_phone' => 'boolean',
     ];
     protected $appends = ['image_full_url'];
     public function getImageFullUrlAttribute(){

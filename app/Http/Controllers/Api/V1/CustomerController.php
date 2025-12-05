@@ -231,6 +231,18 @@ class CustomerController extends Controller
         return response()->json(['message' => translate('messages.interest_updated_successfully')], 200);
     }
 
+    public function toggle_hide_phone(Request $request)
+    {
+        $user = User::where(['id' => $request->user()->id])->first();
+        $user->hide_phone = !$user->hide_phone;
+        $user->save();
+
+        return response()->json([
+            'message' => translate('messages.updated_successfully'),
+            'hide_phone' => (bool) $user->hide_phone
+        ], 200);
+    }
+
     public function update_cm_firebase_token(Request $request)
     {
         $validator = Validator::make($request->all(), [

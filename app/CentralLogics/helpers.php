@@ -986,6 +986,11 @@ class Helpers
                 $item['min_delivery_time'] =  $item->store ? (int)explode('-',$item->store?->delivery_time)[0] ?? 0:0;
                 $item['max_delivery_time'] =  $item->store ? (int)explode('-',$item->store?->delivery_time)[1] ?? 0:0;
 
+                // Hide customer phone if user has enabled hide_phone preference
+                if (isset($item['customer']) && $item['customer'] && $item['customer']['hide_phone']) {
+                    $item['customer']['phone'] = null;
+                }
+
                 unset($item['details']);
                 array_push($storage, $item);
             }
@@ -1031,6 +1036,11 @@ class Helpers
             }
             $data['delivery_address'] = $data->delivery_address ? json_decode($data->delivery_address, true) : null;
             $data['details_count'] = (int)$data->details->count();
+
+            // Hide customer phone if user has enabled hide_phone preference
+            if (isset($data['customer']) && $data['customer'] && $data['customer']['hide_phone']) {
+                $data['customer']['phone'] = null;
+            }
 
             unset($data['details']);
         }
