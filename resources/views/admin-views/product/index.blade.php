@@ -377,6 +377,44 @@
 
 
                                 @endif
+
+                                <div class="col-sm-6 col-lg-3">
+                                    <div class="form-check mb-sm-2 pb-sm-1">
+                                        <input class="form-check-input" name="is_gifted" type="checkbox" value="1" id="is_gifted_checkbox">
+                                        <label class="form-check-label" for="is_gifted_checkbox">
+                                            {{ translate('messages.Is_Gifted') }}
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mt-2" id="gift_fields" style="display: none;">
+                                <div class="col-sm-6 col-lg-4">
+                                    <div class="form-group mb-0">
+                                        <label class="input-label" for="gift_name">{{ translate('messages.Gift_Name') }}</label>
+                                        <input type="text" name="gift_name" id="gift_name" class="form-control" placeholder="{{ translate('messages.Enter_gift_name') }}">
+                                    </div>
+                                </div>
+                                <div class="col-sm-6 col-lg-4">
+                                    <div class="form-group mb-0">
+                                        <label class="input-label" for="gift_expiry_date">{{ translate('messages.Gift_Expiry_Date') }}</label>
+                                        <input type="date" name="gift_expiry_date" id="gift_expiry_date" class="form-control">
+                                    </div>
+                                </div>
+                                <div class="col-sm-6 col-lg-4">
+                                    <div class="form-group mb-0">
+                                        <label class="input-label d-block">{{ translate('messages.Gift_Image') }}</label>
+                                        <label class="d-inline-block m-0 position-relative">
+                                            <img class="img--100 border" id="gift_image_viewer" src="{{ asset('public/assets/admin/img/upload-img.png') }}" alt="gift image" />
+                                            <div class="icon-file-group">
+                                                <div class="icon-file">
+                                                    <input type="file" name="gift_image" id="gift_image_input" class="custom-file-input d-none" accept=".webp, .jpg, .png, .jpeg, .gif, .bmp, .tif, .tiff|image/*">
+                                                    <i class="tio-edit"></i>
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1180,6 +1218,26 @@
             });
         });
 
+        // Gift fields toggle
+        $('#is_gifted_checkbox').change(function() {
+            if ($(this).is(':checked')) {
+                $('#gift_fields').show();
+            } else {
+                $('#gift_fields').hide();
+            }
+        });
+
+        // Gift image preview
+        $('#gift_image_input').change(function() {
+            if (this.files && this.files[0]) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    $('#gift_image_viewer').attr('src', e.target.result);
+                }
+                reader.readAsDataURL(this.files[0]);
+            }
+        });
+
         $('#reset_btn').click(function() {
             $('#module_id').val(null).trigger('change');
             $('#store_id').val(null).trigger('change');
@@ -1194,6 +1252,12 @@
             $('#variant_combination').empty().trigger('change');
             $('#viewer').attr('src', "{{ asset('public/assets/admin/img/upload.png') }}");
             $('#customFileEg1').val(null).trigger('change');
+            $('#is_gifted_checkbox').prop('checked', false);
+            $('#gift_fields').hide();
+            $('#gift_name').val('');
+            $('#gift_expiry_date').val('');
+            $('#gift_image_viewer').attr('src', "{{ asset('public/assets/admin/img/upload-img.png') }}");
+            $('#gift_image_input').val(null);
             $("#coba").empty().spartanMultiImagePicker({
                 fieldName: 'item_images[]',
                 maxCount: 6,

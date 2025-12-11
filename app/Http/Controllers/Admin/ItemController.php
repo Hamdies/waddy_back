@@ -339,6 +339,10 @@ class ItemController extends Controller
         $item->stock = $request->current_stock ?? 0;
         $item->images = $images;
         $item->is_halal =  $request->is_halal ?? 0;
+        $item->is_gifted = $request->is_gifted ?? 0;
+        $item->gift_name = $request->gift_name;
+        $item->gift_expiry_date = $request->gift_expiry_date;
+        $item->gift_image = $request->has('gift_image') ? Helpers::upload('product/', 'png', $request->file('gift_image')) : null;
         $item->save();
         $item->tags()->sync($tag_ids);
         $item->nutritions()->sync($nutrition_ids);
@@ -668,6 +672,12 @@ class ItemController extends Controller
         $item->organic = $request->organic ?? 0;
         $item->veg = $request->veg;
         $item->images = $images;
+        $item->is_gifted = $request->is_gifted ?? 0;
+        $item->gift_name = $request->gift_name;
+        $item->gift_expiry_date = $request->gift_expiry_date;
+        if ($request->has('gift_image')) {
+            $item->gift_image = Helpers::update('product/', $item->gift_image, 'png', $request->file('gift_image'));
+        }
         if (Helpers::get_mail_status('product_approval') && $request?->temp_product) {
 
 
