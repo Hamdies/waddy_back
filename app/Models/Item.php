@@ -45,9 +45,11 @@ class Item extends Model
         'rating_count' => 'integer',
         'unit_id' => 'integer',
         'is_halal' => 'integer',
+        'is_gifted' => 'integer',
+        'gift_expiry_date' => 'date',
     ];
 
-    protected $appends = ['unit_type', 'image_full_url', 'images_full_url'];
+    protected $appends = ['unit_type', 'image_full_url', 'images_full_url', 'gift_image_full_url'];
 
     public function scopeRecommended($query)
     {
@@ -217,6 +219,23 @@ class Item extends Model
         return $images;
     }
 
+    public function getGiftImageFullUrlAttribute()
+    {
+        $value = $this->gift_image;
+        if (!$value) {
+            return null;
+        }
+        if (count($this->storage) > 0) {
+            foreach ($this->storage as $storage) {
+                if ($storage['key'] == 'gift_image') {
+                    return Helpers::get_full_url('product', $value, $storage['value']);
+                }
+            }
+        }
+
+        return Helpers::get_full_url('product', $value, 'public');
+    }
+
     private function isValidJson($string)
     {
         json_decode($string);
@@ -338,6 +357,19 @@ class Item extends Model
                     'data_type' => get_class($model),
                     'data_id' => $model->id,
                     'key' => 'images',
+                ], [
+                    'value' => $value,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+            if ($model->isDirty('gift_image')) {
+                $value = Helpers::getDisk();
+
+                DB::table('storages')->updateOrInsert([
+                    'data_type' => get_class($model),
+                    'data_id' => $model->id,
+                    'key' => 'gift_image',
                 ], [
                     'value' => $value,
                     'created_at' => now(),
