@@ -82,7 +82,10 @@ trait  SmsGateway
             return self::alphanet_sms($receiver, $otp);
         }
 
-
+        $config = self::get_settings('akedly');
+        if (isset($config) && $config['status'] == 1) {
+            return self::akedly($receiver, $otp);
+        }
 
         return 'not_found';
     }
@@ -611,6 +614,93 @@ trait  SmsGateway
 
 
 
+
+    public static function akedly($receiver, $otp): string
+    {
+        $config = self::get_settings('akedly');
+        $response = 'error';
+        if (isset($config) && $config['status'] == 1) {
+            $api_key = $config['api_key'];
+            $pipeline_id = $config['pipeline_id'];
+            
+            // Step 1: Create transaction with custom OTP
+            $createPayload = [
+                'APIKey' => $api_key,
+                'pipelineID' => $pipeline_id,
+                'verificationAddress' => [
+                    'phoneNumber' => $receiver
+                ],
+                'otp' => $otp,
+                'digits' => strlen($otp)
+            ];
+            
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => 'https://api.akedly.io/v1/transaction/create',
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => '',
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_POSTFIELDS => json_encode($createPayload),
+                CURLOPT_HTTPHEADER => [
+                    'Content-Type: application/json',
+                    'Accept: application/json'
+                ],
+            ]);
+            
+            $createResponse = curl_exec($curl);
+            $err = curl_error($curl);
+            curl_close($curl);
+            
+            if ($err) {
+                return 'error';
+            }
+            
+            $createData = json_decode($createResponse, true);
+            
+            if (!isset($createData['status']) || $createData['status'] !== 'success' || !isset($createData['data']['transactionID'])) {
+                return 'error';
+            }
+            
+            $transactionID = $createData['data']['transactionID'];
+            
+            // Step 2: Activate transaction to send OTP
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => 'https://api.akedly.io/v1/transaction/activate/' . $transactionID,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => '',
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_POSTFIELDS => json_encode([]),
+                CURLOPT_HTTPHEADER => [
+                    'Content-Type: application/json',
+                    'Accept: application/json'
+                ],
+            ]);
+            
+            $activateResponse = curl_exec($curl);
+            $err = curl_error($curl);
+            curl_close($curl);
+            
+            if ($err) {
+                return 'error';
+            }
+            
+            $activateData = json_decode($activateResponse, true);
+            
+            if (isset($activateData['status']) && $activateData['status'] === 'success') {
+                $response = 'success';
+            } else {
+                $response = 'error';
+            }
+        }
+        return $response;
+    }
 
     public static function get_settings($name)
     {
