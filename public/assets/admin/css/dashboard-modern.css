@@ -1,0 +1,1157 @@
+/**
+ * Waddy Admin Dashboard - Modern Clean Redesign
+ * Eye-comfortable, aesthetic, and modern design
+ */
+
+/* ============================================
+   CSS Variables - Modern Color Palette
+   ============================================ */
+:root {
+    /* Primary Colors - Soft Teal/Mint */
+    --modern-primary: #10B981;
+    --modern-primary-light: #D1FAE5;
+    --modern-primary-dark: #059669;
+    
+    /* Background Colors - Soft & Eye-Comfortable */
+    --modern-bg: #F8FAFC;
+    --modern-bg-card: #FFFFFF;
+    --modern-bg-hover: #F1F5F9;
+    --modern-bg-sidebar: linear-gradient(180deg, #1E293B 0%, #0F172A 100%);
+    
+    /* Text Colors - Balanced Contrast */
+    --modern-text-primary: #1E293B;
+    --modern-text-secondary: #64748B;
+    --modern-text-muted: #94A3B8;
+    --modern-text-light: #CBD5E1;
+    
+    /* Accent Colors */
+    --modern-accent-blue: #3B82F6;
+    --modern-accent-purple: #8B5CF6;
+    --modern-accent-orange: #F59E0B;
+    --modern-accent-pink: #EC4899;
+    --modern-accent-cyan: #06B6D4;
+    
+    /* Status Colors - Softer Variants */
+    --modern-success: #10B981;
+    --modern-success-light: #D1FAE5;
+    --modern-warning: #F59E0B;
+    --modern-warning-light: #FEF3C7;
+    --modern-danger: #EF4444;
+    --modern-danger-light: #FEE2E2;
+    --modern-info: #3B82F6;
+    --modern-info-light: #DBEAFE;
+    
+    /* Borders & Shadows */
+    --modern-border: #E2E8F0;
+    --modern-border-light: #F1F5F9;
+    --modern-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --modern-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+    --modern-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+    --modern-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.03);
+    
+    /* Spacing */
+    --modern-radius-sm: 8px;
+    --modern-radius: 12px;
+    --modern-radius-lg: 16px;
+    --modern-radius-xl: 20px;
+    
+    /* Transitions */
+    --modern-transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --modern-transition-slow: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================
+   Base & Body Styles
+   ============================================ */
+body {
+    background: var(--modern-bg) !important;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================
+   Main Content Area
+   ============================================ */
+.main {
+    background: var(--modern-bg) !important;
+}
+
+.content.container-fluid {
+    padding: 24px 28px !important;
+}
+
+@media (max-width: 991px) {
+    .content.container-fluid {
+        padding: 16px !important;
+    }
+}
+
+/* ============================================
+   Page Header - Modern Clean Style
+   ============================================ */
+.page-header {
+    margin-bottom: 28px !important;
+    padding: 0 !important;
+}
+
+.page-header-title {
+    font-size: 26px !important;
+    font-weight: 700 !important;
+    color: var(--modern-text-primary) !important;
+    letter-spacing: -0.02em;
+    line-height: 1.3 !important;
+}
+
+.page-header-text {
+    color: var(--modern-text-secondary) !important;
+    font-size: 14px !important;
+    font-weight: 400 !important;
+    margin-top: 4px !important;
+}
+
+/* ============================================
+   Cards - Modern Elevated Design
+   ============================================ */
+.card {
+    background: var(--modern-bg-card) !important;
+    border: 1px solid var(--modern-border-light) !important;
+    border-radius: var(--modern-radius-lg) !important;
+    box-shadow: var(--modern-shadow) !important;
+    transition: var(--modern-transition) !important;
+    overflow: hidden;
+}
+
+.card:hover {
+    box-shadow: var(--modern-shadow-lg) !important;
+}
+
+.card-header {
+    background: transparent !important;
+    border-bottom: 1px solid var(--modern-border-light) !important;
+    padding: 20px 24px !important;
+}
+
+.card-header h5,
+.card-header .card-title {
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    color: var(--modern-text-primary) !important;
+    margin: 0 !important;
+}
+
+.card-body {
+    padding: 24px !important;
+}
+
+/* ============================================
+   Dashboard Stats Cards - Modern Glassmorphism
+   ============================================ */
+.__dashboard-card-2 {
+    background: var(--modern-bg-card) !important;
+    border: 1px solid var(--modern-border-light) !important;
+    border-radius: var(--modern-radius-lg) !important;
+    box-shadow: var(--modern-shadow) !important;
+    padding: 24px 20px !important;
+    text-align: center;
+    transition: var(--modern-transition) !important;
+    position: relative;
+    overflow: hidden;
+}
+
+.__dashboard-card-2::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--modern-primary), var(--modern-accent-cyan));
+    opacity: 0;
+    transition: var(--modern-transition);
+}
+
+.__dashboard-card-2:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--modern-shadow-xl) !important;
+}
+
+.__dashboard-card-2:hover::before {
+    opacity: 1;
+}
+
+.__dashboard-card-2 img {
+    width: 48px !important;
+    height: 48px !important;
+    margin-bottom: 16px !important;
+    padding: 10px;
+    background: var(--modern-primary-light);
+    border-radius: var(--modern-radius);
+    object-fit: contain;
+}
+
+.__dashboard-card-2 .name {
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: var(--modern-text-secondary) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px !important;
+}
+
+.__dashboard-card-2 .count {
+    font-size: 32px !important;
+    font-weight: 700 !important;
+    color: var(--modern-text-primary) !important;
+    line-height: 1.2 !important;
+    margin-bottom: 8px !important;
+    letter-spacing: -0.02em;
+}
+
+.__dashboard-card-2 .subtxt {
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    color: var(--modern-success) !important;
+    background: var(--modern-success-light);
+    padding: 4px 10px;
+    border-radius: 20px;
+    display: inline-block;
+}
+
+/* Different card accent colors */
+.__dashboard-card-2:nth-child(1) img { background: var(--modern-primary-light); }
+.__dashboard-card-2:nth-child(2) img { background: var(--modern-info-light); }
+.__dashboard-card-2:nth-child(3) img { background: var(--modern-warning-light); }
+.__dashboard-card-2:nth-child(4) img { background: #F3E8FF; }
+
+/* ============================================
+   Order Status Cards - Clean Modern Style
+   ============================================ */
+.order--card {
+    background: var(--modern-bg-card) !important;
+    border: 1px solid var(--modern-border-light) !important;
+    border-radius: var(--modern-radius) !important;
+    padding: 18px 20px !important;
+    transition: var(--modern-transition) !important;
+    text-decoration: none !important;
+    display: flex;
+    align-items: center;
+}
+
+.order--card:hover {
+    background: var(--modern-bg-hover) !important;
+    border-color: var(--modern-primary) !important;
+    transform: translateX(4px);
+}
+
+.order--card .card-subtitle {
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: var(--modern-text-secondary) !important;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.order--card .card-subtitle img,
+.order--card .oder--card-icon {
+    width: 32px !important;
+    height: 32px !important;
+    padding: 6px;
+    background: var(--modern-bg-hover);
+    border-radius: var(--modern-radius-sm);
+}
+
+.order--card .card-title {
+    font-size: 22px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.01em;
+}
+
+/* Status colors for order cards */
+.order--card .text-3F8CE8 { color: var(--modern-accent-blue) !important; }
+.order--card .text-success { color: var(--modern-success) !important; }
+.order--card .text-FFA800 { color: var(--modern-warning) !important; }
+.order--card .text-danger { color: var(--modern-danger) !important; }
+
+/* ============================================
+   Statistics Filter Buttons
+   ============================================ */
+.statistics-btn-grp {
+    display: flex;
+    gap: 8px;
+    background: var(--modern-bg) !important;
+    padding: 6px !important;
+    border-radius: var(--modern-radius) !important;
+}
+
+.statistics-btn-grp label {
+    margin: 0 !important;
+}
+
+.statistics-btn-grp span {
+    padding: 10px 18px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: var(--modern-text-secondary) !important;
+    background: transparent !important;
+    border-radius: var(--modern-radius-sm) !important;
+    border: none !important;
+    cursor: pointer;
+    transition: var(--modern-transition) !important;
+}
+
+.statistics-btn-grp input:checked + span {
+    background: var(--modern-bg-card) !important;
+    color: var(--modern-primary) !important;
+    box-shadow: var(--modern-shadow-sm) !important;
+    font-weight: 600 !important;
+}
+
+.statistics-btn-grp span:hover {
+    color: var(--modern-primary) !important;
+}
+
+/* ============================================
+   Sidebar - Modern Dark Theme
+   ============================================ */
+.navbar-vertical-aside {
+    background: var(--modern-bg-sidebar) !important;
+}
+
+.navbar-vertical .nav-link {
+    color: var(--modern-text-light) !important;
+    padding: 12px 20px !important;
+    margin: 2px 12px !important;
+    border-radius: var(--modern-radius-sm) !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    transition: var(--modern-transition) !important;
+}
+
+.navbar-vertical .nav-link:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #FFFFFF !important;
+}
+
+.navbar-vertical .active > .nav-link,
+.navbar-vertical .nav-link.active {
+    background: rgba(16, 185, 129, 0.15) !important;
+    color: var(--modern-primary) !important;
+}
+
+.navbar-vertical .nav-link .nav-indicator-icon {
+    color: var(--modern-text-muted) !important;
+}
+
+.navbar-vertical .active .nav-indicator-icon,
+.navbar-vertical .nav-link:hover .nav-indicator-icon {
+    color: var(--modern-primary) !important;
+}
+
+.nav-subtitle {
+    color: var(--modern-text-muted) !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.08em !important;
+    padding: 20px 20px 10px !important;
+}
+
+/* ============================================
+   Header - Clean Modern Style
+   ============================================ */
+.navbar:not(.navbar-vertical) {
+    background: var(--modern-bg-card) !important;
+    border-bottom: 1px solid var(--modern-border-light) !important;
+    box-shadow: var(--modern-shadow-sm) !important;
+    padding: 0 24px !important;
+    height: 70px !important;
+}
+
+/* ============================================
+   Buttons - Modern Rounded Style
+   ============================================ */
+.btn--primary,
+.btn-primary {
+    background: var(--modern-primary) !important;
+    border-color: var(--modern-primary) !important;
+    border-radius: var(--modern-radius-sm) !important;
+    font-weight: 600 !important;
+    padding: 10px 20px !important;
+    transition: var(--modern-transition) !important;
+    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2) !important;
+}
+
+.btn--primary:hover,
+.btn-primary:hover {
+    background: var(--modern-primary-dark) !important;
+    border-color: var(--modern-primary-dark) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3) !important;
+}
+
+.btn--secondary,
+.btn-secondary {
+    background: var(--modern-text-secondary) !important;
+    border-color: var(--modern-text-secondary) !important;
+    border-radius: var(--modern-radius-sm) !important;
+}
+
+.btn-outline-primary {
+    color: var(--modern-primary) !important;
+    border-color: var(--modern-primary) !important;
+    border-radius: var(--modern-radius-sm) !important;
+}
+
+.btn-outline-primary:hover {
+    background: var(--modern-primary) !important;
+    color: #FFFFFF !important;
+}
+
+/* ============================================
+   Form Controls - Modern Clean Style
+   ============================================ */
+.form-control,
+.custom-select {
+    border: 1px solid var(--modern-border) !important;
+    border-radius: var(--modern-radius-sm) !important;
+    padding: 10px 14px !important;
+    font-size: 14px !important;
+    color: var(--modern-text-primary) !important;
+    background: var(--modern-bg-card) !important;
+    transition: var(--modern-transition) !important;
+    height: auto !important;
+}
+
+.form-control:focus,
+.custom-select:focus {
+    border-color: var(--modern-primary) !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1) !important;
+    outline: none !important;
+}
+
+.form-control::placeholder {
+    color: var(--modern-text-muted) !important;
+}
+
+/* Select2 Modern Style */
+.select2-container--default .select2-selection--single {
+    border: 1px solid var(--modern-border) !important;
+    border-radius: var(--modern-radius-sm) !important;
+    height: 44px !important;
+    padding: 8px 14px !important;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: var(--modern-text-primary) !important;
+    line-height: 26px !important;
+}
+
+/* ============================================
+   Tables - Modern Clean Style
+   ============================================ */
+.table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.table thead th {
+    background: var(--modern-bg) !important;
+    border: none !important;
+    border-bottom: 1px solid var(--modern-border-light) !important;
+    color: var(--modern-text-secondary) !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 14px 16px !important;
+}
+
+.table tbody td {
+    border: none !important;
+    border-bottom: 1px solid var(--modern-border-light) !important;
+    padding: 16px !important;
+    color: var(--modern-text-primary) !important;
+    font-size: 14px !important;
+    vertical-align: middle !important;
+}
+
+.table tbody tr {
+    transition: var(--modern-transition);
+}
+
+.table tbody tr:hover {
+    background: var(--modern-bg-hover) !important;
+}
+
+/* ============================================
+   Charts Area - Modern Container
+   ============================================ */
+.apex-chart-card,
+.chart-card {
+    background: var(--modern-bg-card) !important;
+    border-radius: var(--modern-radius-lg) !important;
+    padding: 24px !important;
+}
+
+/* ============================================
+   Badges & Labels - Modern Pill Style
+   ============================================ */
+.badge {
+    font-weight: 500 !important;
+    padding: 6px 12px !important;
+    border-radius: 20px !important;
+    font-size: 12px !important;
+}
+
+.badge-success,
+.badge-soft-success {
+    background: var(--modern-success-light) !important;
+    color: var(--modern-success) !important;
+}
+
+.badge-warning,
+.badge-soft-warning {
+    background: var(--modern-warning-light) !important;
+    color: var(--modern-warning) !important;
+}
+
+.badge-danger,
+.badge-soft-danger {
+    background: var(--modern-danger-light) !important;
+    color: var(--modern-danger) !important;
+}
+
+.badge-info,
+.badge-soft-info {
+    background: var(--modern-info-light) !important;
+    color: var(--modern-info) !important;
+}
+
+/* ============================================
+   Pagination - Modern Style
+   ============================================ */
+.page-item .page-link {
+    border: none !important;
+    border-radius: var(--modern-radius-sm) !important;
+    margin: 0 3px !important;
+    padding: 8px 14px !important;
+    color: var(--modern-text-secondary) !important;
+    font-weight: 500 !important;
+    transition: var(--modern-transition) !important;
+}
+
+.page-item.active .page-link {
+    background: var(--modern-primary) !important;
+    color: #FFFFFF !important;
+}
+
+.page-item .page-link:hover {
+    background: var(--modern-bg-hover) !important;
+    color: var(--modern-primary) !important;
+}
+
+/* ============================================
+   Scrollbar - Modern Thin Style
+   ============================================ */
+::-webkit-scrollbar {
+    width: 6px !important;
+    height: 6px !important;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--modern-bg) !important;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--modern-border) !important;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--modern-text-muted) !important;
+}
+
+/* ============================================
+   Loading Spinner - Modern Style
+   ============================================ */
+#loading {
+    background: rgba(248, 250, 252, 0.9) !important;
+    backdrop-filter: blur(4px);
+}
+
+/* ============================================
+   Dropdown Menus - Modern Style
+   ============================================ */
+.dropdown-menu {
+    border: 1px solid var(--modern-border-light) !important;
+    border-radius: var(--modern-radius) !important;
+    box-shadow: var(--modern-shadow-lg) !important;
+    padding: 8px !important;
+}
+
+.dropdown-item {
+    border-radius: var(--modern-radius-sm) !important;
+    padding: 10px 14px !important;
+    font-size: 14px !important;
+    color: var(--modern-text-primary) !important;
+    transition: var(--modern-transition) !important;
+}
+
+.dropdown-item:hover {
+    background: var(--modern-bg-hover) !important;
+    color: var(--modern-primary) !important;
+}
+
+/* ============================================
+   Modal - Modern Style
+   ============================================ */
+.modal-content {
+    border: none !important;
+    border-radius: var(--modern-radius-lg) !important;
+    box-shadow: var(--modern-shadow-xl) !important;
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--modern-border-light) !important;
+    padding: 20px 24px !important;
+}
+
+.modal-body {
+    padding: 24px !important;
+}
+
+.modal-footer {
+    border-top: 1px solid var(--modern-border-light) !important;
+    padding: 16px 24px !important;
+}
+
+/* ============================================
+   Alert Messages - Modern Style
+   ============================================ */
+.alert {
+    border: none !important;
+    border-radius: var(--modern-radius) !important;
+    padding: 16px 20px !important;
+    font-size: 14px !important;
+}
+
+.alert-success {
+    background: var(--modern-success-light) !important;
+    color: var(--modern-success) !important;
+}
+
+.alert-warning {
+    background: var(--modern-warning-light) !important;
+    color: #B45309 !important;
+}
+
+.alert-danger {
+    background: var(--modern-danger-light) !important;
+    color: var(--modern-danger) !important;
+}
+
+.alert-info {
+    background: var(--modern-info-light) !important;
+    color: var(--modern-accent-blue) !important;
+}
+
+/* ============================================
+   User Dashboard Cards
+   ============================================ */
+.__user-dashboard-card {
+    background: var(--modern-bg-card) !important;
+    border: 1px solid var(--modern-border-light) !important;
+    border-radius: var(--modern-radius-lg) !important;
+    box-shadow: var(--modern-shadow) !important;
+    padding: 20px !important;
+    transition: var(--modern-transition) !important;
+}
+
+.__user-dashboard-card:hover {
+    box-shadow: var(--modern-shadow-lg) !important;
+    transform: translateY(-2px);
+}
+
+/* ============================================
+   Action Buttons - Modern Style
+   ============================================ */
+.action-btn {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: var(--modern-radius-sm) !important;
+    transition: var(--modern-transition) !important;
+}
+
+.action-btn:hover {
+    transform: scale(1.05);
+}
+
+/* ============================================
+   Toastr Notifications - Modern Style
+   ============================================ */
+.toast {
+    border-radius: var(--modern-radius) !important;
+    box-shadow: var(--modern-shadow-lg) !important;
+}
+
+/* ============================================
+   Zone Selector - Modern Style
+   ============================================ */
+.min--280 .form-control,
+.min--280 .js-select2-custom {
+    border-radius: var(--modern-radius-sm) !important;
+    border: 1px solid var(--modern-border) !important;
+    background: var(--modern-bg-card) !important;
+}
+
+/* ============================================
+   Chart Legends & Labels
+   ============================================ */
+.apexcharts-legend-text {
+    color: var(--modern-text-secondary) !important;
+    font-weight: 500 !important;
+}
+
+.apexcharts-title-text {
+    fill: var(--modern-text-primary) !important;
+    font-weight: 600 !important;
+}
+
+/* ============================================
+   Empty State Styling
+   ============================================ */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.empty-state img {
+    opacity: 0.6;
+    margin-bottom: 20px;
+}
+
+.empty-state h5 {
+    color: var(--modern-text-primary);
+    font-weight: 600;
+}
+
+.empty-state p {
+    color: var(--modern-text-secondary);
+}
+
+/* ============================================
+   Responsive Adjustments
+   ============================================ */
+@media (max-width: 767px) {
+    .__dashboard-card-2 {
+        padding: 18px 16px !important;
+    }
+    
+    .__dashboard-card-2 .count {
+        font-size: 26px !important;
+    }
+    
+    .page-header-title {
+        font-size: 22px !important;
+    }
+    
+    .card-body {
+        padding: 16px !important;
+    }
+}
+
+/* ============================================
+   Dark Mode Support (Optional)
+   ============================================ */
+@media (prefers-color-scheme: dark) {
+    /* Can be enabled for dark mode support */
+}
+
+/* ============================================
+   Gross Sale Section - Modern Style
+   ============================================ */
+.__gross-amount {
+    background: linear-gradient(135deg, var(--modern-primary) 0%, var(--modern-accent-cyan) 100%) !important;
+    padding: 16px 24px !important;
+    border-radius: var(--modern-radius) !important;
+    color: #FFFFFF !important;
+}
+
+.__gross-amount h6 {
+    font-size: 28px !important;
+    font-weight: 700 !important;
+    color: #FFFFFF !important;
+    margin-bottom: 4px !important;
+    letter-spacing: -0.02em;
+}
+
+.__gross-amount span {
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: rgba(255, 255, 255, 0.85) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ============================================
+   Chart Labels - Modern Style
+   ============================================ */
+.chart--label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: var(--modern-bg) !important;
+    border-radius: 20px;
+    margin: 4px;
+}
+
+.chart--label .indicator {
+    width: 10px !important;
+    height: 10px !important;
+    border-radius: 50% !important;
+    flex-shrink: 0;
+}
+
+.chart--label .info {
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: var(--modern-text-secondary) !important;
+}
+
+.chart-bg-1 { background: var(--modern-primary) !important; }
+.chart-bg-2 { background: var(--modern-accent-blue) !important; }
+.chart-bg-3 { background: var(--modern-accent-orange) !important; }
+.chart-bg-4 { background: var(--modern-accent-purple) !important; }
+
+/* ============================================
+   Pie Chart - Total Orders Center
+   ============================================ */
+.pie-chart {
+    position: relative;
+}
+
+.total--orders {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    background: var(--modern-bg-card);
+    padding: 20px;
+    border-radius: 50%;
+    box-shadow: var(--modern-shadow);
+}
+
+.total--orders h3 {
+    font-size: 28px !important;
+    font-weight: 700 !important;
+    color: var(--modern-text-primary) !important;
+    margin-bottom: 4px !important;
+}
+
+.total--orders span {
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    color: var(--modern-text-secondary) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ============================================
+   Top Restaurants/Foods Cards
+   ============================================ */
+.card h5.card-header-title {
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    color: var(--modern-text-primary) !important;
+}
+
+/* List items in cards */
+.card .media {
+    padding: 12px 0 !important;
+    border-bottom: 1px solid var(--modern-border-light) !important;
+    transition: var(--modern-transition);
+}
+
+.card .media:last-child {
+    border-bottom: none !important;
+}
+
+.card .media:hover {
+    background: var(--modern-bg-hover);
+    margin: 0 -24px;
+    padding: 12px 24px !important;
+}
+
+.card .media img {
+    border-radius: var(--modern-radius-sm) !important;
+    object-fit: cover;
+}
+
+/* ============================================
+   Status Filter Wrap
+   ============================================ */
+.status-filter-wrap {
+    padding: 16px 0 !important;
+}
+
+/* ============================================
+   Row Gaps - Modern Spacing
+   ============================================ */
+.g-2, .gy-2 {
+    --bs-gutter-y: 16px !important;
+}
+
+.g-2, .gx-2 {
+    --bs-gutter-x: 16px !important;
+}
+
+.row.g-2 {
+    margin: -8px !important;
+}
+
+.row.g-2 > [class*="col-"] {
+    padding: 8px !important;
+}
+
+/* ============================================
+   Module Navigation - Modern Style
+   ============================================ */
+.__nav-module-item {
+    background: var(--modern-bg-card) !important;
+    border: 1px solid var(--modern-border-light) !important;
+    border-radius: var(--modern-radius) !important;
+    padding: 16px !important;
+    text-align: center;
+    transition: var(--modern-transition) !important;
+    text-decoration: none !important;
+}
+
+.__nav-module-item:hover {
+    border-color: var(--modern-primary) !important;
+    box-shadow: var(--modern-shadow) !important;
+    transform: translateY(-2px);
+}
+
+.__nav-module-item.active {
+    border-color: var(--modern-primary) !important;
+    background: var(--modern-primary-light) !important;
+}
+
+.__nav-module-item img {
+    width: 48px !important;
+    height: 48px !important;
+    margin-bottom: 8px !important;
+}
+
+/* ============================================
+   Shadow Order Card
+   ============================================ */
+.shadow--order-card {
+    background: var(--modern-bg-card) !important;
+    border-radius: var(--modern-radius-lg) !important;
+    padding: 20px !important;
+    box-shadow: var(--modern-shadow) !important;
+}
+
+/* ============================================
+   Custom Select Dropdowns
+   ============================================ */
+.custom-select {
+    background: var(--modern-bg-card) url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='4' height='5' viewBox='0 0 4 5'%3e%3cpath fill='%2364748B' d='M2 0L0 2h4zm0 5L0 3h4z'/%3e%3c/svg%3e") right 0.75rem center/8px 10px no-repeat !important;
+    border: 1px solid var(--modern-border) !important;
+    border-radius: var(--modern-radius-sm) !important;
+    color: var(--modern-text-primary) !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    padding: 8px 32px 8px 14px !important;
+}
+
+.custom-select:focus {
+    border-color: var(--modern-primary) !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1) !important;
+}
+
+/* ============================================
+   Business Overview Cards
+   ============================================ */
+.__dashboard-card {
+    background: var(--modern-bg-card) !important;
+    border: 1px solid var(--modern-border-light) !important;
+    border-radius: var(--modern-radius) !important;
+    padding: 20px !important;
+    box-shadow: var(--modern-shadow-sm) !important;
+    transition: var(--modern-transition) !important;
+}
+
+.__dashboard-card:hover {
+    box-shadow: var(--modern-shadow) !important;
+}
+
+.__dashboard-card .meter {
+    background: var(--modern-primary-light) !important;
+    border-radius: 4px !important;
+}
+
+.__dashboard-card .meter span {
+    background: var(--modern-primary) !important;
+}
+
+/* ============================================
+   Footer - Modern Style
+   ============================================ */
+.footer {
+    background: var(--modern-bg-card) !important;
+    border-top: 1px solid var(--modern-border-light) !important;
+    padding: 16px 24px !important;
+}
+
+.footer a {
+    color: var(--modern-text-secondary) !important;
+    transition: var(--modern-transition);
+}
+
+.footer a:hover {
+    color: var(--modern-primary) !important;
+}
+
+/* ============================================
+   Breadcrumb - Modern Style
+   ============================================ */
+.breadcrumb {
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.breadcrumb-item {
+    font-size: 14px !important;
+    font-weight: 500 !important;
+}
+
+.breadcrumb-item a {
+    color: var(--modern-text-secondary) !important;
+}
+
+.breadcrumb-item.active {
+    color: var(--modern-text-primary) !important;
+}
+
+/* ============================================
+   Nav Tabs - Modern Style
+   ============================================ */
+.nav-tabs {
+    border-bottom: 1px solid var(--modern-border-light) !important;
+    gap: 8px;
+}
+
+.nav-tabs .nav-link {
+    border: none !important;
+    border-bottom: 2px solid transparent !important;
+    padding: 12px 20px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    color: var(--modern-text-secondary) !important;
+    transition: var(--modern-transition) !important;
+    border-radius: 0 !important;
+}
+
+.nav-tabs .nav-link:hover {
+    color: var(--modern-primary) !important;
+    border-color: transparent !important;
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--modern-primary) !important;
+    border-bottom-color: var(--modern-primary) !important;
+    background: transparent !important;
+}
+
+/* ============================================
+   Input Group - Modern Style
+   ============================================ */
+.input-group {
+    border-radius: var(--modern-radius-sm) !important;
+    overflow: hidden;
+}
+
+.input-group .form-control {
+    border-radius: 0 !important;
+}
+
+.input-group .form-control:first-child {
+    border-radius: var(--modern-radius-sm) 0 0 var(--modern-radius-sm) !important;
+}
+
+.input-group .btn {
+    border-radius: 0 var(--modern-radius-sm) var(--modern-radius-sm) 0 !important;
+}
+
+/* ============================================
+   Search Box - Modern Style
+   ============================================ */
+.input--group {
+    position: relative;
+}
+
+.input--group .form-control {
+    padding-left: 40px !important;
+}
+
+.input--group .input-group-prepend {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 5;
+    color: var(--modern-text-muted);
+}
+
+/* ============================================
+   Print Styles
+   ============================================ */
+@media print {
+    .card {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+    }
+    
+    .navbar-vertical-aside,
+    .navbar:not(.navbar-vertical) {
+        display: none !important;
+    }
+}
+
+/* ============================================
+   Animations
+   ============================================ */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card,
+.__dashboard-card-2,
+.order--card {
+    animation: fadeInUp 0.4s ease-out;
+}
+
+/* Stagger animation for cards */
+.row > [class*="col-"]:nth-child(1) .card,
+.row > [class*="col-"]:nth-child(1) .__dashboard-card-2 { animation-delay: 0.05s; }
+.row > [class*="col-"]:nth-child(2) .card,
+.row > [class*="col-"]:nth-child(2) .__dashboard-card-2 { animation-delay: 0.1s; }
+.row > [class*="col-"]:nth-child(3) .card,
+.row > [class*="col-"]:nth-child(3) .__dashboard-card-2 { animation-delay: 0.15s; }
+.row > [class*="col-"]:nth-child(4) .card,
+.row > [class*="col-"]:nth-child(4) .__dashboard-card-2 { animation-delay: 0.2s; }

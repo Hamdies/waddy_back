@@ -28,6 +28,8 @@ $countryCode= strtolower($country?$country->value:'auto');
     <link rel="stylesheet" href="{{asset('public/assets/admin/css/bootstrap-tour-standalone.min.css')}}">
     <link rel="stylesheet" href="{{asset('public/assets/admin/css/emogi-area.css')}}">
     <link rel="stylesheet" href="{{asset('public/assets/admin/css/style.css')}}?v={{ time() }}">
+    <!-- Modern Dashboard Redesign -->
+    <link rel="stylesheet" href="{{asset('public/assets/admin/css/dashboard-modern.css')}}?v={{ time() }}">
 
     <link rel="stylesheet" href="{{asset('public/assets/admin/intltelinput/css/intlTelInput.css')}}">
 
