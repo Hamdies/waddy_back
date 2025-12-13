@@ -280,12 +280,15 @@ class SMS_module
             curl_close($curl);
             
             if ($err) {
+                \Log::error('Akedly create transaction curl error: ' . $err);
                 return 'error';
             }
             
+            \Log::info('Akedly create response: ' . $createResponse);
             $createData = json_decode($createResponse, true);
             
             if (!isset($createData['status']) || $createData['status'] !== 'success' || !isset($createData['data']['transactionID'])) {
+                \Log::error('Akedly create failed: ' . $createResponse);
                 return 'error';
             }
             
@@ -313,14 +316,17 @@ class SMS_module
             curl_close($curl);
             
             if ($err) {
+                \Log::error('Akedly activate curl error: ' . $err);
                 return 'error';
             }
             
+            \Log::info('Akedly activate response: ' . $activateResponse);
             $activateData = json_decode($activateResponse, true);
             
             if (isset($activateData['status']) && $activateData['status'] === 'success') {
                 $response = 'success';
             } else {
+                \Log::error('Akedly activate failed: ' . $activateResponse);
                 $response = 'error';
             }
         }
