@@ -1115,15 +1115,19 @@ class CustomerAuthController extends Controller
             'name' => 'required',
             'login_type' => 'required|in:otp,social,manual',
             'phone' => 'required|min:9|max:14',
-            'email' => 'required|email',
         ];
 
         if ($request->login_type == 'social') {
             $rules['phone'] .= '|unique:users,phone';
+            $rules['email'] = 'required|email';
         }
 
-        if ($request->login_type == 'otp' || $request->login_type == 'manual') {
-            $rules['email'] .= '|unique:users,email';
+        if ($request->login_type == 'otp') {
+            $rules['email'] = 'nullable|email|unique:users,email';
+        }
+
+        if ($request->login_type == 'manual') {
+            $rules['email'] = 'required|email|unique:users,email';
         }
 
         $validator = Validator::make($request->all(), $rules);
