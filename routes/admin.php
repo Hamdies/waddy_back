@@ -649,6 +649,39 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                     Route::get('loyalty-point/report', 'LoyaltyPointController@report')->name('loyalty-point.report');
                     Route::get('loyalty-point/export', 'LoyaltyPointController@export')->name('loyalty-point.export');
                     Route::post('loyalty-point/set-date', 'LoyaltyPointController@set_date')->name('loyalty-point.set-date');
+
+                    // XP Leveling System
+                    Route::group(['prefix' => 'xp', 'as' => 'xp.'], function () {
+                        // Levels
+                        Route::get('levels', 'XpController@levels')->name('levels');
+                        Route::get('levels/edit/{id}', 'XpController@levelEdit')->name('levels.edit');
+                        Route::post('levels/update/{id}', 'XpController@levelUpdate')->name('levels.update');
+
+                        // Prizes
+                        Route::get('prizes', 'XpController@prizes')->name('prizes');
+                        Route::post('prizes/store', 'XpController@prizeStore')->name('prizes.store');
+                        Route::get('prizes/edit/{id}', 'XpController@prizeEdit')->name('prizes.edit');
+                        Route::post('prizes/update/{id}', 'XpController@prizeUpdate')->name('prizes.update');
+                        Route::delete('prizes/delete/{id}', 'XpController@prizeDelete')->name('prizes.delete');
+
+                        // Challenges
+                        Route::get('challenges', 'XpController@challenges')->name('challenges');
+                        Route::post('challenges/store', 'XpController@challengeStore')->name('challenges.store');
+                        Route::get('challenges/edit/{id}', 'XpController@challengeEdit')->name('challenges.edit');
+                        Route::post('challenges/update/{id}', 'XpController@challengeUpdate')->name('challenges.update');
+                        Route::delete('challenges/delete/{id}', 'XpController@challengeDelete')->name('challenges.delete');
+                        Route::get('challenges/status', 'XpController@challengeStatus')->name('challenges.status');
+
+                        // Settings
+                        Route::get('settings', 'XpController@settings')->name('settings');
+                        Route::post('settings/update', 'XpController@settingsUpdate')->name('settings.update');
+
+                        // Users XP Report
+                        Route::get('users', 'XpController@users')->name('users');
+                        Route::get('users/{id}', 'XpController@userDetail')->name('users.detail');
+                        Route::get('transactions', 'XpController@transactions')->name('transactions');
+                    });
+
                     Route::get('settings', 'CustomerController@settings')->name('settings');
                     Route::post('update-settings', 'CustomerController@update_settings')->name('update-settings');
                     Route::get('export', 'CustomerController@export')->name('export');
