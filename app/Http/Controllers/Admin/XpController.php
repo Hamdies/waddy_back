@@ -239,7 +239,7 @@ class XpController extends Controller
     {
         $search = $request->search;
         
-        $users = User::where('user_type', 'customer')
+        $users = User::where('total_xp', '>', 0)
             ->when($search, function($query) use ($search) {
                 $query->where(function($q) use ($search) {
                     $q->where('f_name', 'like', "%{$search}%")
