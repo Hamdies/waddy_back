@@ -51,6 +51,8 @@ class User extends Authenticatable
         'loyalty_point' => 'integer',
         'ref_by' => 'integer',
         'hide_phone' => 'boolean',
+        'total_xp' => 'integer',
+        'level' => 'integer',
     ];
     protected $appends = ['image_full_url'];
     public function getImageFullUrlAttribute(){
@@ -103,6 +105,75 @@ class User extends Authenticatable
     public function storage()
     {
         return $this->morphMany(Storage::class, 'data');
+    }
+
+    // ==================== XP SYSTEM RELATIONSHIPS ====================
+
+    /**
+     * Get user's XP transactions.
+     */
+    public function xpTransactions()
+    {
+        return $this->hasMany(XpTransaction::class);
+    }
+
+    /**
+     * Get user's challenges.
+     */
+    public function userChallenges()
+    {
+        return $this->hasMany(UserChallenge::class);
+    }
+
+    /**
+     * Get user's level prizes.
+     */
+    public function levelPrizes()
+    {
+        return $this->hasMany(UserLevelPrize::class);
+    }
+
+    /**
+     * Get current level details.
+     */
+    public function currentLevel()
+    {
+        return $this->belongsTo(Level::class, 'level', 'level_number');
+    }
+
+    /**
+     * Get XP progress to next level.
+     */
+    public function getXpProgressAttribute(): array
+    {
+        $currentLevel = Level::where('level_number', $this->level)->first();
+        $nextLevel = Level::where('level_number', $this->level + 1)->first();
+
+        if (!$nextLevel) {
+            return [
+                'current_xp' => $this->total_xp,
+                'xp_for_current_level' => $currentLevel?->xp_required ?? 0,
+                'xp_for_next_level' => null,
+                'xp_to_next_level' => 0,
+                'progress_percentage' => 100,
+                'is_max_level' => true,
+            ];
+        }
+
+        $xpInCurrentLevel = $this->total_xp - $currentLevel->xp_required;
+        $xpNeededForLevel = $nextLevel->xp_required - $currentLevel->xp_required;
+        $progressPercentage = $xpNeededForLevel > 0 
+            ? round(($xpInCurrentLevel / $xpNeededForLevel) * 100) 
+            : 0;
+
+        return [
+            'current_xp' => $this->total_xp,
+            'xp_for_current_level' => $currentLevel->xp_required,
+            'xp_for_next_level' => $nextLevel->xp_required,
+            'xp_to_next_level' => $nextLevel->xp_required - $this->total_xp,
+            'progress_percentage' => min(100, $progressPercentage),
+            'is_max_level' => false,
+        ];
     }
 
     protected static function booted()

@@ -378,6 +378,18 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
                 Route::post('transfer-mart-from-drivemond', 'WalletController@transferMartFromDrivemondWallet')->withoutMiddleware('auth:api');
             });
 
+            // XP Leveling System
+            Route::group(['prefix'=>'xp'], function() {
+                Route::get('level', 'XpController@getLevel');
+                Route::get('levels', 'XpController@getAllLevels');
+                Route::get('transactions', 'XpController@getTransactions');
+                Route::get('challenges', 'XpController@getChallenges');
+                Route::post('challenges/{id}/claim', 'XpController@claimChallenge');
+                Route::get('prizes', 'XpController@getPrizes');
+                Route::post('prizes/{id}/claim', 'XpController@claimPrize');
+                Route::get('reward-items', 'XpController@getRewardItems');
+            });
+
             Route::get('visit-again', 'OrderController@order_again');
 
             Route::get('review-reminder', 'CustomerController@review_reminder');

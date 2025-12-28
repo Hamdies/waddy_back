@@ -12,6 +12,8 @@ use App\Observers\BannerObserver;
 use App\Observers\DataSettingObserver;
 use App\Observers\OrderObserver;
 use App\Observers\ModuleObserver;
+use App\Observers\ReviewObserver;
+use App\Models\Review;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
@@ -41,5 +43,6 @@ class EventServiceProvider extends ServiceProvider
         Banner::observe(BannerObserver::class);
         DataSetting::observe(DataSettingObserver::class);
         Module::observe(ModuleObserver::class);
+        Review::observe(ReviewObserver::class);
     }
 }
