@@ -197,6 +197,42 @@
                     </ul>
                 </li>
 
+                <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/users/customer/xp*') ? 'active' : '' }}">
+                    <a class="js-navbar-vertical-aside-menu-link nav-link  nav-link-toggle" href="javascript:" title="{{ translate('messages.xp_leveling') }}">
+                        <i class="tio-star nav-icon"></i>
+                        <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate  text-capitalize">
+                            {{ translate('messages.xp_leveling') }}
+                        </span>
+                    </a>
+
+                    <ul class="js-navbar-vertical-aside-submenu nav nav-sub" style="display:{{ Request::is('admin/users/customer/xp*') ? 'block' : 'none' }}">
+                        <li class="nav-item {{ Request::is('admin/users/customer/xp/levels*') ? 'active' : '' }}">
+                            <a class="nav-link " href="{{ route('admin.users.customer.xp.levels') }}" title="{{ translate('messages.levels') }}">
+                                <span class="tio-circle nav-indicator-icon"></span>
+                                <span class="text-truncate text-capitalize">{{ translate('messages.levels') }}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item {{ Request::is('admin/users/customer/xp/challenges*') ? 'active' : '' }}">
+                            <a class="nav-link " href="{{ route('admin.users.customer.xp.challenges') }}" title="{{ translate('messages.challenges') }}">
+                                <span class="tio-circle nav-indicator-icon"></span>
+                                <span class="text-truncate text-capitalize">{{ translate('messages.challenges') }}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item {{ Request::is('admin/users/customer/xp/users*') ? 'active' : '' }}">
+                            <a class="nav-link " href="{{ route('admin.users.customer.xp.users') }}" title="{{ translate('messages.customer_xp') }}">
+                                <span class="tio-circle nav-indicator-icon"></span>
+                                <span class="text-truncate text-capitalize">{{ translate('messages.customer_xp') }}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item {{ Request::is('admin/users/customer/xp/settings*') ? 'active' : '' }}">
+                            <a class="nav-link " href="{{ route('admin.users.customer.xp.settings') }}" title="{{ translate('messages.settings') }}">
+                                <span class="tio-circle nav-indicator-icon"></span>
+                                <span class="text-truncate text-capitalize">{{ translate('messages.settings') }}</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
                 <!-- End Custommer -->
                 <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/users/customer/subscribed') ? 'active' : '' }}">
                     <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.users.customer.subscribed') }}" title="{{translate('subscribed_emails')}}">
