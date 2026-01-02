@@ -17,6 +17,19 @@ class Level extends Model
         'status' => 'boolean',
     ];
 
+    protected $appends = ['badge_image_url'];
+
+    /**
+     * Get the full URL for the badge image.
+     */
+    public function getBadgeImageUrlAttribute(): ?string
+    {
+        if ($this->badge_image) {
+            return asset('storage/app/public/level/' . $this->badge_image);
+        }
+        return null;
+    }
+
     /**
      * Get the prizes for this level.
      */

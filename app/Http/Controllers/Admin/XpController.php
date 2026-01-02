@@ -35,18 +35,36 @@ class XpController extends Controller
             'name' => 'required|string|max:255',
             'xp_required' => 'required|integer|min:0',
             'description' => 'nullable|string',
+            'badge_image' => 'nullable|image|mimes:png,jpg,jpeg,gif|max:2048',
         ]);
 
         $level = Level::findOrFail($id);
-        $level->update([
+        
+        $data = [
             'name' => $request->name,
             'xp_required' => $request->xp_required,
             'description' => $request->description,
             'status' => $request->status ? 1 : 0,
-        ]);
+        ];
+
+        if ($request->hasFile('badge_image')) {
+            // Delete old image if exists
+            if ($level->badge_image) {
+                $oldPath = storage_path('app/public/level/' . $level->badge_image);
+                if (file_exists($oldPath)) {
+                    unlink($oldPath);
+                }
+            }
+            // Store new image
+            $imageName = 'level_' . $id . '_' . time() . '.' . $request->badge_image->extension();
+            $request->badge_image->storeAs('public/level', $imageName);
+            $data['badge_image'] = $imageName;
+        }
+
+        $level->update($data);
 
         Toastr::success(translate('messages.level_updated_successfully'));
-        return redirect()->route('admin.xp.levels');
+        return redirect()->route('admin.users.customer.xp.levels');
     }
 
     // ==================== PRIZES ====================

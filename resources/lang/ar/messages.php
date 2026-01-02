@@ -1332,6 +1332,8 @@
   'edit_level' => 'تعديل المستوى',
   'level_number' => 'رقم المستوى',
   'level_name' => 'اسم المستوى',
+  'badge_image' => 'صورة الشارة',
+  'image_preview' => 'معاينة الصورة',
   'xp_required' => 'التقدم المطلوب',
   'total_xp' => 'إجمالي التقدم',
   'xp_to_next_level' => 'التقدم للمستوى التالي',

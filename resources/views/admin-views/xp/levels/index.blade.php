@@ -27,6 +27,7 @@
                     <thead class="thead-light">
                         <tr>
                             <th>{{translate('messages.sl')}}</th>
+                            <th>{{translate('messages.badge_image')}}</th>
                             <th>{{translate('messages.level')}}</th>
                             <th>{{translate('messages.name')}}</th>
                             <th>{{translate('messages.xp_required')}}</th>
@@ -39,6 +40,19 @@
                         @foreach($levels as $key => $level)
                         <tr>
                             <td>{{$key + 1}}</td>
+                            <td>
+                                @if($level->badge_image)
+                                    <img src="{{asset('storage/app/public/level/' . $level->badge_image)}}" 
+                                         alt="{{$level->name}}" 
+                                         class="rounded-circle"
+                                         style="width: 40px; height: 40px; object-fit: cover;">
+                                @else
+                                    <div class="rounded-circle bg-light d-flex align-items-center justify-content-center" 
+                                         style="width: 40px; height: 40px;">
+                                        <i class="tio-star text-muted"></i>
+                                    </div>
+                                @endif
+                            </td>
                             <td>
                                 <span class="badge badge-primary">Level {{$level->level_number}}</span>
                             </td>

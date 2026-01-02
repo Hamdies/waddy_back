@@ -490,6 +490,8 @@
   'edit_level' => 'Edit Level',
   'level_number' => 'Level Number',
   'level_name' => 'Level Name',
+  'badge_image' => 'Badge Image',
+  'image_preview' => 'Image Preview',
   'xp_required' => 'XP Required',
   'total_xp' => 'Total XP',
   'xp_to_next_level' => 'XP to Next Level',
