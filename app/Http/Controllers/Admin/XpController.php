@@ -25,14 +25,17 @@ class XpController extends Controller
 
     public function levelEdit($id)
     {
-        $level = Level::findOrFail($id);
-        return view('admin-views.xp.levels.edit', compact('level'));
+        $level = Level::withoutGlobalScope('translations')->with('translations')->findOrFail($id);
+        $language = \App\Models\BusinessSetting::where('key', 'language')->first();
+        $language = $language->value ?? null;
+        $defaultLang = str_replace('_', '-', app()->getLocale());
+        return view('admin-views.xp.levels.edit', compact('level', 'language', 'defaultLang'));
     }
 
     public function levelUpdate(Request $request, $id)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
+            'name.0' => 'required|string|max:255',
             'xp_required' => 'required|integer|min:0',
             'description' => 'nullable|string',
             'badge_image' => 'nullable|image|mimes:png,jpg,jpeg,gif|max:2048',
@@ -41,27 +44,53 @@ class XpController extends Controller
         $level = Level::findOrFail($id);
         
         $data = [
-            'name' => $request->name,
+            'name' => $request->name[0],
             'xp_required' => $request->xp_required,
             'description' => $request->description,
             'status' => $request->status ? 1 : 0,
         ];
 
         if ($request->hasFile('badge_image')) {
+            // Create directory if not exists
+            $uploadPath = public_path('level');
+            if (!file_exists($uploadPath)) {
+                mkdir($uploadPath, 0755, true);
+            }
+            
             // Delete old image if exists
             if ($level->badge_image) {
-                $oldPath = storage_path('app/public/level/' . $level->badge_image);
+                $oldPath = public_path('level/' . $level->badge_image);
                 if (file_exists($oldPath)) {
                     unlink($oldPath);
                 }
             }
+            
             // Store new image
             $imageName = 'level_' . $id . '_' . time() . '.' . $request->badge_image->extension();
-            $request->badge_image->storeAs('public/level', $imageName);
+            $request->badge_image->move($uploadPath, $imageName);
             $data['badge_image'] = $imageName;
         }
 
         $level->update($data);
+
+        // Handle translations
+        $defaultLang = str_replace('_', '-', app()->getLocale());
+        foreach ($request->lang as $index => $lang) {
+            if ($lang == $defaultLang && isset($request->name[$index])) {
+                continue;
+            }
+            if (isset($request->name[$index]) && $request->name[$index]) {
+                \App\Models\Translation::updateOrCreate(
+                    [
+                        'translationable_type' => 'App\Models\Level',
+                        'translationable_id' => $level->id,
+                        'locale' => $lang,
+                        'key' => 'name'
+                    ],
+                    ['value' => $request->name[$index]]
+                );
+            }
+        }
 
         Toastr::success(translate('messages.level_updated_successfully'));
         return redirect()->route('admin.users.customer.xp.levels');

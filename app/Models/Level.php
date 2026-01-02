@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Level extends Model
 {
@@ -18,6 +19,31 @@ class Level extends Model
     ];
 
     protected $appends = ['badge_image_url'];
+    
+    protected $with = ['translations'];
+
+    /**
+     * Get translations for this level.
+     */
+    public function translations(): MorphMany
+    {
+        return $this->morphMany(Translation::class, 'translationable');
+    }
+
+    /**
+     * Get translated name based on locale.
+     */
+    public function getNameAttribute($value)
+    {
+        if (count($this->translations) > 0) {
+            foreach ($this->translations as $translation) {
+                if ($translation['key'] == 'name' && $translation['locale'] == app()->getLocale()) {
+                    return $translation['value'];
+                }
+            }
+        }
+        return $value;
+    }
 
     /**
      * Get the full URL for the badge image.
@@ -25,7 +51,7 @@ class Level extends Model
     public function getBadgeImageUrlAttribute(): ?string
     {
         if ($this->badge_image) {
-            return asset('storage/app/public/level/' . $this->badge_image);
+            return asset('public/level/' . $this->badge_image);
         }
         return null;
     }

@@ -42,7 +42,7 @@
                             <td>{{$key + 1}}</td>
                             <td>
                                 @if($level->badge_image)
-                                    <img src="{{asset('storage/app/public/level/' . $level->badge_image)}}" 
+                                    <img src="{{asset('public/level/' . $level->badge_image)}}" 
                                          alt="{{$level->name}}" 
                                          class="rounded-circle"
                                          style="width: 40px; height: 40px; object-fit: cover;">
