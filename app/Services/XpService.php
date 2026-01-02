@@ -197,7 +197,7 @@ class XpService
         return [
             'current_level' => $user->level,
             'level_name' => $currentLevel?->name ?? 'Starter',
-            'level_badge' => $currentLevel?->badge_image,
+            'level_badge' => $currentLevel?->badge_image_url,
             'total_xp' => $user->total_xp,
             'xp_to_next_level' => $progress['xp_to_next_level'],
             'progress_percentage' => $progress['progress_percentage'],

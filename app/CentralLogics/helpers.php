@@ -3694,6 +3694,7 @@ class Helpers
             'reviewer_company_image' => asset('public/assets/admin/img/100x100/2.jpg'),
             'module' => asset('public/assets/admin/img/100x100/2.jpg'),
             'parcel_category' => asset('/public/assets/admin/img/400x400/img2.jpg'),
+            'level' => asset('public/assets/admin/img/100x100/2.jpg'),
             'favicon' => asset('/public/assets/admin/img/favicon.png'),
             'seller' => asset('public/assets/back-end/img/160x160/img1.jpg'),
             'upload_placeholder' => asset('/public/assets/admin/img/upload-placeholder.png'),

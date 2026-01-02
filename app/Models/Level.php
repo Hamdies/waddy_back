@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use App\CentralLogics\Helpers;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Support\Facades\DB;
 
 class Level extends Model
 {
@@ -20,7 +22,7 @@ class Level extends Model
 
     protected $appends = ['badge_image_url'];
     
-    protected $with = ['translations'];
+    protected $with = ['translations', 'storage'];
 
     /**
      * Get translations for this level.
@@ -46,14 +48,28 @@ class Level extends Model
     }
 
     /**
+     * Get the storage relationship.
+     */
+    public function storage()
+    {
+        return $this->morphMany(Storage::class, 'data');
+    }
+
+    /**
      * Get the full URL for the badge image.
      */
     public function getBadgeImageUrlAttribute(): ?string
     {
-        if ($this->badge_image) {
-            return asset('public/level/' . $this->badge_image);
+        $value = $this->badge_image;
+        if (count($this->storage) > 0) {
+            foreach ($this->storage as $storage) {
+                if ($storage['key'] == 'badge_image') {
+                    return Helpers::get_full_url('level', $value, $storage['value']);
+                }
+            }
         }
-        return null;
+        
+        return Helpers::get_full_url('level', $value, 'public');
     }
 
     /**
@@ -92,5 +108,29 @@ class Level extends Model
             ->where('level_number', '>', $this->level_number)
             ->orderBy('level_number')
             ->first();
+    }
+
+    /**
+     * Boot method to track storage location.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+        
+        static::saved(function ($model) {
+            if ($model->isDirty('badge_image')) {
+                $value = Helpers::getDisk();
+
+                DB::table('storages')->updateOrInsert([
+                    'data_type' => get_class($model),
+                    'data_id' => $model->id,
+                    'key' => 'badge_image',
+                ], [
+                    'value' => $value,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        });
     }
 }

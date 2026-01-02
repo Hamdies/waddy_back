@@ -43,7 +43,7 @@ class XpController extends Controller
                     'name' => $level->name,
                     'xp_required' => $level->xp_required,
                     'description' => $level->description,
-                    'badge_image' => $level->badge_image,
+                    'badge_image' => $level->badge_image_url,
                 ];
             });
 

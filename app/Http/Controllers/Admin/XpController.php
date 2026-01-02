@@ -51,24 +51,7 @@ class XpController extends Controller
         ];
 
         if ($request->hasFile('badge_image')) {
-            // Create directory if not exists
-            $uploadPath = public_path('level');
-            if (!file_exists($uploadPath)) {
-                mkdir($uploadPath, 0755, true);
-            }
-            
-            // Delete old image if exists
-            if ($level->badge_image) {
-                $oldPath = public_path('level/' . $level->badge_image);
-                if (file_exists($oldPath)) {
-                    unlink($oldPath);
-                }
-            }
-            
-            // Store new image
-            $imageName = 'level_' . $id . '_' . time() . '.' . $request->badge_image->extension();
-            $request->badge_image->move($uploadPath, $imageName);
-            $data['badge_image'] = $imageName;
+            $data['badge_image'] = Helpers::upload('level/', 'png', $request->file('badge_image'), $level->badge_image);
         }
 
         $level->update($data);
