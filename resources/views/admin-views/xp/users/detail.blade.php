@@ -60,6 +60,37 @@
         </div>
     </div>
 
+    <!-- Manual XP Addition -->
+    <div class="card mb-3">
+        <div class="card-header">
+            <h5 class="card-title mb-0">{{translate('messages.add_xp_manually')}}</h5>
+        </div>
+        <div class="card-body">
+            <form action="{{route('admin.users.customer.xp.users.add-xp', $user->id)}}" method="POST">
+                @csrf
+                <div class="row align-items-end">
+                    <div class="col-md-3">
+                        <div class="form-group mb-md-0">
+                            <label class="input-label">{{translate('messages.xp_amount')}} <span class="text-danger">*</span></label>
+                            <input type="number" name="xp_amount" class="form-control" min="1" required placeholder="e.g. 100">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-md-0">
+                            <label class="input-label">{{translate('messages.description')}} <small class="text-muted">({{translate('messages.optional')}})</small></label>
+                            <input type="text" name="description" class="form-control" placeholder="{{translate('messages.reason_for_adding_xp')}}">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn--primary btn-block">
+                            <i class="tio-add"></i> {{translate('messages.add_xp')}}
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- XP Transactions -->
     <div class="card mb-3">
         <div class="card-header">

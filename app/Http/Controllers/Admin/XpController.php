@@ -25,11 +25,12 @@ class XpController extends Controller
 
     public function levelEdit($id)
     {
-        $level = Level::withoutGlobalScope('translations')->with('translations')->findOrFail($id);
+        $level = Level::withoutGlobalScope('translations')->with(['translations', 'prizes'])->findOrFail($id);
         $language = \App\Models\BusinessSetting::where('key', 'language')->first();
         $language = $language->value ?? null;
         $defaultLang = str_replace('_', '-', app()->getLocale());
-        return view('admin-views.xp.levels.edit', compact('level', 'language', 'defaultLang'));
+        $prizeTypes = ['badge', 'free_item', 'free_delivery', 'discount', 'wallet_credit', 'custom'];
+        return view('admin-views.xp.levels.edit', compact('level', 'language', 'defaultLang', 'prizeTypes'));
     }
 
     public function levelUpdate(Request $request, $id)
@@ -39,6 +40,8 @@ class XpController extends Controller
             'xp_required' => 'required|integer|min:0',
             'description' => 'nullable|string',
             'badge_image' => 'nullable|image|mimes:png,jpg,jpeg,gif|max:2048',
+            'prizes.*.title' => 'nullable|string|max:255',
+            'prizes.*.prize_type' => 'nullable|in:badge,free_item,free_delivery,discount,wallet_credit,custom',
         ]);
 
         $level = Level::findOrFail($id);
@@ -74,6 +77,47 @@ class XpController extends Controller
                 );
             }
         }
+
+        // Handle prizes
+        $existingPrizeIds = [];
+        if ($request->has('prizes')) {
+            foreach ($request->prizes as $prizeData) {
+                // Skip empty rows
+                if (empty($prizeData['title'])) {
+                    continue;
+                }
+
+                $prizeInfo = [
+                    'level_id' => $level->id,
+                    'title' => $prizeData['title'],
+                    'description' => $prizeData['description'] ?? null,
+                    'prize_type' => $prizeData['prize_type'] ?? 'custom',
+                    'value' => $prizeData['value'] ?? null,
+                    'min_order_amount' => $prizeData['min_order_amount'] ?? null,
+                    'usage_limit' => $prizeData['usage_limit'] ?? 1,
+                    'validity_days' => $prizeData['validity_days'] ?? 30,
+                    'status' => isset($prizeData['status']) ? 1 : 0,
+                ];
+
+                if (!empty($prizeData['id'])) {
+                    // Update existing prize
+                    $prize = LevelPrize::find($prizeData['id']);
+                    if ($prize && $prize->level_id == $level->id) {
+                        $prize->update($prizeInfo);
+                        $existingPrizeIds[] = $prize->id;
+                    }
+                } else {
+                    // Create new prize
+                    $newPrize = LevelPrize::create($prizeInfo);
+                    $existingPrizeIds[] = $newPrize->id;
+                }
+            }
+        }
+
+        // Delete prizes that were removed
+        LevelPrize::where('level_id', $level->id)
+            ->whereNotIn('id', $existingPrizeIds)
+            ->delete();
 
         Toastr::success(translate('messages.level_updated_successfully'));
         return redirect()->route('admin.users.customer.xp.levels');
@@ -294,6 +338,34 @@ class XpController extends Controller
         $nextLevel = Level::where('level_number', $user->level + 1)->first();
 
         return view('admin-views.xp.users.detail', compact('user', 'currentLevel', 'nextLevel'));
+    }
+
+    public function addUserXp(Request $request, $id)
+    {
+        $request->validate([
+            'xp_amount' => 'required|integer|min:1',
+            'description' => 'nullable|string|max:255',
+        ]);
+
+        $user = User::findOrFail($id);
+        
+        // Use XpService to add XP (handles level up automatically)
+        $transaction = \App\Services\XpService::addXp(
+            $user,
+            'admin_manual',
+            $request->xp_amount,
+            'admin',
+            auth('admin')->id(),
+            $request->description ?? 'Manually added by admin'
+        );
+
+        if ($transaction) {
+            Toastr::success(translate('messages.xp_added_successfully'));
+        } else {
+            Toastr::warning(translate('messages.xp_system_disabled'));
+        }
+
+        return back();
     }
 
     public function transactions(Request $request)

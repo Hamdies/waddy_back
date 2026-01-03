@@ -112,7 +112,71 @@
                         </div>
                     </div>
                 </div>
-                <div class="btn--container justify-content-end">
+
+                <!-- Level Prizes Section -->
+                <div class="card mt-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">{{translate('messages.level_prizes')}}</h5>
+                        <button type="button" class="btn btn-sm btn--primary" id="add-prize-btn">
+                            <i class="tio-add"></i> {{translate('messages.add_prize')}}
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="prizes-table">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>{{translate('messages.title')}} *</th>
+                                        <th>{{translate('messages.prize_type')}}</th>
+                                        <th>{{translate('messages.value')}}</th>
+                                        <th>{{translate('messages.validity_days')}}</th>
+                                        <th>{{translate('messages.status')}}</th>
+                                        <th width="80">{{translate('messages.action')}}</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="prizes-body">
+                                    @forelse($level->prizes as $index => $prize)
+                                    <tr class="prize-row">
+                                        <td>
+                                            <input type="hidden" name="prizes[{{$index}}][id]" value="{{$prize->id}}">
+                                            <input type="text" name="prizes[{{$index}}][title]" class="form-control form-control-sm" value="{{$prize->title}}" required>
+                                        </td>
+                                        <td>
+                                            <select name="prizes[{{$index}}][prize_type]" class="form-control form-control-sm">
+                                                @foreach($prizeTypes as $type)
+                                                    <option value="{{$type}}" {{$prize->prize_type == $type ? 'selected' : ''}}>{{ucfirst(str_replace('_', ' ', $type))}}</option>
+                                                @endforeach
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="number" name="prizes[{{$index}}][value]" class="form-control form-control-sm" value="{{$prize->value}}" step="0.01" min="0">
+                                        </td>
+                                        <td>
+                                            <input type="number" name="prizes[{{$index}}][validity_days]" class="form-control form-control-sm" value="{{$prize->validity_days ?? 30}}" min="1">
+                                        </td>
+                                        <td class="text-center">
+                                            <input type="checkbox" name="prizes[{{$index}}][status]" value="1" {{$prize->status ? 'checked' : ''}}>
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-danger remove-prize-btn" title="{{translate('messages.delete')}}">
+                                                <i class="tio-delete-outlined"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    @empty
+                                    <tr id="no-prizes-row">
+                                        <td colspan="6" class="text-center text-muted">{{translate('messages.no_prizes_added')}}</td>
+                                    </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                        <small class="text-muted">{{translate('messages.prize_types_hint')}}: Badge, Free Item, Free Delivery, Discount %, Wallet Credit, Custom</small>
+                    </div>
+                </div>
+
+                <div class="btn--container justify-content-end mt-4">
+
                     <a href="{{route('admin.users.customer.xp.levels')}}" class="btn btn--reset">{{translate('messages.back')}}</a>
                     <button type="submit" class="btn btn--primary">{{translate('messages.update')}}</button>
                 </div>
@@ -144,6 +208,64 @@
 
         let form_id = this.id.replace("-link", "-form");
         $("#"+form_id).removeClass('d-none');
+    });
+
+    // Prize management
+    let prizeIndex = {{$level->prizes->count()}};
+    const prizeTypes = @json($prizeTypes);
+
+    $('#add-prize-btn').click(function() {
+        // Remove "no prizes" row if exists
+        $('#no-prizes-row').remove();
+
+        let typeOptions = prizeTypes.map(type => 
+            `<option value="${type}">${type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</option>`
+        ).join('');
+
+        let newRow = `
+            <tr class="prize-row">
+                <td>
+                    <input type="hidden" name="prizes[${prizeIndex}][id]" value="">
+                    <input type="text" name="prizes[${prizeIndex}][title]" class="form-control form-control-sm" placeholder="{{translate('messages.prize_title')}}" required>
+                </td>
+                <td>
+                    <select name="prizes[${prizeIndex}][prize_type]" class="form-control form-control-sm">
+                        ${typeOptions}
+                    </select>
+                </td>
+                <td>
+                    <input type="number" name="prizes[${prizeIndex}][value]" class="form-control form-control-sm" placeholder="0" step="0.01" min="0">
+                </td>
+                <td>
+                    <input type="number" name="prizes[${prizeIndex}][validity_days]" class="form-control form-control-sm" value="30" min="1">
+                </td>
+                <td class="text-center">
+                    <input type="checkbox" name="prizes[${prizeIndex}][status]" value="1" checked>
+                </td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-danger remove-prize-btn" title="{{translate('messages.delete')}}">
+                        <i class="tio-delete-outlined"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+
+        $('#prizes-body').append(newRow);
+        prizeIndex++;
+    });
+
+    // Remove prize row
+    $(document).on('click', '.remove-prize-btn', function() {
+        $(this).closest('tr').remove();
+        
+        // Show "no prizes" row if table is empty
+        if ($('#prizes-body .prize-row').length === 0) {
+            $('#prizes-body').append(`
+                <tr id="no-prizes-row">
+                    <td colspan="6" class="text-center text-muted">{{translate('messages.no_prizes_added')}}</td>
+                </tr>
+            `);
+        }
     });
 </script>
 @endpush
