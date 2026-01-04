@@ -15,7 +15,7 @@ class LevelsSeeder extends Seeder
     {
         // Create levels
         $levels = [
-            ['level_number' => 1, 'name' => 'Starter', 'xp_required' => 0, 'description' => 'Welcome to Waddy! Start your journey.'],
+            ['level_number' => 1, 'name' => 'Starter', 'xp_required' => 50, 'description' => 'Welcome to Waddy! You\'ve earned your first badge.'],
             ['level_number' => 2, 'name' => 'Lowkey', 'xp_required' => 200, 'description' => 'You\'re getting the hang of this!'],
             ['level_number' => 3, 'name' => 'Vibing', 'xp_required' => 600, 'description' => 'Now you\'re vibing with us!'],
             ['level_number' => 4, 'name' => 'Locked-In', 'xp_required' => 1200, 'description' => 'You\'re locked in and committed!'],

@@ -7,12 +7,14 @@ use App\Models\DataSetting;
 use App\Models\Order;
 use App\Models\Module;
 use App\Models\Banner;
+use App\Models\User;
 use App\Observers\BusinessSettingObserver;
 use App\Observers\BannerObserver;
 use App\Observers\DataSettingObserver;
 use App\Observers\OrderObserver;
 use App\Observers\ModuleObserver;
 use App\Observers\ReviewObserver;
+use App\Observers\UserObserver;
 use App\Models\Review;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
@@ -44,5 +46,6 @@ class EventServiceProvider extends ServiceProvider
         DataSetting::observe(DataSettingObserver::class);
         Module::observe(ModuleObserver::class);
         Review::observe(ReviewObserver::class);
+        User::observe(UserObserver::class);
     }
 }

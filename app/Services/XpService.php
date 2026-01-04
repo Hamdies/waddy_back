@@ -134,6 +134,7 @@ class XpService
 
     /**
      * Calculate level from total XP.
+     * Returns 0 if user hasn't reached Level 1 yet.
      */
     public static function calculateLevelFromXp(int $totalXp): int
     {
@@ -141,7 +142,7 @@ class XpService
             ->orderByDesc('level_number')
             ->first();
 
-        return $level ? $level->level_number : 1;
+        return $level ? $level->level_number : 0;
     }
 
     /**
