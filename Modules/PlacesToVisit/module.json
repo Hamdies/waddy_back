@@ -1,0 +1,17 @@
+{
+    "name": "PlacesToVisit",
+    "alias": "placestovisit",
+    "description": "Local places discovery with voting and leaderboard",
+    "keywords": [
+        "places",
+        "voting",
+        "leaderboard"
+    ],
+    "priority": 0,
+    "providers": [
+        "Modules\\PlacesToVisit\\Providers\\PlacesToVisitServiceProvider"
+    ],
+    "aliases": {},
+    "files": [],
+    "requires": []
+}

@@ -1,0 +1,16 @@
+{
+    "name": "modules/placestovisit",
+    "description": "Local places discovery with voting and leaderboard",
+    "authors": [],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {}
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\PlacesToVisit\\": ""
+        }
+    }
+}
