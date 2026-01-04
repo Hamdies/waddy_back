@@ -4593,6 +4593,7 @@ class Helpers
             $businessSetting->value = $value['value'];
             $businessSetting->save();
         }
+        Cache::forget('business_settings_all_data');
     }
 
     public static function businessInsert($data)
