@@ -446,6 +446,54 @@
                     @endif
                     <!--End Parcel Section -->
 
+                    <!-- Places to Visit Section -->
+                    <li class="nav-item">
+                        <small class="nav-subtitle" title="{{ translate('messages.places_to_visit') }}">{{ translate('messages.places_to_visit') }}</small>
+                        <small class="tio-more-horizontal nav-subtitle-replacer"></small>
+                    </li>
+
+                    <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/places*') ? 'active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:" title="{{ translate('messages.places_to_visit') }}">
+                            <i class="tio-compass nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('messages.places_to_visit') }}</span>
+                        </a>
+                        <ul class="js-navbar-vertical-aside-submenu nav nav-sub" style="display:{{ Request::is('admin/places*') ? 'block' : 'none' }}">
+                            <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/places/categories*') ? 'active' : '' }}">
+                                <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.places.categories.index') }}" title="{{ translate('messages.categories') }}">
+                                    <span class="tio-circle nav-indicator-icon"></span>
+                                    <span class="text-truncate">
+                                        {{ translate('messages.categories') }}
+                                    </span>
+                                </a>
+                            </li>
+                            <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/places') || Request::is('admin/places/create') || Request::is('admin/places/*/edit') ? 'active' : '' }}">
+                                <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.places.index') }}" title="{{ translate('messages.places') }}">
+                                    <span class="tio-circle nav-indicator-icon"></span>
+                                    <span class="text-truncate">
+                                        {{ translate('messages.places') }}
+                                    </span>
+                                </a>
+                            </li>
+                            <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/places/leaderboard*') ? 'active' : '' }}">
+                                <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.places.leaderboard.index') }}" title="{{ translate('messages.leaderboard') }}">
+                                    <span class="tio-circle nav-indicator-icon"></span>
+                                    <span class="text-truncate">
+                                        {{ translate('messages.leaderboard') }}
+                                    </span>
+                                </a>
+                            </li>
+                            <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/places/banners*') ? 'active' : '' }}">
+                                <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.places.banners.index') }}" title="{{ translate('messages.banners') }}">
+                                    <span class="tio-circle nav-indicator-icon"></span>
+                                    <span class="text-truncate">
+                                        {{ translate('messages.banners') }}
+                                    </span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    <!-- End Places to Visit Section -->
+
                     <li class="nav-item">
                         <small class="nav-subtitle" title="{{ translate('messages.item_section') }}">{{ translate('messages.item_management') }}</small>
                         <small class="tio-more-horizontal nav-subtitle-replacer"></small>
