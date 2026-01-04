@@ -412,7 +412,7 @@ trait PlaceNewOrder
                 if ($request->use_prize_id && $request->user && $order->delivery_charge > 0) {
                     $userPrize = \App\Models\UserLevelPrize::where('id', $request->use_prize_id)
                         ->where('user_id', $request->user->id)
-                        ->where('status', 'claimed')
+                        ->whereIn('status', ['unlocked', 'claimed'])
                         ->with('prize')
                         ->first();
                     

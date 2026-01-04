@@ -72,7 +72,7 @@ class XpController extends Controller
         $orderAmount = (float) $request->query('order_amount', 0);
 
         $prizes = UserLevelPrize::where('user_id', $user->id)
-            ->where('status', 'claimed')
+            ->whereIn('status', ['unlocked', 'claimed'])
             ->whereHas('prize', function($q) {
                 $q->where('prize_type', 'free_delivery');
             })
