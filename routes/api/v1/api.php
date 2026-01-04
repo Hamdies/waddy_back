@@ -387,6 +387,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
                 Route::post('challenges/{id}/claim', 'XpController@claimChallenge');
                 Route::get('prizes', 'XpController@getPrizes');
                 Route::post('prizes/{id}/claim', 'XpController@claimPrize');
+                Route::get('checkout-prizes', 'XpController@getCheckoutPrizes');
                 Route::get('reward-items', 'XpController@getRewardItems');
             });
 

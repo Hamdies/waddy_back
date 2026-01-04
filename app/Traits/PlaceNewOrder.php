@@ -406,6 +406,30 @@ trait PlaceNewOrder
                     }
                     $coupon->increment('total_uses');
                 }
+
+                // XP Prize - Free Delivery
+                $xp_prize_id = null;
+                if ($request->use_prize_id && $request->user && $order->delivery_charge > 0) {
+                    $userPrize = \App\Models\UserLevelPrize::where('id', $request->use_prize_id)
+                        ->where('user_id', $request->user->id)
+                        ->where('status', 'claimed')
+                        ->with('prize')
+                        ->first();
+                    
+                    if ($userPrize && $userPrize->prize && $userPrize->prize->prize_type === 'free_delivery') {
+                        $orderSubtotal = $product_price + $total_addon_price - $store_discount_amount - $flash_sale_admin_discount_amount - $flash_sale_vendor_discount_amount;
+                        
+                        // Check min order amount
+                        if (!$userPrize->prize->min_order_amount || $orderSubtotal >= $userPrize->prize->min_order_amount) {
+                            // Check if prize is expired
+                            if (!$userPrize->isExpired()) {
+                                $order->delivery_charge = 0;
+                                $free_delivery_by = 'xp_prize';
+                                $xp_prize_id = $userPrize->id;
+                            }
+                        }
+                    }
+                }
                 $order->coupon_created_by = $coupon_created_by;
                 $order->coupon_discount_amount = round($coupon_discount_amount, config('round_up_to_digit'));
                 $order->coupon_discount_title = $coupon ? $coupon->title : '';
@@ -552,6 +576,17 @@ trait PlaceNewOrder
             }
             if ($order->is_guest  == 0 && $order->user_id) {
                 $this->createCashBackHistory($order->order_amount, $order->user_id, $order->id);
+            }
+
+            // Mark XP prize as used
+            if (isset($xp_prize_id) && $xp_prize_id) {
+                $usedPrize = \App\Models\UserLevelPrize::find($xp_prize_id);
+                if ($usedPrize) {
+                    $usedPrize->update([
+                        'status' => 'used',
+                        'used_at' => now(),
+                    ]);
+                }
             }
 
             DB::commit();

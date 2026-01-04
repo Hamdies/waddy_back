@@ -64,6 +64,46 @@ class XpController extends Controller
     }
 
     /**
+     * Get user's claimable free_delivery prizes for checkout.
+     */
+    public function getCheckoutPrizes(Request $request)
+    {
+        $user = $request->user();
+        $orderAmount = (float) $request->query('order_amount', 0);
+
+        $prizes = UserLevelPrize::where('user_id', $user->id)
+            ->where('status', 'claimed')
+            ->whereHas('prize', function($q) {
+                $q->where('prize_type', 'free_delivery');
+            })
+            ->with('prize.level')
+            ->get()
+            ->filter(function($userPrize) use ($orderAmount) {
+                // Filter out expired prizes
+                if ($userPrize->isExpired()) {
+                    return false;
+                }
+                // Filter by min_order_amount if provided
+                if ($orderAmount > 0 && $userPrize->prize->min_order_amount) {
+                    return $orderAmount >= $userPrize->prize->min_order_amount;
+                }
+                return true;
+            })
+            ->values()
+            ->map(function($userPrize) {
+                return [
+                    'id' => $userPrize->id,
+                    'title' => $userPrize->prize->title,
+                    'min_order_amount' => $userPrize->prize->min_order_amount,
+                    'expires_at' => $userPrize->expires_at?->toIso8601String(),
+                    'level_name' => $userPrize->prize->level?->name,
+                ];
+            });
+
+        return response()->json(['prizes' => $prizes], 200);
+    }
+
+    /**
      * Get user's XP transaction history.
      */
     public function getTransactions(Request $request)
