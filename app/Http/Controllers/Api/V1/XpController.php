@@ -35,6 +35,9 @@ class XpController extends Controller
     public function getAllLevels()
     {
         $levels = Level::active()
+            ->with(['prizes' => function($q) {
+                $q->where('status', 1);
+            }])
             ->orderBy('level_number')
             ->get()
             ->map(function ($level) {
@@ -44,6 +47,16 @@ class XpController extends Controller
                     'xp_required' => $level->xp_required,
                     'description' => $level->description,
                     'badge_image' => $level->badge_image_url,
+                    'prizes' => $level->prizes->map(function ($prize) {
+                        return [
+                            'id' => $prize->id,
+                            'title' => $prize->title,
+                            'description' => $prize->description,
+                            'prize_type' => $prize->prize_type,
+                            'value' => $prize->value,
+                            'validity_days' => $prize->validity_days,
+                        ];
+                    }),
                 ];
             });
 
