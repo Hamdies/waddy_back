@@ -2,7 +2,7 @@
 
 return [
     'module_type'=>[
-        'grocery', 'food', 'pharmacy', 'ecommerce','parcel','rental'
+        'grocery', 'food', 'pharmacy', 'ecommerce','parcel','rental','places'
     ],
 
     'grocery'=>[
@@ -158,5 +158,34 @@ return [
         'generic _name'=>false,
         'description'=>'',
         'is_rental'=>true,
+    ],
+
+    'places'=>[
+        'order_status'=>['accepted'=>false],
+        'order_place_to_schedule_interval'=>false,
+        'add_on'=>false,
+        'stock'=>false,
+        'veg_non_veg'=>false,
+        'unit'=>false,
+        'order_attachment'=>false,
+        'always_open'=>true,
+        'all_zone_service'=>true,
+        'item_available_time'=>false,
+        'show_restaurant_text'=>false,
+        'is_parcel'=>false,
+        'organic'=>false,
+        'cutlery'=>false,
+        'common_condition'=>false,
+        'nutrition'=>false,
+        'allergy'=>false,
+        'basic'=>false,
+        'halal'=>false,
+        'brand'=>false,
+        'generic_name'=>false,
+        'description'=>'Places to visit module with voting, leaderboard, and local attractions discovery.',
+        'is_rental'=>false,
+        'is_places'=>true,
+        'has_voting'=>true,
+        'has_leaderboard'=>true,
     ],
 ];

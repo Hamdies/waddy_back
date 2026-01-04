@@ -29,7 +29,7 @@ class XpController extends Controller
         $language = \App\Models\BusinessSetting::where('key', 'language')->first();
         $language = $language->value ?? null;
         $defaultLang = str_replace('_', '-', app()->getLocale());
-        $prizeTypes = ['badge', 'free_item', 'free_delivery', 'discount', 'wallet_credit', 'custom'];
+        $prizeTypes = ['free_delivery', 'wallet_credit'];
         return view('admin-views.xp.levels.edit', compact('level', 'language', 'defaultLang', 'prizeTypes'));
     }
 

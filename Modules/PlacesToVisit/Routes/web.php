@@ -44,4 +44,16 @@ Route::group([
         Route::delete('votes/{vote}', 'LeaderboardController@deleteVote')->name('delete-vote');
         Route::post('clear-cache', 'LeaderboardController@clearCache')->name('clear-cache');
     });
+
+    // Banners
+    Route::group(['prefix' => 'banners', 'as' => 'banners.'], function () {
+        Route::get('/', 'PlaceBannerController@index')->name('index');
+        Route::get('create', 'PlaceBannerController@create')->name('create');
+        Route::post('/', 'PlaceBannerController@store')->name('store');
+        Route::get('{banner}/edit', 'PlaceBannerController@edit')->name('edit');
+        Route::put('{banner}', 'PlaceBannerController@update')->name('update');
+        Route::delete('{banner}', 'PlaceBannerController@destroy')->name('destroy');
+        Route::get('{banner}/toggle-status', 'PlaceBannerController@toggleStatus')->name('toggle-status');
+        Route::get('{banner}/toggle-featured', 'PlaceBannerController@toggleFeatured')->name('toggle-featured');
+    });
 });

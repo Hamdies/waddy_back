@@ -11,4 +11,11 @@ return [
     
     // Cache duration in minutes
     'leaderboard_cache_minutes' => 60,
+    
+    // Banner settings
+    'banners' => [
+        'max_featured_banners' => 5,
+        'default_image_size' => '1920x600',
+        'allowed_types' => ['default', 'category', 'place', 'external'],
+    ],
 ];

@@ -179,8 +179,31 @@ class XpService
                 }
             }
 
-            // TODO: Send push notification for level up
-            // Helpers::send_push_notification(...)
+            if ($user->cm_firebase_token) {
+                $levelName = $levelModel->name ?? "Level $level";
+                $data = [
+                    'title' => translate('Level Up!'),
+                    'description' => translate("Congratulations! You've reached") . " $levelName",
+                    'image' => $levelModel->badge_image_url ?? '',
+                    'type' => 'level_up',
+                    'order_id' => '',
+                    'module_id' => '',
+                    'order_type' => '',
+                ];
+                
+                try {
+                    \App\CentralLogics\Helpers::send_push_notif_to_device($user->cm_firebase_token, $data);
+                    
+                    DB::table('user_notifications')->insert([
+                        'data' => json_encode($data),
+                        'user_id' => $user->id,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error("Failed to send level up notification: " . $e->getMessage());
+                }
+            }
         }
     }
 

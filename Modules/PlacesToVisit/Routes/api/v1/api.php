@@ -15,6 +15,11 @@ Route::group(['prefix' => 'places'], function () {
     Route::get('categories/{category}', 'PlaceCategoryController@show');
     Route::get('/', 'PlaceController@index');
     Route::get('leaderboard', 'PlaceController@leaderboard');
+    
+    // Banners (public)
+    Route::get('banners', 'PlaceBannerController@index');
+    Route::get('banners/featured', 'PlaceBannerController@featured');
+    
     Route::get('{place}', 'PlaceController@show');
     
     // Protected routes (auth required)
