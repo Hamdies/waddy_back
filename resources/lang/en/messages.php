@@ -562,6 +562,7 @@
   'reason_for_adding_xp' => 'Reason for adding XP',
   'xp_added_successfully' => 'XP added successfully',
   'xp_system_disabled' => 'XP system is currently disabled',
+  'usage_limit' => 'Usage Limit',
   'subscribed_emails' => 'Subscribed emails',
   'subscribed_mail_list' => 'Subscribed mail list',
   'contact_messages' => 'Contact messages',

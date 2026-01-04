@@ -129,6 +129,7 @@
                                         <th>{{translate('messages.title')}} *</th>
                                         <th>{{translate('messages.prize_type')}}</th>
                                         <th>{{translate('messages.value')}}</th>
+                                        <th>{{translate('messages.usage_limit')}}</th>
                                         <th>{{translate('messages.validity_days')}}</th>
                                         <th>{{translate('messages.status')}}</th>
                                         <th width="80">{{translate('messages.action')}}</th>
@@ -142,14 +143,17 @@
                                             <input type="text" name="prizes[{{$index}}][title]" class="form-control form-control-sm" value="{{$prize->title}}" required>
                                         </td>
                                         <td>
-                                            <select name="prizes[{{$index}}][prize_type]" class="form-control form-control-sm">
+                                            <select name="prizes[{{$index}}][prize_type]" class="form-control form-control-sm prize-type-select" onchange="toggleValueField(this)">
                                                 @foreach($prizeTypes as $type)
                                                     <option value="{{$type}}" {{$prize->prize_type == $type ? 'selected' : ''}}>{{ucfirst(str_replace('_', ' ', $type))}}</option>
                                                 @endforeach
                                             </select>
                                         </td>
+                                        <td class="value-cell">
+                                            <input type="number" name="prizes[{{$index}}][value]" class="form-control form-control-sm value-input" value="{{$prize->value}}" step="0.01" min="0" {{in_array($prize->prize_type, ['free_delivery', 'badge', 'free_item']) ? 'disabled placeholder=N/A' : ''}}>
+                                        </td>
                                         <td>
-                                            <input type="number" name="prizes[{{$index}}][value]" class="form-control form-control-sm" value="{{$prize->value}}" step="0.01" min="0">
+                                            <input type="number" name="prizes[{{$index}}][usage_limit]" class="form-control form-control-sm" value="{{$prize->usage_limit ?? 1}}" min="1" placeholder="1">
                                         </td>
                                         <td>
                                             <input type="number" name="prizes[{{$index}}][validity_days]" class="form-control form-control-sm" value="{{$prize->validity_days ?? 30}}" min="1">
@@ -165,7 +169,7 @@
                                     </tr>
                                     @empty
                                     <tr id="no-prizes-row">
-                                        <td colspan="6" class="text-center text-muted">{{translate('messages.no_prizes_added')}}</td>
+                                        <td colspan="7" class="text-center text-muted">{{translate('messages.no_prizes_added')}}</td>
                                     </tr>
                                     @endforelse
                                 </tbody>
@@ -229,12 +233,15 @@
                     <input type="text" name="prizes[${prizeIndex}][title]" class="form-control form-control-sm" placeholder="{{translate('messages.prize_title')}}" required>
                 </td>
                 <td>
-                    <select name="prizes[${prizeIndex}][prize_type]" class="form-control form-control-sm">
+                    <select name="prizes[${prizeIndex}][prize_type]" class="form-control form-control-sm prize-type-select" onchange="toggleValueField(this)">
                         ${typeOptions}
                     </select>
                 </td>
+                <td class="value-cell">
+                    <input type="number" name="prizes[${prizeIndex}][value]" class="form-control form-control-sm value-input" placeholder="0" step="0.01" min="0">
+                </td>
                 <td>
-                    <input type="number" name="prizes[${prizeIndex}][value]" class="form-control form-control-sm" placeholder="0" step="0.01" min="0">
+                    <input type="number" name="prizes[${prizeIndex}][usage_limit]" class="form-control form-control-sm" value="1" min="1" placeholder="1">
                 </td>
                 <td>
                     <input type="number" name="prizes[${prizeIndex}][validity_days]" class="form-control form-control-sm" value="30" min="1">
@@ -262,10 +269,31 @@
         if ($('#prizes-body .prize-row').length === 0) {
             $('#prizes-body').append(`
                 <tr id="no-prizes-row">
-                    <td colspan="6" class="text-center text-muted">{{translate('messages.no_prizes_added')}}</td>
+                    <td colspan="7" class="text-center text-muted">{{translate('messages.no_prizes_added')}}</td>
                 </tr>
             `);
         }
+    });
+
+    // Toggle value field based on prize type
+    function toggleValueField(selectElement) {
+        const row = $(selectElement).closest('tr');
+        const valueInput = row.find('.value-input');
+        const prizeType = $(selectElement).val();
+        const noValueTypes = ['free_delivery', 'badge', 'free_item'];
+        
+        if (noValueTypes.includes(prizeType)) {
+            valueInput.prop('disabled', true).val('').attr('placeholder', 'N/A');
+        } else {
+            valueInput.prop('disabled', false).attr('placeholder', '0');
+        }
+    }
+
+    // Initialize value fields on page load
+    $(document).ready(function() {
+        $('.prize-type-select').each(function() {
+            toggleValueField(this);
+        });
     });
 </script>
 @endpush
