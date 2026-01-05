@@ -169,7 +169,7 @@
                                         <div class="gap-1 d-flex align-items-center">
                                             <i class="tio-light-on theme-clr-dark fs-16"></i>
                                             <p class="m-0 fs-12">
-                                                {{ translate('Rental module doesn’t support delivery charges. You can set trip fare per vehicle from:') }}
+                                                {{ translate('Rental module doesn't support delivery charges. You can set trip fare per vehicle from:') }}
                                                 <a href="#0"
                                                     class="font-semibold text-title">{{ translate('Rental Module > Vehicle Management > Vehicle Setup > List.') }}</a>
                                             </p>
@@ -190,6 +190,39 @@
                             value="{{ $pivot?->maximum_shipping_charge ?? 0 }}">
                         <input type="hidden" name="module_data[{{ $module->id }}][maximum_cod_order_amount]"
                             value="{{ $pivot?->maximum_cod_order_amount ?? 0 }}">
+                    @elseif ($module->module_type == 'places')
+                        <div class="col-md-12 mb-2" id="module_{{ $module->id }}">
+                            <div class="module-row card view-details-container overflow-hidden">
+                                <a href="#0"
+                                    class="card-header border-0 view-btn d-flex align-items-center justify-content-between flex-wrap gap-1">
+                                    <h5 class="m-0">{{ $module->module_name }}</h5>
+                                    <i class="tio-chevron-down fs-24 text-title"></i>
+                                </a>
+                                <div class="card-body view-details border-top">
+                                    <div
+                                        class="bg-opacity-primary-10 rounded py-2 px-3 d-flex flex-wrap gap-1 align-items-center">
+                                        <div class="gap-1 d-flex align-items-center">
+                                            <i class="tio-light-on theme-clr-dark fs-16"></i>
+                                            <p class="m-0 fs-12">
+                                                {{ translate('Places module doesn\'t require delivery charges. This module is for discovering places, voting, and viewing leaderboards.') }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" value="distance"
+                            name="module_data[{{ $module->id }}][delivery_charge_type]">
+                        <input type="hidden" name="module_data[{{ $module->id }}][fixed_shipping_charge]"
+                            value="0">
+                        <input type="hidden" name="module_data[{{ $module->id }}][per_km_shipping_charge]"
+                            value="0">
+                        <input type="hidden" name="module_data[{{ $module->id }}][minimum_shipping_charge]"
+                            value="0">
+                        <input type="hidden" name="module_data[{{ $module->id }}][maximum_shipping_charge]"
+                            value="0">
+                        <input type="hidden" name="module_data[{{ $module->id }}][maximum_cod_order_amount]"
+                            value="0">
                     @else
                         <div class="col-md-12 mb-2" id="module_{{ $module->id }}">
                             <div class="module-row card view-details-container overflow-hidden">
