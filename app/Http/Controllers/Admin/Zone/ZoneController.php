@@ -197,7 +197,7 @@ class ZoneController extends BaseController
             $module = Module::find($data['module_id']);
             $moduleName = $module?->module_name ?? 'Unknown Module';
 
-            if (!in_array($module?->module_type, ['parcel', 'rental'])) {
+            if (!in_array($module?->module_type, ['parcel', 'rental', 'places'])) {
                 switch ($data['flag']) {
                     case 'fixed_required':
                         Toastr::error(translate("Fixed delivery charge is required for module:").''.$moduleName);
