@@ -169,7 +169,7 @@
                                         <div class="gap-1 d-flex align-items-center">
                                             <i class="tio-light-on theme-clr-dark fs-16"></i>
                                             <p class="m-0 fs-12">
-                                                {{ translate('Rental module doesn't support delivery charges. You can set trip fare per vehicle from:') }}
+                                                {{ translate('Rental module does not support delivery charges. You can set trip fare per vehicle from:') }}
                                                 <a href="#0"
                                                     class="font-semibold text-title">{{ translate('Rental Module > Vehicle Management > Vehicle Setup > List.') }}</a>
                                             </p>
@@ -204,7 +204,7 @@
                                         <div class="gap-1 d-flex align-items-center">
                                             <i class="tio-light-on theme-clr-dark fs-16"></i>
                                             <p class="m-0 fs-12">
-                                                {{ translate('Places module doesn\'t require delivery charges. This module is for discovering places, voting, and viewing leaderboards.') }}
+                                                {{ translate('Places module does not require delivery charges. This module is for discovering places, voting, and viewing leaderboards.') }}
                                             </p>
                                         </div>
                                     </div>
