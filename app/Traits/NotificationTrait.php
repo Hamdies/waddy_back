@@ -60,10 +60,22 @@ trait NotificationTrait
                         ]
                     ],
                     "apns" => [
+                        "headers" => [
+                            "apns-priority" => "10",
+                        ],
                         "payload" => [
                             "aps" => [
+                                "alert" => [
+                                    "title" => (string)$data['title'],
+                                    "body" => (string)$data['description'],
+                                ],
+                                "mutable-content" => 1,
+                                "content-available" => 1,
                                 "sound" => "notification.wav"
                             ]
+                        ],
+                        "fcm_options" => [
+                            "image" => (string)$data['image']
                         ]
                     ],
                 ]
@@ -92,10 +104,22 @@ trait NotificationTrait
                         ]
                     ],
                     "apns" => [
+                        "headers" => [
+                            "apns-priority" => "10",
+                        ],
                         "payload" => [
                             "aps" => [
+                                "alert" => [
+                                    "title" => (string)$data['title'],
+                                    "body" => (string)$data['description'],
+                                ],
+                                "mutable-content" => 1,
+                                "content-available" => 1,
                                 "sound" => "notification.wav"
                             ]
+                        ],
+                        "fcm_options" => [
+                            "image" => (string)$data['image']
                         ]
                     ],
                 ]
@@ -164,10 +188,22 @@ trait NotificationTrait
                     ]
                 ],
                 "apns" => [
+                    "headers" => [
+                        "apns-priority" => "10",
+                    ],
                     "payload" => [
                         "aps" => [
+                            "alert" => [
+                                "title" => (string)$data['title'],
+                                "body" => (string)$data['description'],
+                            ],
+                            "mutable-content" => 1,
+                            "content-available" => 1,
                             "sound" => "notification.wav"
                         ]
+                    ],
+                    "fcm_options" => [
+                        "image" => (string)$data['image']
                     ]
                 ]
             ]
@@ -180,19 +216,35 @@ trait NotificationTrait
     {
         $config = self::get_business_settings('push_notification_service_file_content');
         $key = (array)$config;
-        if($key['project_id']){
-            $url = 'https://fcm.googleapis.com/v1/projects/'.$key['project_id'].'/messages:send';
-            $headers = [
-                'Authorization' => 'Bearer ' . self::getAccessToken($key),
-                'Content-Type' => 'application/json',
-            ];
-            try {
-                Http::withHeaders($headers)->post($url, $data);
-            }catch (\Exception $exception){
-                return false;
-            }
+        
+        if(!isset($key['project_id']) || !$key['project_id']){
+            \Log::warning('FCM: No project_id configured');
+            return false;
         }
-        return false;
+        
+        $url = 'https://fcm.googleapis.com/v1/projects/'.$key['project_id'].'/messages:send';
+        $headers = [
+            'Authorization' => 'Bearer ' . self::getAccessToken($key),
+            'Content-Type' => 'application/json',
+        ];
+        
+        try {
+            $response = Http::withHeaders($headers)->post($url, $data);
+            
+            if ($response->successful()) {
+                return true;
+            }
+            
+            \Log::error('FCM notification failed', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+            return false;
+            
+        } catch (\Exception $exception) {
+            \Log::error('FCM exception: ' . $exception->getMessage());
+            return false;
+        }
     }
 
     public static function getAccessToken($key)
