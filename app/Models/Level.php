@@ -48,6 +48,21 @@ class Level extends Model
     }
 
     /**
+     * Get translated description based on locale.
+     */
+    public function getDescriptionAttribute($value)
+    {
+        if (count($this->translations) > 0) {
+            foreach ($this->translations as $translation) {
+                if ($translation['key'] == 'description' && $translation['locale'] == app()->getLocale()) {
+                    return $translation['value'];
+                }
+            }
+        }
+        return $value;
+    }
+
+    /**
      * Get the storage relationship.
      */
     public function storage()

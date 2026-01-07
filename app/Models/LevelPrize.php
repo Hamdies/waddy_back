@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class LevelPrize extends Model
 {
@@ -19,6 +20,31 @@ class LevelPrize extends Model
         'validity_days' => 'integer',
         'status' => 'boolean',
     ];
+
+    protected $with = ['translations'];
+
+    /**
+     * Get translations for this prize.
+     */
+    public function translations(): MorphMany
+    {
+        return $this->morphMany(Translation::class, 'translationable');
+    }
+
+    /**
+     * Get translated title based on locale.
+     */
+    public function getTitleAttribute($value)
+    {
+        if (count($this->translations) > 0) {
+            foreach ($this->translations as $translation) {
+                if ($translation['key'] == 'title' && $translation['locale'] == app()->getLocale()) {
+                    return $translation['value'];
+                }
+            }
+        }
+        return $value;
+    }
 
     /**
      * Get the level this prize belongs to.
@@ -44,3 +70,4 @@ class LevelPrize extends Model
         return $query->where('status', true);
     }
 }
+

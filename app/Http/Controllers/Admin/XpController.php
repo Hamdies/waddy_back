@@ -38,18 +38,21 @@ class XpController extends Controller
         $request->validate([
             'name.0' => 'required|string|max:255',
             'xp_required' => 'required|integer|min:0',
-            'description' => 'nullable|string',
+            'description.*' => 'nullable|string',
             'badge_image' => 'nullable|image|mimes:png,jpg,jpeg,gif|max:2048',
-            'prizes.*.title' => 'nullable|string|max:255',
+            'prizes.*.title' => 'nullable|array',
             'prizes.*.prize_type' => 'nullable|in:badge,free_item,free_delivery,discount,wallet_credit,custom',
         ]);
 
         $level = Level::findOrFail($id);
         
+        // Get default description from first element
+        $defaultDescription = $request->description[0] ?? null;
+        
         $data = [
             'name' => $request->name[0],
             'xp_required' => $request->xp_required,
-            'description' => $request->description,
+            'description' => $defaultDescription,
             'status' => $request->status ? 1 : 0,
         ];
 
@@ -59,12 +62,14 @@ class XpController extends Controller
 
         $level->update($data);
 
-        // Handle translations
+        // Handle translations for name and description
         $defaultLang = str_replace('_', '-', app()->getLocale());
         foreach ($request->lang as $index => $lang) {
-            if ($lang == $defaultLang && isset($request->name[$index])) {
+            if ($lang == $defaultLang || $lang == 'default') {
                 continue;
             }
+            
+            // Name translation
             if (isset($request->name[$index]) && $request->name[$index]) {
                 \App\Models\Translation::updateOrCreate(
                     [
@@ -76,20 +81,41 @@ class XpController extends Controller
                     ['value' => $request->name[$index]]
                 );
             }
+            
+            // Description translation
+            if (isset($request->description[$index]) && $request->description[$index]) {
+                \App\Models\Translation::updateOrCreate(
+                    [
+                        'translationable_type' => 'App\Models\Level',
+                        'translationable_id' => $level->id,
+                        'locale' => $lang,
+                        'key' => 'description'
+                    ],
+                    ['value' => $request->description[$index]]
+                );
+            }
         }
+
+        // Get languages for prize title translations
+        $languageSetting = \App\Models\BusinessSetting::where('key', 'language')->first();
+        $languages = json_decode($languageSetting->value ?? '[]') ?: [];
 
         // Handle prizes
         $existingPrizeIds = [];
         if ($request->has('prizes')) {
             foreach ($request->prizes as $prizeData) {
+                // Get title array - first element is default, rest are language translations
+                $titleArray = $prizeData['title'] ?? [];
+                $defaultTitle = is_array($titleArray) ? ($titleArray[0] ?? null) : $titleArray;
+                
                 // Skip empty rows
-                if (empty($prizeData['title'])) {
+                if (empty($defaultTitle)) {
                     continue;
                 }
 
                 $prizeInfo = [
                     'level_id' => $level->id,
-                    'title' => $prizeData['title'],
+                    'title' => $defaultTitle,
                     'description' => $prizeData['description'] ?? null,
                     'prize_type' => $prizeData['prize_type'] ?? 'custom',
                     'value' => $prizeData['value'] ?? null,
@@ -105,19 +131,62 @@ class XpController extends Controller
                     if ($prize && $prize->level_id == $level->id) {
                         $prize->update($prizeInfo);
                         $existingPrizeIds[] = $prize->id;
+                        
+                        // Handle prize title translations
+                        if (is_array($titleArray) && count($languages) > 0) {
+                            foreach ($languages as $langIndex => $lang) {
+                                $translatedTitle = $titleArray[$langIndex + 1] ?? null;
+                                if ($translatedTitle) {
+                                    \App\Models\Translation::updateOrCreate(
+                                        [
+                                            'translationable_type' => 'App\Models\LevelPrize',
+                                            'translationable_id' => $prize->id,
+                                            'locale' => $lang,
+                                            'key' => 'title'
+                                        ],
+                                        ['value' => $translatedTitle]
+                                    );
+                                }
+                            }
+                        }
                     }
                 } else {
                     // Create new prize
                     $newPrize = LevelPrize::create($prizeInfo);
                     $existingPrizeIds[] = $newPrize->id;
+                    
+                    // Handle prize title translations for new prizes
+                    if (is_array($titleArray) && count($languages) > 0) {
+                        foreach ($languages as $langIndex => $lang) {
+                            $translatedTitle = $titleArray[$langIndex + 1] ?? null;
+                            if ($translatedTitle) {
+                                \App\Models\Translation::updateOrCreate(
+                                    [
+                                        'translationable_type' => 'App\Models\LevelPrize',
+                                        'translationable_id' => $newPrize->id,
+                                        'locale' => $lang,
+                                        'key' => 'title'
+                                    ],
+                                    ['value' => $translatedTitle]
+                                );
+                            }
+                        }
+                    }
                 }
             }
         }
 
-        // Delete prizes that were removed
-        LevelPrize::where('level_id', $level->id)
+        // Delete prizes that were removed (also delete their translations)
+        $deletedPrizes = LevelPrize::where('level_id', $level->id)
             ->whereNotIn('id', $existingPrizeIds)
-            ->delete();
+            ->get();
+        
+        foreach ($deletedPrizes as $deletedPrize) {
+            \App\Models\Translation::where('translationable_type', 'App\Models\LevelPrize')
+                ->where('translationable_id', $deletedPrize->id)
+                ->delete();
+            $deletedPrize->delete();
+        }
 
         Toastr::success(translate('messages.level_updated_successfully'));
         return redirect()->route('admin.users.customer.xp.levels');

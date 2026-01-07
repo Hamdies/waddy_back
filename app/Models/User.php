@@ -5,6 +5,8 @@ namespace App\Models;
 use App\CentralLogics\Helpers;
 use App\Scopes\StoreScope;
 use App\Scopes\ZoneScope;
+use App\Models\XpSetting;
+use App\Models\LevelPrize;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
@@ -185,6 +187,50 @@ class User extends Authenticatable
     protected static function boot()
     {
         parent::boot();
+        
+        // Auto-assign Level 1 to new users if Level 1 requires 0 XP
+        static::created(function ($user) {
+            try {
+                // Check if XP system is enabled
+                if (!XpSetting::isEnabled()) {
+                    return;
+                }
+                
+                // Find Level 1 with 0 XP requirement
+                $level1 = Level::where('level_number', 1)
+                    ->where('xp_required', 0)
+                    ->where('status', true)
+                    ->first();
+                
+                if ($level1 && $user->level === 0) {
+                    // Assign Level 1
+                    $user->level = 1;
+                    $user->saveQuietly(); // Avoid triggering events again
+                    
+                    // Unlock Level 1 prizes
+                    $prizes = LevelPrize::where('level_id', $level1->id)
+                        ->where('status', true)
+                        ->get();
+                    
+                    foreach ($prizes as $prize) {
+                        $validityDays = $prize->validity_days ?? 30;
+                        
+                        UserLevelPrize::create([
+                            'user_id' => $user->id,
+                            'level_prize_id' => $prize->id,
+                            'status' => 'unlocked',
+                            'unlocked_at' => now(),
+                            'expires_at' => now()->addDays($validityDays),
+                        ]);
+                    }
+                    
+                    \Illuminate\Support\Facades\Log::info("New user {$user->id} auto-assigned to Level 1 with " . count($prizes) . " prizes");
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Failed to auto-assign level: " . $e->getMessage());
+            }
+        });
+        
         static::saved(function ($model) {
             if($model->isDirty('image')){
                 $value = Helpers::getDisk();

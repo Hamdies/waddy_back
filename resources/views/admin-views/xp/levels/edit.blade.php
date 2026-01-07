@@ -83,10 +83,24 @@
                         </div>
                     </div>
                     <div class="col-md-12">
-                        <div class="form-group">
-                            <label class="input-label">{{translate('messages.description')}}</label>
-                            <textarea name="description" class="form-control" rows="3">{{$level->description}}</textarea>
-                        </div>
+                        @if($language)
+                            <div class="form-group lang_form" id="default-form-desc">
+                                <label class="input-label">{{translate('messages.description')}} ({{translate('messages.default')}})</label>
+                                <textarea name="description[]" class="form-control" rows="3" placeholder="{{translate('messages.description')}}">{{$level->getRawOriginal('description')}}</textarea>
+                            </div>
+                            @foreach($language as $lang)
+                                @php($descTranslate = \App\Models\Translation::where(['translationable_type' => 'App\Models\Level', 'translationable_id' => $level->id, 'locale' => $lang, 'key' => 'description'])->first())
+                                <div class="form-group d-none lang_form" id="{{$lang}}-form-desc">
+                                    <label class="input-label">{{translate('messages.description')}} ({{strtoupper($lang)}})</label>
+                                    <textarea name="description[]" class="form-control" rows="3" placeholder="{{translate('messages.description')}}">{{$descTranslate?->value ?? ''}}</textarea>
+                                </div>
+                            @endforeach
+                        @else
+                            <div class="form-group">
+                                <label class="input-label">{{translate('messages.description')}}</label>
+                                <textarea name="description[]" class="form-control" rows="3">{{$level->description}}</textarea>
+                            </div>
+                        @endif
                     </div>
 
                     <!-- Badge Image Upload -->
@@ -140,7 +154,13 @@
                                     <tr class="prize-row">
                                         <td>
                                             <input type="hidden" name="prizes[{{$index}}][id]" value="{{$prize->id}}">
-                                            <input type="text" name="prizes[{{$index}}][title]" class="form-control form-control-sm" value="{{$prize->title}}" required>
+                                            <input type="text" name="prizes[{{$index}}][title][]" class="form-control form-control-sm mb-1" value="{{$prize->getRawOriginal('title')}}" required placeholder="Title (Default)">
+                                            @if($language)
+                                                @foreach($language as $lang)
+                                                    @php($prizeTranslate = \App\Models\Translation::where(['translationable_type' => 'App\Models\LevelPrize', 'translationable_id' => $prize->id, 'locale' => $lang, 'key' => 'title'])->first())
+                                                    <input type="text" name="prizes[{{$index}}][title][]" class="form-control form-control-sm mt-1" value="{{$prizeTranslate?->value ?? ''}}" placeholder="Title ({{strtoupper($lang)}})">
+                                                @endforeach
+                                            @endif
                                         </td>
                                         <td>
                                             <select name="prizes[{{$index}}][prize_type]" class="form-control form-control-sm prize-type-select" onchange="toggleValueField(this)">
@@ -211,12 +231,15 @@
         $(this).addClass('active');
 
         let form_id = this.id.replace("-link", "-form");
+        let form_desc_id = this.id.replace("-link", "-form-desc");
         $("#"+form_id).removeClass('d-none');
+        $("#"+form_desc_id).removeClass('d-none');
     });
 
     // Prize management
     let prizeIndex = {{$level->prizes->count()}};
     const prizeTypes = @json($prizeTypes);
+    const languages = @json($language ?? []);
 
     $('#add-prize-btn').click(function() {
         // Remove "no prizes" row if exists
@@ -226,11 +249,19 @@
             `<option value="${type}">${type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</option>`
         ).join('');
 
+        // Build language inputs for title
+        let titleInputs = `<input type="text" name="prizes[${prizeIndex}][title][]" class="form-control form-control-sm mb-1" placeholder="{{translate('messages.prize_title')}} (Default)" required>`;
+        if (languages && languages.length > 0) {
+            languages.forEach(lang => {
+                titleInputs += `<input type="text" name="prizes[${prizeIndex}][title][]" class="form-control form-control-sm mt-1" placeholder="{{translate('messages.prize_title')}} (${lang.toUpperCase()})">`;
+            });
+        }
+
         let newRow = `
             <tr class="prize-row">
                 <td>
                     <input type="hidden" name="prizes[${prizeIndex}][id]" value="">
-                    <input type="text" name="prizes[${prizeIndex}][title]" class="form-control form-control-sm" placeholder="{{translate('messages.prize_title')}}" required>
+                    ${titleInputs}
                 </td>
                 <td>
                     <select name="prizes[${prizeIndex}][prize_type]" class="form-control form-control-sm prize-type-select" onchange="toggleValueField(this)">
