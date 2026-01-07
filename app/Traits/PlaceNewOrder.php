@@ -418,15 +418,17 @@ trait PlaceNewOrder
                     
                     if ($userPrize && $userPrize->prize && $userPrize->prize->prize_type === 'free_delivery') {
                         $orderSubtotal = $product_price + $total_addon_price - $store_discount_amount - $flash_sale_admin_discount_amount - $flash_sale_vendor_discount_amount;
+                        $moduleId = (int) $request->header('moduleId');
                         
-                        // Check min order amount
-                        if (!$userPrize->prize->min_order_amount || $orderSubtotal >= $userPrize->prize->min_order_amount) {
-                            // Check if prize is expired
-                            if (!$userPrize->isExpired()) {
-                                $order->delivery_charge = 0;
-                                $free_delivery_by = 'xp_prize';
-                                $xp_prize_id = $userPrize->id;
-                            }
+                        // Check all conditions: module, min order, expiry, period limits
+                        $canUsePrize = $userPrize->isUsable()
+                            && $userPrize->prize->isApplicableToModule($moduleId)
+                            && (!$userPrize->prize->min_order_amount || $orderSubtotal >= $userPrize->prize->min_order_amount);
+                        
+                        if ($canUsePrize) {
+                            $order->delivery_charge = 0;
+                            $free_delivery_by = 'xp_prize';
+                            $xp_prize_id = $userPrize->id;
                         }
                     }
                 }
@@ -578,14 +580,11 @@ trait PlaceNewOrder
                 $this->createCashBackHistory($order->order_amount, $order->user_id, $order->id);
             }
 
-            // Mark XP prize as used
+            // Mark XP prize as used (with period tracking)
             if (isset($xp_prize_id) && $xp_prize_id) {
                 $usedPrize = \App\Models\UserLevelPrize::find($xp_prize_id);
                 if ($usedPrize) {
-                    $usedPrize->update([
-                        'status' => 'used',
-                        'used_at' => now(),
-                    ]);
+                    $usedPrize->recordUsage($order->id);
                 }
             }
 

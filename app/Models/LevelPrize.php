@@ -19,6 +19,9 @@ class LevelPrize extends Model
         'usage_limit' => 'integer',
         'validity_days' => 'integer',
         'status' => 'boolean',
+        'max_uses_per_period' => 'integer',
+        'applicable_modules' => 'array',
+        'is_claimable' => 'boolean',
     ];
 
     protected $with = ['translations'];
@@ -69,5 +72,25 @@ class LevelPrize extends Model
     {
         return $query->where('status', true);
     }
-}
 
+    /**
+     * Check if prize is applicable to a specific module.
+     */
+    public function isApplicableToModule(?int $moduleId): bool
+    {
+        // If no module restrictions, applicable to all
+        if (empty($this->applicable_modules)) {
+            return true;
+        }
+        
+        return in_array($moduleId, $this->applicable_modules);
+    }
+
+    /**
+     * Check if this is a badge-type prize (non-claimable).
+     */
+    public function isBadge(): bool
+    {
+        return $this->prize_type === 'badge' || !$this->is_claimable;
+    }
+}

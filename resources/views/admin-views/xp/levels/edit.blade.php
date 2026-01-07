@@ -143,7 +143,8 @@
                                         <th>{{translate('messages.title')}} *</th>
                                         <th>{{translate('messages.prize_type')}}</th>
                                         <th>{{translate('messages.value')}}</th>
-                                        <th>{{translate('messages.usage_limit')}}</th>
+                                        <th>{{translate('messages.min_order')}}</th>
+                                        <th>{{translate('messages.period')}}</th>
                                         <th>{{translate('messages.validity_days')}}</th>
                                         <th>{{translate('messages.status')}}</th>
                                         <th width="80">{{translate('messages.action')}}</th>
@@ -173,7 +174,15 @@
                                             <input type="number" name="prizes[{{$index}}][value]" class="form-control form-control-sm value-input" value="{{$prize->value}}" step="0.01" min="0" {{in_array($prize->prize_type, ['free_delivery', 'badge', 'free_item']) ? 'disabled placeholder=N/A' : ''}}>
                                         </td>
                                         <td>
-                                            <input type="number" name="prizes[{{$index}}][usage_limit]" class="form-control form-control-sm" value="{{$prize->usage_limit ?? 1}}" min="1" placeholder="1">
+                                            <input type="number" name="prizes[{{$index}}][min_order_amount]" class="form-control form-control-sm" value="{{$prize->min_order_amount}}" placeholder="{{translate('messages.min_order')}}" min="0" step="0.01">
+                                        </td>
+                                        <td>
+                                            <select name="prizes[{{$index}}][period_type]" class="form-control form-control-sm">
+                                                <option value="">{{translate('messages.no_limit')}}</option>
+                                                @foreach($periodTypes as $key => $label)
+                                                    <option value="{{$key}}" {{($prize->period_type ?? '') == $key ? 'selected' : ''}}>{{$label}}</option>
+                                                @endforeach
+                                            </select>
                                         </td>
                                         <td>
                                             <input type="number" name="prizes[{{$index}}][validity_days]" class="form-control form-control-sm" value="{{$prize->validity_days ?? 30}}" min="1">
@@ -189,7 +198,7 @@
                                     </tr>
                                     @empty
                                     <tr id="no-prizes-row">
-                                        <td colspan="7" class="text-center text-muted">{{translate('messages.no_prizes_added')}}</td>
+                                        <td colspan="8" class="text-center text-muted">{{translate('messages.no_prizes_added')}}</td>
                                     </tr>
                                     @endforelse
                                 </tbody>
@@ -257,6 +266,14 @@
             });
         }
 
+        let periodOptions = `
+            <option value="">{{translate('messages.no_limit')}}</option>
+            <option value="once">One Time</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+        `;
+
         let newRow = `
             <tr class="prize-row">
                 <td>
@@ -272,7 +289,12 @@
                     <input type="number" name="prizes[${prizeIndex}][value]" class="form-control form-control-sm value-input" placeholder="0" step="0.01" min="0">
                 </td>
                 <td>
-                    <input type="number" name="prizes[${prizeIndex}][usage_limit]" class="form-control form-control-sm" value="1" min="1" placeholder="1">
+                    <input type="number" name="prizes[${prizeIndex}][min_order_amount]" class="form-control form-control-sm" placeholder="{{translate('messages.min_order')}}" min="0" step="0.01">
+                </td>
+                <td>
+                    <select name="prizes[${prizeIndex}][period_type]" class="form-control form-control-sm">
+                        ${periodOptions}
+                    </select>
                 </td>
                 <td>
                     <input type="number" name="prizes[${prizeIndex}][validity_days]" class="form-control form-control-sm" value="30" min="1">

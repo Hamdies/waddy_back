@@ -29,8 +29,10 @@ class XpController extends Controller
         $language = \App\Models\BusinessSetting::where('key', 'language')->first();
         $language = $language->value ?? null;
         $defaultLang = str_replace('_', '-', app()->getLocale());
-        $prizeTypes = ['free_delivery', 'wallet_credit'];
-        return view('admin-views.xp.levels.edit', compact('level', 'language', 'defaultLang', 'prizeTypes'));
+        $prizeTypes = ['badge', 'free_delivery', 'wallet_credit'];
+        $modules = \App\Models\Module::active()->get(['id', 'module_name']);
+        $periodTypes = ['once' => 'One Time', 'daily' => 'Daily', 'weekly' => 'Weekly', 'monthly' => 'Monthly'];
+        return view('admin-views.xp.levels.edit', compact('level', 'language', 'defaultLang', 'prizeTypes', 'modules', 'periodTypes'));
     }
 
     public function levelUpdate(Request $request, $id)
@@ -113,16 +115,24 @@ class XpController extends Controller
                     continue;
                 }
 
+                $prizeType = $prizeData['prize_type'] ?? 'custom';
+                
                 $prizeInfo = [
                     'level_id' => $level->id,
                     'title' => $defaultTitle,
                     'description' => $prizeData['description'] ?? null,
-                    'prize_type' => $prizeData['prize_type'] ?? 'custom',
+                    'prize_type' => $prizeType,
                     'value' => $prizeData['value'] ?? null,
                     'min_order_amount' => $prizeData['min_order_amount'] ?? null,
                     'usage_limit' => $prizeData['usage_limit'] ?? 1,
                     'validity_days' => $prizeData['validity_days'] ?? 30,
                     'status' => isset($prizeData['status']) ? 1 : 0,
+                    // New constraint fields
+                    'max_uses_per_period' => $prizeData['max_uses_per_period'] ?? null,
+                    'period_type' => $prizeData['period_type'] ?? null,
+                    'applicable_modules' => !empty($prizeData['applicable_modules']) ? $prizeData['applicable_modules'] : null,
+                    // Badges are not claimable (auto-complete on unlock)
+                    'is_claimable' => $prizeType !== 'badge',
                 ];
 
                 if (!empty($prizeData['id'])) {

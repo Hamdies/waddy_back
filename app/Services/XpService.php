@@ -169,13 +169,17 @@ class XpService
 
                 if (!$exists) {
                     $validityDays = $prize->validity_days ?? XpSetting::getInt('prize_validity_days', 30);
+                    
+                    // Badges (non-claimable) are auto-marked as 'used', claimable prizes are 'unlocked'
+                    $status = $prize->isBadge() ? 'used' : 'unlocked';
 
                     UserLevelPrize::create([
                         'user_id' => $user->id,
                         'level_prize_id' => $prize->id,
-                        'status' => 'unlocked',
+                        'status' => $status,
                         'unlocked_at' => now(),
-                        'expires_at' => now()->addDays($validityDays),
+                        'expires_at' => $prize->isBadge() ? null : now()->addDays($validityDays),
+                        'used_at' => $prize->isBadge() ? now() : null,
                     ]);
                 }
             }
