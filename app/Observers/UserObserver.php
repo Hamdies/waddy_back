@@ -14,19 +14,11 @@ class UserObserver
     public function created(User $user): void
     {
         try {
-            // Award 50 XP for signup - this will trigger level up to Level 1
-            XpService::addXp(
-                $user,
-                'signup_bonus',
-                50,
-                'signup',
-                $user->id,
-                'Welcome bonus for joining Waddy'
-            );
-
+            // Award signup XP bonus using the configurable setting
+            XpService::addSignupXp($user);
             Log::info("Signup XP awarded to user {$user->id}");
         } catch (\Exception $e) {
-            Log::error("Failed to award signup XP: " . $e->getMessage());
+            Log::error("Failed to award signup XP to user {$user->id}: " . $e->getMessage());
         }
     }
 }
