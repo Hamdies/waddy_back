@@ -61,8 +61,8 @@ class XpService
                     'description' => $description,
                 ]);
 
-                // Check for level up (only if user had a previous level > 0)
-                if ($newLevel > $previousLevel && $previousLevel > 0) {
+                // Check for level up (handle new users going from 0 to 1, and existing users leveling up)
+                if ($newLevel > $previousLevel) {
                     self::handleLevelUp($user, $previousLevel, $newLevel);
                 }
 
