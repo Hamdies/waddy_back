@@ -1363,6 +1363,8 @@
   'xp_awarded_for_rating_and_review' => 'يُمنح التقدم للتقييم والمراجعة',
   'xp_daily_challenge' => 'التقدم للتحدي اليومي',
   'xp_weekly_challenge' => 'التقدم للتحدي الأسبوعي',
+  'xp_signup_bonus' => 'مكافأة التسجيل',
+  'xp_awarded_for_new_user_registration' => 'التقدم الممنوح عند تسجيل مستخدم جديد',
   'vertical_multipliers' => 'معاملات الضرب العمودية',
   'xp_from_amount_spent_is_multiplied_by_these_values' => 'يتم ضرب التقدم من المبلغ المصروف بهذه القيم',
   'food' => 'طعام',

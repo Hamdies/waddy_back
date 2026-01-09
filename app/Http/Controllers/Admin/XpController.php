@@ -369,6 +369,7 @@ class XpController extends Controller
     {
         $keys = [
             'xp_per_order', 'xp_per_review', 'xp_daily_challenge', 'xp_weekly_challenge',
+            'xp_signup_bonus',
             'multiplier_food', 'multiplier_pharmacy', 'multiplier_grocery', 'multiplier_parcel',
             'prize_validity_days', 'leveling_status'
         ];

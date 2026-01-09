@@ -518,6 +518,8 @@
   'xp_awarded_for_rating_and_review' => 'XP awarded for rating and review',
   'xp_daily_challenge' => 'XP Daily Challenge',
   'xp_weekly_challenge' => 'XP Weekly Challenge',
+  'xp_signup_bonus' => 'XP Signup Bonus',
+  'xp_awarded_for_new_user_registration' => 'XP awarded when new user registers',
   'vertical_multipliers' => 'Vertical Multipliers',
   'xp_from_amount_spent_is_multiplied_by_these_values' => 'XP from amount spent is multiplied by these values',
   'food' => 'Food',

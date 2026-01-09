@@ -27,6 +27,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Password;
 use Modules\Rental\Entities\RentalCart;
 use Modules\Rental\Entities\RentalCartUserData;
+use App\Services\XpService;
 
 class CustomerAuthController extends Controller
 {
@@ -258,6 +259,9 @@ class CustomerAuthController extends Controller
                     $user->login_medium = 'otp';
                     $user->save();
 
+                    // Award signup XP bonus
+                    XpService::addSignupXp($user);
+
                     $this->refer_code_check($user);
 
                     $is_personal_info = 0;
@@ -386,6 +390,9 @@ class CustomerAuthController extends Controller
                 $user->login_medium = 'otp';
                 $user->save();
 
+                // Award signup XP bonus
+                XpService::addSignupXp($user);
+
                 $this->refer_code_check($user);
 
                 $is_personal_info = 0;
@@ -487,6 +494,9 @@ class CustomerAuthController extends Controller
         ]);
         $user->ref_code = Helpers::generate_referer_code($user);
         $user->save();
+
+        // Award signup XP bonus
+        XpService::addSignupXp($user);
 
         $token = $user->createToken('RestaurantCustomerAuth')->accessToken;
 

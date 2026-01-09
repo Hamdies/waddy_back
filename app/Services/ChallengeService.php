@@ -17,11 +17,6 @@ class ChallengeService
      */
     public static function getAvailableChallenges(User $user): array
     {
-        // Check if user has at least 1 completed order
-        if ($user->orders()->where('order_status', 'delivered')->count() === 0) {
-            return [];
-        }
-
         $challenges = [];
 
         // Get daily challenge

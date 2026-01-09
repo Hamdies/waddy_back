@@ -71,6 +71,13 @@
                                     <input type="number" name="xp_weekly_challenge" class="form-control" value="{{$settings['xp_weekly_challenge'] ?? 100}}" min="0">
                                 </div>
                             </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="input-label">{{translate('messages.xp_signup_bonus')}}</label>
+                                    <input type="number" name="xp_signup_bonus" class="form-control" value="{{$settings['xp_signup_bonus'] ?? 50}}" min="0">
+                                    <small class="text-muted">{{translate('messages.xp_awarded_for_new_user_registration')}}</small>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -124,6 +124,24 @@ class XpService
     }
 
     /**
+     * Add XP for user registration (signup bonus).
+     */
+    public static function addSignupXp(User $user): void
+    {
+        $xp = XpSetting::getInt('xp_signup_bonus', 50);
+        if ($xp > 0) {
+            self::addXp(
+                $user,
+                'signup_bonus',
+                $xp,
+                'registration',
+                $user->id,
+                'Welcome bonus for signing up'
+            );
+        }
+    }
+
+    /**
      * Calculate weighted XP based on vertical multiplier.
      */
     public static function calculateWeightedXp(float $amount, string $moduleType): int
