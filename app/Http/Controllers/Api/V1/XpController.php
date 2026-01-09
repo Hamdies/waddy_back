@@ -31,30 +31,47 @@ class XpController extends Controller
 
     /**
      * Get all levels with their details.
+     * If user is authenticated, includes their prize instance IDs for claiming.
      */
-    public function getAllLevels()
+    public function getAllLevels(Request $request)
     {
+        $user = $request->user();
+        
+        // Get user's prizes indexed by level_prize_id for quick lookup
+        $userPrizes = [];
+        if ($user) {
+            $userPrizes = UserLevelPrize::where('user_id', $user->id)
+                ->get()
+                ->keyBy('level_prize_id');
+        }
+        
         $levels = Level::active()
             ->with(['prizes' => function($q) {
                 $q->where('status', 1);
             }])
             ->orderBy('level_number')
             ->get()
-            ->map(function ($level) {
+            ->map(function ($level) use ($userPrizes, $user) {
                 return [
                     'level_number' => $level->level_number,
                     'name' => $level->name,
                     'xp_required' => $level->xp_required,
                     'description' => $level->description,
                     'badge_image' => $level->badge_image_url,
-                    'prizes' => $level->prizes->map(function ($prize) {
+                    'prizes' => $level->prizes->map(function ($prize) use ($userPrizes, $user) {
+                        $userPrize = $userPrizes->get($prize->id);
+                        
                         return [
-                            'id' => $prize->id,
+                            'id' => $prize->id, // LevelPrize definition ID
+                            'instance_id' => $userPrize?->id, // UserLevelPrize ID for claiming
                             'title' => $prize->title,
                             'description' => $prize->description,
                             'prize_type' => $prize->prize_type,
                             'value' => $prize->value,
                             'validity_days' => $prize->validity_days,
+                            'status' => $userPrize?->status, // null if not unlocked
+                            'is_claimed' => $userPrize ? in_array($userPrize->status, ['claimed', 'used']) : false,
+                            'is_unlocked' => $userPrize !== null,
                         ];
                     }),
                 ];
