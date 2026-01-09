@@ -37,8 +37,9 @@ class XpService
 
         try {
             return DB::transaction(function () use ($user, $xpSource, $amount, $referenceType, $referenceId, $description) {
-                $previousLevel = $user->level;
-                $previousXp = $user->total_xp;
+                // Handle null values for new users
+                $previousLevel = $user->level ?? 0;
+                $previousXp = $user->total_xp ?? 0;
                 $newXp = $previousXp + $amount;
 
                 // Update user XP
@@ -60,8 +61,8 @@ class XpService
                     'description' => $description,
                 ]);
 
-                // Check for level up
-                if ($newLevel > $previousLevel) {
+                // Check for level up (only if user had a previous level > 0)
+                if ($newLevel > $previousLevel && $previousLevel > 0) {
                     self::handleLevelUp($user, $previousLevel, $newLevel);
                 }
 
