@@ -9,6 +9,7 @@ use App\Models\UserLevelPrize;
 use App\Models\XpTransaction;
 use App\Models\Level;
 use App\Models\RewardItem;
+use App\Models\XpSetting;
 use App\Services\XpService;
 use App\Services\ChallengeService;
 use App\CentralLogics\Helpers;
@@ -17,6 +18,28 @@ use Illuminate\Support\Facades\Validator;
 
 class XpController extends Controller
 {
+    /**
+     * Get XP configuration settings for client-side calculation.
+     * This is a PUBLIC endpoint (no auth required) for caching on app startup.
+     */
+    public function getConfig()
+    {
+        return response()->json([
+            'enabled' => XpSetting::isEnabled(),
+            'xp_per_order' => XpSetting::getInt('xp_per_order', 20),
+            'xp_per_review' => XpSetting::getInt('xp_per_review', 30),
+            'xp_signup_bonus' => XpSetting::getInt('xp_signup_bonus', 50),
+            'multipliers' => [
+                'food' => XpSetting::getMultiplier('food'),
+                'grocery' => XpSetting::getMultiplier('grocery'),
+                'pharmacy' => XpSetting::getMultiplier('pharmacy'),
+                'ecommerce' => XpSetting::getMultiplier('ecommerce'),
+                'parcel' => XpSetting::getMultiplier('parcel'),
+                'service' => XpSetting::getMultiplier('service'),
+            ],
+        ], 200);
+    }
+
     /**
      * Get user's current level and XP progress.
      */

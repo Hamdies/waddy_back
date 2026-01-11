@@ -35,6 +35,10 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
     Route::get('zone/check', 'ZoneController@zonesCheck');
 
     Route::get('offline_payment_method_list', 'ConfigController@offline_payment_method_list');
+
+    // Public XP config endpoint (no auth required - for client-side XP calculation)
+    Route::get('xp/config', 'XpController@getConfig');
+
     Route::group(['prefix' => 'auth', 'namespace' => 'Auth'], function () {
         Route::post('sign-up', 'CustomerAuthController@register');
         Route::post('login', 'CustomerAuthController@login');
