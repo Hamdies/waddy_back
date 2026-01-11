@@ -318,7 +318,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             // delivery man routes
             Route::group(['prefix' => 'delivery-man', 'as' => 'delivery-man.'], function () {
                 Route::get(DeliveryMan::DROPDOWN_LIST[URI], [DeliveryManController::class, 'getDropdownList'])->name('get-deliverymen');
-                Route::get(DeliveryMan::ACCOUNT_DATA[URI].'/{id}', [DeliveryManController::class, 'getAccountData'])->name('store-filter');
+                Route::get(DeliveryMan::ACCOUNT_DATA[URI].'/{id}', [DeliveryManController::class, 'getAccountData'])->name('get-account-data');
 
                 Route::group(['middleware' => ['module:deliveryman']], function () {
                     Route::get(DeliveryMan::ADD[URI], [DeliveryManController::class, 'getAddView'])->name('add');
