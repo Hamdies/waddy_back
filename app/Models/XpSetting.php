@@ -52,7 +52,8 @@ class XpSetting extends Model
      */
     public static function isEnabled(): bool
     {
-        return static::getValue('leveling_status', '1') === '1';
+        $value = static::getValue('leveling_status', '1');
+        return $value == 1;
     }
 
     /**

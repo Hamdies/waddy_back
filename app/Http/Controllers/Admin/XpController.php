@@ -375,7 +375,12 @@ class XpController extends Controller
         ];
 
         foreach ($keys as $key) {
-            if ($request->has($key)) {
+            if ($key === 'leveling_status') {
+                XpSetting::updateOrCreate(
+                    ['key' => $key],
+                    ['value' => $request->has($key) ? '1' : '0']
+                );
+            } elseif ($request->has($key)) {
                 XpSetting::updateOrCreate(
                     ['key' => $key],
                     ['value' => $request->$key]
