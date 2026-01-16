@@ -20,7 +20,17 @@ class Place extends Model
         'is_featured' => 'boolean',
     ];
 
-    protected $appends = ['title', 'description'];
+    protected $appends = ['title', 'description', 'image_full_url'];
+
+    // ==================== Image Accessor ====================
+
+    public function getImageFullUrlAttribute(): ?string
+    {
+        if (!$this->image) {
+            return null;
+        }
+        return asset('storage/app/public/places/' . $this->image);
+    }
 
     // ==================== Relationships ====================
 
