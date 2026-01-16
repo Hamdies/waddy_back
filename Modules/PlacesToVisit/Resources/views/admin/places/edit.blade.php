@@ -2,6 +2,68 @@
 
 @section('title', translate('messages.edit_place'))
 
+@push('css_or_js')
+<style>
+    #map {
+        height: 350px;
+        width: 100%;
+        border-radius: 8px;
+    }
+    #pac-input {
+        margin-top: 10px;
+        padding: 10px 15px;
+        width: 300px;
+        font-size: 14px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-shadow: 0 2px 6px rgba(0,0,0,.1);
+    }
+    #pac-input:focus {
+        border-color: #4285f4;
+        outline: none;
+    }
+    .image-upload-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+    .image-upload-wrapper img {
+        width: 200px;
+        height: 150px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 2px dashed #ddd;
+    }
+    .image-upload-wrapper:hover img {
+        border-color: #4285f4;
+    }
+    .image-upload-wrapper input[type="file"] {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+    }
+    .image-upload-overlay {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0,0,0,0.5);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 4px;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    .image-upload-wrapper:hover .image-upload-overlay {
+        opacity: 1;
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="content container-fluid">
     <!-- Header -->
@@ -39,16 +101,19 @@
                     <div class="col-md-6">
                         <div class="form-group">
                             <label class="input-label">{{ translate('messages.image') }}</label>
-                            @if($place->image)
-                            <div class="mb-2">
-                                <img src="{{ asset('storage/app/public/places/' . $place->image) }}" 
-                                     class="rounded" width="100">
+                            <div class="image-upload-wrapper">
+                                @php
+                                    $imageUrl = $place->image 
+                                        ? asset('storage/app/public/places/' . $place->image) 
+                                        : asset('public/assets/admin/img/upload-img.png');
+                                @endphp
+                                <img id="imagePreview" src="{{ $imageUrl }}" alt="Place Image">
+                                <div class="image-upload-overlay">
+                                    <i class="tio-edit"></i> {{ translate('messages.change') }}
+                                </div>
+                                <input type="file" name="image" id="imageInput" accept="image/*">
                             </div>
-                            @endif
-                            <div class="custom-file">
-                                <input type="file" name="image" class="custom-file-input" accept="image/*">
-                                <label class="custom-file-label">{{ translate('messages.choose_file') }}</label>
-                            </div>
+                            <small class="text-muted d-block mt-2">{{ translate('messages.click_to_upload_image') }}</small>
                         </div>
                     </div>
                 </div>
@@ -87,27 +152,46 @@
                     </div>
                 </div>
 
-                <!-- Location -->
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="form-group">
-                            <label class="input-label">{{ translate('messages.latitude') }} <span class="text-danger">*</span></label>
-                            <input type="number" name="latitude" class="form-control" step="any"
-                                   value="{{ $place->latitude }}" required>
-                        </div>
+                <!-- Location with Map -->
+                <div class="card bg-light mb-3">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="tio-location-pin"></i> {{ translate('messages.location') }}
+                        </h5>
                     </div>
-                    <div class="col-md-4">
-                        <div class="form-group">
-                            <label class="input-label">{{ translate('messages.longitude') }} <span class="text-danger">*</span></label>
-                            <input type="number" name="longitude" class="form-control" step="any"
-                                   value="{{ $place->longitude }}" required>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="form-group">
-                            <label class="input-label">{{ translate('messages.address') }}</label>
-                            <input type="text" name="address" class="form-control"
-                                   value="{{ $place->address }}">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-lg-4">
+                                <div class="form-group">
+                                    <label class="input-label" for="latitude">
+                                        {{ translate('messages.latitude') }} <span class="text-danger">*</span>
+                                        <span class="form-label-secondary" data-toggle="tooltip" data-placement="right"
+                                              data-original-title="{{ translate('messages.click_on_map_to_select_location') }}">
+                                            <img src="{{ asset('/public/assets/admin/img/info-circle.svg') }}" alt="info">
+                                        </span>
+                                    </label>
+                                    <input type="text" name="latitude" id="latitude" class="form-control" 
+                                           value="{{ $place->latitude }}" required readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label class="input-label" for="longitude">
+                                        {{ translate('messages.longitude') }} <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" name="longitude" id="longitude" class="form-control" 
+                                           value="{{ $place->longitude }}" required readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label class="input-label">{{ translate('messages.address') }}</label>
+                                    <textarea name="address" id="address" class="form-control" rows="3">{{ $place->address }}</textarea>
+                                </div>
+                            </div>
+                            <div class="col-lg-8">
+                                <input id="pac-input" class="form-control mb-2" type="text" 
+                                       placeholder="{{ translate('messages.search_location') }}"
+                                       data-toggle="tooltip" data-placement="top" 
+                                       data-original-title="{{ translate('messages.search_your_location_here') }}">
+                                <div id="map"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -147,3 +231,123 @@
     </div>
 </div>
 @endsection
+
+@push('script_2')
+<script src="https://maps.googleapis.com/maps/api/js?key={{ \App\Models\BusinessSetting::where('key', 'map_api_key')->first()?->value }}&libraries=places&callback=initMap&v=3.45.8" async defer></script>
+<script>
+    "use strict";
+    
+    // Image preview
+    document.getElementById('imageInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('imagePreview').src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Google Maps
+    let map;
+    let marker;
+    let infoWindow;
+    
+    function initMap() {
+        const initialPosition = { 
+            lat: {{ $place->latitude ?? 30.0444 }}, 
+            lng: {{ $place->longitude ?? 31.2357 }} 
+        };
+        
+        map = new google.maps.Map(document.getElementById("map"), {
+            zoom: 15,
+            center: initialPosition,
+            mapTypeControl: true,
+            streetViewControl: false,
+            fullscreenControl: true,
+        });
+        
+        // Add marker
+        marker = new google.maps.Marker({
+            position: initialPosition,
+            map: map,
+            draggable: true,
+            animation: google.maps.Animation.DROP,
+            title: "{{ $translations['en']->title ?? translate('messages.place_location') }}"
+        });
+        
+        // Info window
+        infoWindow = new google.maps.InfoWindow({
+            content: "{{ translate('messages.drag_marker_or_click_map') }}"
+        });
+        infoWindow.open(map, marker);
+        
+        // Search box
+        const input = document.getElementById("pac-input");
+        const searchBox = new google.maps.places.SearchBox(input);
+        
+        // Bias SearchBox results towards current map's viewport
+        map.addListener("bounds_changed", () => {
+            searchBox.setBounds(map.getBounds());
+        });
+        
+        // Listen for the event fired when the user selects a prediction
+        searchBox.addListener("places_changed", () => {
+            const places = searchBox.getPlaces();
+            if (places.length === 0) return;
+            
+            const place = places[0];
+            if (!place.geometry || !place.geometry.location) {
+                console.log("Returned place contains no geometry");
+                return;
+            }
+            
+            // Update marker position
+            marker.setPosition(place.geometry.location);
+            map.setCenter(place.geometry.location);
+            map.setZoom(15);
+            
+            // Update form fields
+            document.getElementById('latitude').value = place.geometry.location.lat();
+            document.getElementById('longitude').value = place.geometry.location.lng();
+            
+            // Update address if available
+            if (place.formatted_address) {
+                document.getElementById('address').value = place.formatted_address;
+            }
+            
+            infoWindow.setContent(place.name || "{{ translate('messages.selected_location') }}");
+            infoWindow.open(map, marker);
+        });
+        
+        // Click on map to set location
+        map.addListener("click", (e) => {
+            updateMarkerPosition(e.latLng);
+        });
+        
+        // Drag marker to set location
+        marker.addListener("dragend", (e) => {
+            updateMarkerPosition(e.latLng);
+        });
+    }
+    
+    function updateMarkerPosition(latLng) {
+        marker.setPosition(latLng);
+        document.getElementById('latitude').value = latLng.lat();
+        document.getElementById('longitude').value = latLng.lng();
+        
+        // Reverse geocode to get address
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ location: latLng }, (results, status) => {
+            if (status === "OK" && results[0]) {
+                document.getElementById('address').value = results[0].formatted_address;
+                infoWindow.setContent(results[0].formatted_address);
+            } else {
+                infoWindow.setContent("Lat: " + latLng.lat().toFixed(6) + ", Lng: " + latLng.lng().toFixed(6));
+            }
+            infoWindow.open(map, marker);
+        });
+    }
+</script>
+@endpush
