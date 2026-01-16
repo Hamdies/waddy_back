@@ -106,7 +106,7 @@
                             <div class="image-upload-wrapper">
                                 @php
                                     $imageUrl = $place->image 
-                                        ? asset('storage/app/public/places/' . $place->image) 
+                                        ? $place->image 
                                         : asset('public/assets/admin/img/upload-img.png');
                                 @endphp
                                 <img id="imagePreview" src="{{ $imageUrl }}" alt="Place Image">

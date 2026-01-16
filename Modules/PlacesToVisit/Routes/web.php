@@ -31,6 +31,7 @@ Route::group([
     Route::get('create', 'PlaceController@create')->name('create');
     Route::post('/', 'PlaceController@store')->name('store');
     Route::get('{place}/edit', 'PlaceController@edit')->name('edit');
+    Route::get('{place}', 'PlaceController@show')->name('show');
     Route::put('{place}', 'PlaceController@update')->name('update');
     Route::delete('{place}', 'PlaceController@destroy')->name('destroy');
     Route::get('{place}/toggle-status', 'PlaceController@toggleStatus')->name('toggle-status');

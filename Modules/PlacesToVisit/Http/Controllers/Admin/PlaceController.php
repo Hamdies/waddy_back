@@ -91,6 +91,11 @@ class PlaceController extends Controller
         return redirect()->route('admin.places.index');
     }
 
+    public function show(Place $place): RedirectResponse
+    {
+        return redirect()->route('admin.places.edit', $place->id);
+    }
+
     public function edit(Place $place): View
     {
         $place->load('translations');

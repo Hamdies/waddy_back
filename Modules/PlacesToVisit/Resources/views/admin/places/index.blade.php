@@ -69,7 +69,7 @@
                         <tr>
                             <td>{{ $places->firstItem() + $key }}</td>
                             <td>
-                                <img src="{{ asset('storage/app/public/places/' . $place->image) }}" 
+                                <img src="{{ $place->image }}" 
                                      onerror="this.src='{{ asset('public/assets/admin/img/160x160/img1.jpg') }}'"
                                      class="rounded" width="60">
                             </td>
