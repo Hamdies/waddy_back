@@ -5,22 +5,24 @@
 @push('css_or_js')
 <style>
     #map {
-        height: 350px;
+        height: 400px;
         width: 100%;
         border-radius: 8px;
     }
-    #pac-input {
+    .controls {
         margin-top: 10px;
-        padding: 10px 15px;
-        width: 300px;
-        font-size: 14px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        box-shadow: 0 2px 6px rgba(0,0,0,.1);
+        padding: 12px 16px;
+        width: 320px;
+        font-size: 15px;
+        border: none;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(0,0,0,.2);
+        background-color: #fff;
     }
-    #pac-input:focus {
+    .controls:focus {
         border-color: #4285f4;
         outline: none;
+        box-shadow: 0 2px 6px rgba(66,133,244,.4);
     }
     .image-upload-wrapper {
         position: relative;
@@ -182,10 +184,8 @@
                                 </div>
                             </div>
                             <div class="col-lg-8">
-                                <input id="pac-input" class="form-control mb-2" type="text" 
-                                       placeholder="{{ translate('messages.search_location') }}"
-                                       data-toggle="tooltip" data-placement="top" 
-                                       data-original-title="{{ translate('messages.search_your_location_here') }}">
+                                <input id="pac-input" class="controls" type="text" 
+                                       placeholder="{{ translate('messages.search_location') }}">
                                 <div id="map"></div>
                             </div>
                         </div>
@@ -277,9 +277,10 @@
         infoWindow.setPosition(initialPosition);
         infoWindow.open(map);
         
-        // Search box
+        // Search box - add to map controls
         const input = document.getElementById("pac-input");
         const searchBox = new google.maps.places.SearchBox(input);
+        map.controls[google.maps.ControlPosition.TOP_CENTER].push(input);
         
         // Bias SearchBox results towards current map's viewport
         map.addListener("bounds_changed", () => {
