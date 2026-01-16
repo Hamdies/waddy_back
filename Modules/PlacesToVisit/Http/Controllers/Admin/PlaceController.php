@@ -123,7 +123,7 @@ class PlaceController extends Controller
         $imagePath = $place->raw_image;
         if ($request->hasFile('image')) {
             if ($imagePath) {
-                Helpers::delete('places/' . $imagePath);
+                Helpers::check_and_delete('places/', $imagePath);
             }
             $imagePath = Helpers::upload('places/', 'png', $request->file('image'));
         }
@@ -159,7 +159,7 @@ class PlaceController extends Controller
     public function destroy(Place $place): RedirectResponse
     {
         if ($place->raw_image) {
-            Helpers::delete('places/' . $place->raw_image);
+            Helpers::check_and_delete('places/', $place->raw_image);
         }
         
         $place->delete();
