@@ -115,7 +115,7 @@ class PlaceController extends Controller
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
-        $imagePath = $place->image;
+        $imagePath = $place->raw_image;
         if ($request->hasFile('image')) {
             if ($imagePath) {
                 Helpers::delete('places/' . $imagePath);
@@ -153,8 +153,8 @@ class PlaceController extends Controller
 
     public function destroy(Place $place): RedirectResponse
     {
-        if ($place->image) {
-            Helpers::delete('places/' . $place->image);
+        if ($place->raw_image) {
+            Helpers::delete('places/' . $place->raw_image);
         }
         
         $place->delete();

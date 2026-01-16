@@ -105,7 +105,7 @@ class PlaceController extends Controller
                 'id' => $place->id,
                 'title' => $place->title,
                 'description' => $place->description,
-                'image' => $place->image_full_url,
+                'image' => $place->image,
                 'latitude' => $place->latitude,
                 'longitude' => $place->longitude,
                 'address' => $place->address,

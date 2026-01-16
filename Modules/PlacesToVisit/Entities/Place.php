@@ -20,16 +20,27 @@ class Place extends Model
         'is_featured' => 'boolean',
     ];
 
-    protected $appends = ['title', 'description', 'image_full_url'];
+    protected $appends = ['title', 'description'];
 
     // ==================== Image Accessor ====================
 
-    public function getImageFullUrlAttribute(): ?string
+    /**
+     * Get full image URL (overrides the raw 'image' column)
+     */
+    public function getImageAttribute($value): ?string
     {
-        if (!$this->image) {
+        if (!$value) {
             return null;
         }
-        return asset('storage/app/public/places/' . $this->image);
+        return asset('storage/app/public/places/' . $value);
+    }
+
+    /**
+     * Get raw image filename (for admin/uploads)
+     */
+    public function getRawImageAttribute(): ?string
+    {
+        return $this->attributes['image'] ?? null;
     }
 
     // ==================== Relationships ====================
