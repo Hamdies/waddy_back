@@ -209,10 +209,10 @@ class Helpers
             }
         }
         $data['food_variations'] = $data_variation;
-        $data['store_name'] = $data->store->name;
+        $data['store_name'] = $data->store ? $data->store->name : 'N/A';
         $data['is_campaign'] = $data->store?->campaigns_count>0?1:0;
-        $data['module_type'] = $data->module->module_type;
-        $data['zone_id'] = $data->store->zone_id;
+        $data['module_type'] = $data->module ? $data->module->module_type : 'N/A';
+        $data['zone_id'] = $data->store ? $data->store->zone_id : null;
         $running_flash_sale = FlashSaleItem::Active()->whereHas('flashSale', function ($query) {
             $query->Active()->Running();
         })
