@@ -23,7 +23,7 @@ class CartController extends Controller
         }
         $user_id = $request->user ? $request->user->id : $request['guest_id'];
         $is_guest = $request->user ? 0 : 1;
-        $carts = Cart::where('user_id', $user_id)->where('is_guest',$is_guest)->where('module_id',$request->header('moduleId'))->get()
+        $carts = Cart::where('user_id', $user_id)->where('is_guest',$is_guest)->get()
         ->filter(function ($data) {
             return $data->item !== null;
         })
@@ -93,7 +93,7 @@ class CartController extends Controller
 
         $item->carts()->save($cart);
 
-        $carts = Cart::where('user_id', $user_id)->where('is_guest',$is_guest)->where('module_id',$request->header('moduleId'))->get()
+        $carts = Cart::where('user_id', $user_id)->where('is_guest',$is_guest)->get()
         ->filter(function ($data) {
             return $data->item !== null;
         })
@@ -144,7 +144,7 @@ class CartController extends Controller
         $cart->variation = isset($request->variation)?json_encode($request->variation):$cart->variation;
         $cart->save();
 
-        $carts = Cart::where('user_id', $user_id)->where('is_guest',$is_guest)->where('module_id',$request->header('moduleId'))->get()
+        $carts = Cart::where('user_id', $user_id)->where('is_guest',$is_guest)->get()
         ->filter(function ($data) {
             return $data->item !== null;
         })
@@ -206,14 +206,14 @@ class CartController extends Controller
         $user_id = $request->user ? $request->user->id : $request['guest_id'];
         $is_guest = $request->user ? 0 : 1;
 
-        $carts = Cart::where('user_id', $user_id)->where('is_guest',$is_guest)->where('module_id',$request->header('moduleId'))->get();
+        $carts = Cart::where('user_id', $user_id)->where('is_guest',$is_guest)->get();
 
         foreach($carts as $cart){
             $cart?->delete();
         }
 
 
-        $carts = Cart::where('user_id', $user_id)->where('is_guest',$is_guest)->where('module_id',$request->header('moduleId'))->get()
+        $carts = Cart::where('user_id', $user_id)->where('is_guest',$is_guest)->get()
         ->filter(function ($data) {
             return $data->item !== null;
         })
