@@ -423,8 +423,8 @@ class ProductLogic
             when(isset($store_id), function($q)use($store_id){
                 $q->where('store_id', $store_id);
             })
-            ->whereHas('store', function($query)use($zone_id){
-                $query->when(config('module.current_module_data'), function($query){
+            ->whereHas('store', function($query)use($zone_id, $store_id){
+                $query->when(config('module.current_module_data') && !isset($store_id), function($query){
                     $query->where('module_id', config('module.current_module_data')['id'])->whereHas('zone.modules',function($query){
                         $query->where('modules.id', config('module.current_module_data')['id']);
                     });
@@ -445,8 +445,8 @@ class ProductLogic
         else{
             $paginator = Item::when(isset($store_id), function($q)use($store_id){
                 $q->where('store_id', $store_id);
-            })->active()->type($type)->whereHas('store', function($query)use($zone_id){
-                $query->when(config('module.current_module_data'), function($query){
+            })->active()->type($type)->whereHas('store', function($query)use($zone_id, $store_id){
+                $query->when(config('module.current_module_data') && !isset($store_id), function($query){
                     $query->where('module_id', config('module.current_module_data')['id'])->whereHas('zone.modules',function($query){
                         $query->where('modules.id', config('module.current_module_data')['id']);
                     });

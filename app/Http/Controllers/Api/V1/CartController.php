@@ -94,6 +94,9 @@ class CartController extends Controller
         $item->carts()->save($cart);
 
         $carts = Cart::where('user_id', $user_id)->where('is_guest',$is_guest)->where('module_id',$request->header('moduleId'))->get()
+        ->filter(function ($data) {
+            return $data->item !== null;
+        })
         ->map(function ($data) {
             $data->add_on_ids = json_decode($data->add_on_ids,true);
             $data->add_on_qtys = json_decode($data->add_on_qtys,true);
@@ -101,7 +104,8 @@ class CartController extends Controller
 			$data->item = Helpers::cart_product_data_formatting($data->item, $data->variation,$data->add_on_ids,
             $data->add_on_qtys, false, app()->getLocale());
             return $data;
-		});
+		})
+        ->values();
         return response()->json($carts, 200);
     }
 
@@ -141,6 +145,9 @@ class CartController extends Controller
         $cart->save();
 
         $carts = Cart::where('user_id', $user_id)->where('is_guest',$is_guest)->where('module_id',$request->header('moduleId'))->get()
+        ->filter(function ($data) {
+            return $data->item !== null;
+        })
         ->map(function ($data) {
             $data->add_on_ids = json_decode($data->add_on_ids,true);
             $data->add_on_qtys = json_decode($data->add_on_qtys,true);
@@ -148,7 +155,8 @@ class CartController extends Controller
 			$data->item = Helpers::cart_product_data_formatting($data->item, $data->variation,$data->add_on_ids,
             $data->add_on_qtys, false, app()->getLocale());
             return $data;
-		});
+		})
+        ->values();
         return response()->json($carts, 200);
     }
 
@@ -170,6 +178,9 @@ class CartController extends Controller
         $cart?->delete();
 
         $carts = Cart::where('user_id', $user_id)->where('is_guest',$is_guest)->where('module_id',$request->header('moduleId'))->get()
+        ->filter(function ($data) {
+            return $data->item !== null;
+        })
         ->map(function ($data) {
             $data->add_on_ids = json_decode($data->add_on_ids,true);
             $data->add_on_qtys = json_decode($data->add_on_qtys,true);
@@ -177,7 +188,8 @@ class CartController extends Controller
 			$data->item = Helpers::cart_product_data_formatting($data->item, $data->variation,$data->add_on_ids,
             $data->add_on_qtys, false, app()->getLocale());
             return $data;
-		});
+		})
+        ->values();
         return response()->json($carts, 200);
     }
 
@@ -202,6 +214,9 @@ class CartController extends Controller
 
 
         $carts = Cart::where('user_id', $user_id)->where('is_guest',$is_guest)->where('module_id',$request->header('moduleId'))->get()
+        ->filter(function ($data) {
+            return $data->item !== null;
+        })
         ->map(function ($data) {
             $data->add_on_ids = json_decode($data->add_on_ids,true);
             $data->add_on_qtys = json_decode($data->add_on_qtys,true);
@@ -209,7 +224,8 @@ class CartController extends Controller
 			$data->item = Helpers::cart_product_data_formatting($data->item, $data->variation,$data->add_on_ids,
             $data->add_on_qtys, false, app()->getLocale());
             return $data;
-		});
+		})
+        ->values();
         return response()->json($carts, 200);
     }
 }
