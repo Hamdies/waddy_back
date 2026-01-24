@@ -55,6 +55,7 @@ class User extends Authenticatable
         'hide_phone' => 'boolean',
         'total_xp' => 'integer',
         'level' => 'integer',
+        'last_active_at' => 'datetime',
     ];
     protected $appends = ['image_full_url'];
     public function getImageFullUrlAttribute(){

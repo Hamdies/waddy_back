@@ -20,10 +20,20 @@ class Message extends Model
         'order_id' => 'integer',
         'details_count' => 'integer',
         'order_amount' => 'float',
-
+        'reply_to_message_id' => 'integer',
+        'read_at' => 'datetime',
     ];
 
     protected $appends = ['file_full_url'];
+
+    /**
+     * Get the message this message is replying to.
+     */
+    public function replyTo()
+    {
+        return $this->belongsTo(Message::class, 'reply_to_message_id')
+            ->select(['id', 'message', 'sender_id']);
+    }
 
     public function sender()
     {

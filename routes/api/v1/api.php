@@ -359,6 +359,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
                 Route::get('search-list', 'ConversationController@search_conversations');
                 Route::get('details', 'ConversationController@messages');
                 Route::post('send', 'ConversationController@messages_store');
+                Route::post('mark-read', 'ConversationController@markAsRead');
             });
 
             Route::group(['prefix' => 'wish-list'], function () {

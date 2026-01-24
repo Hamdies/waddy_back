@@ -138,6 +138,8 @@ class ConversationController extends Controller
         $message->sender_id = $sender->id;
         $message->message = $request->message;
         $message->order_id = $request?->order_id ?? null;
+        $message->reply_to_message_id = $request->reply_to_message_id ?? null;
+        $message->status = 'sent';
 
         if($image_name && count($image_name)>0){
             $message->file = json_encode($image_name, JSON_UNESCAPED_SLASHES);
@@ -182,7 +184,7 @@ class ConversationController extends Controller
             info($e->getMessage());
         }
 
-        $messages = Message::where(['conversation_id' => $conversation->id])->with('order')->latest()->paginate($limit, ['*'], 'page', $offset);
+        $messages = Message::where(['conversation_id' => $conversation->id])->with(['order', 'replyTo'])->latest()->paginate($limit, ['*'], 'page', $offset);
         $messages->getCollection()->transform(function ($message) {
             if ($message->order) {
                 $message->order->delivery_address = gettype($message->order->delivery_address) == 'string' ? json_decode($message->order->delivery_address,true): $message->order->delivery_address;
@@ -434,8 +436,8 @@ class ConversationController extends Controller
                 $conversation->unread_message_count = 0;
                 $conversation->save();
             }
-            Message::where(['conversation_id' => $conversation->id])->where('sender_id','!=',$user->id)->update(['is_seen' => 1]);
-            $messages = Message::where(['conversation_id' => $conversation->id])->with('order')->latest()->paginate($limit, ['*'], 'page', $offset);
+            Message::where(['conversation_id' => $conversation->id])->where('sender_id','!=',$user->id)->update(['is_seen' => 1, 'status' => 'read', 'read_at' => now()]);
+            $messages = Message::where(['conversation_id' => $conversation->id])->with(['order', 'replyTo'])->latest()->paginate($limit, ['*'], 'page', $offset);
             $messages->getCollection()->transform(function ($message) {
                 if ($message->order) {
                     $message->order->delivery_address = gettype($message->order->delivery_address) == 'string' ? json_decode($message->order->delivery_address,true): $message->order->delivery_address;
@@ -461,6 +463,63 @@ class ConversationController extends Controller
             'conversation' => $conversation
         ];
         return response()->json($data, 200);
+    }
+
+    /**
+     * Mark messages as read
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function markAsRead(Request $request)
+    {
+        $request->validate([
+            'conversation_id' => 'required|integer',
+            'message_ids' => 'required|array',
+            'message_ids.*' => 'integer'
+        ]);
+
+        $user = UserInfo::where('user_id', $request->user()->id)->first();
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        // Verify conversation exists and user is part of it
+        $conversation = Conversation::where('id', $request->conversation_id)
+            ->where(function($q) use ($user) {
+                $q->where('sender_id', $user->id)
+                  ->orWhere('receiver_id', $user->id);
+            })
+            ->first();
+
+        if (!$conversation) {
+            return response()->json(['message' => 'Conversation not found'], 404);
+        }
+
+        $updated = Message::whereIn('id', $request->message_ids)
+            ->where('conversation_id', $request->conversation_id)
+            ->where('sender_id', '!=', $user->id)
+            ->whereNull('read_at')
+            ->update([
+                'status' => 'read',
+                'read_at' => now(),
+                'is_seen' => 1  // Keep backward compatibility
+            ]);
+
+        // Update conversation unread count
+        if ($updated > 0) {
+            $unreadCount = Message::where('conversation_id', $conversation->id)
+                ->where('sender_id', '!=', $user->id)
+                ->where('is_seen', 0)
+                ->count();
+            $conversation->unread_message_count = $unreadCount;
+            $conversation->save();
+        }
+
+        return response()->json([
+            'success' => true,
+            'updated_count' => $updated
+        ]);
     }
 
     public function dm_messages_store(Request $request)
