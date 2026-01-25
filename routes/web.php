@@ -239,3 +239,21 @@ Route::get('/image-proxy', function () {
         ->header('Content-Type', $response->header('Content-Type'))
         ->header('Access-Control-Allow-Origin', '*');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Order Tracking API Routes
+|--------------------------------------------------------------------------
+*/
+Route::group(['prefix' => 'api/v1/orders'], function () {
+    // SSE Streaming endpoint (no auth middleware - uses contact_number/guest_id for guest access)
+    Route::get('{id}/stream', [\App\Http\Controllers\Api\V1\OrderTrackingStreamController::class, 'stream'])
+        ->middleware(['throttle:60,1'])
+        ->name('api.orders.stream');
+    
+    // Tracking history endpoint
+    Route::get('{id}/tracking-history', [\App\Http\Controllers\Api\V1\OrderTrackingHistoryController::class, 'index'])
+        ->middleware(['throttle:60,1'])
+        ->name('api.orders.tracking-history');
+});
+

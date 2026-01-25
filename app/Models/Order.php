@@ -45,6 +45,7 @@ class Order extends Model
         'cutlery' => 'boolean',
         'is_guest' => 'boolean',
         'ref_bonus_amount' => 'float',
+        'sub_status_updated_at' => 'datetime',
     ];
 
     protected $appends = ['module_type','order_attachment_full_url','order_proof_full_url'];
@@ -178,6 +179,14 @@ class Order extends Model
     public function OrderReference()
     {
         return $this->hasOne(OrderReference::class, 'order_id');
+    }
+
+    /**
+     * Get tracking logs for this order
+     */
+    public function tracking_logs()
+    {
+        return $this->hasMany(OrderTrackingLog::class, 'order_id');
     }
 
     public function getModuleTypeAttribute()
