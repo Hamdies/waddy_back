@@ -100,7 +100,7 @@ class EgyptianGroceryCategoriesSeeder extends Seeder
                         'name' => $subData['name'],
                     ],
                     [
-                        'image' => $subData['image'] ?? null,
+                        'image' => $subData['image'] ?? '',
                         'position' => $index,
                         'priority' => 0,
                         'status' => 1,
