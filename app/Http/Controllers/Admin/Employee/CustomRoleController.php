@@ -75,7 +75,7 @@ class CustomRoleController extends BaseController
         $role = $this->roleRepo->update(id: $id ,data: $this->roleService->getAddData(request: $request));
         $this->translationRepo->updateByModel(request: $request, model: $role, modelPath: 'App\Models\AdminRole', attribute: 'name');
         Toastr::success(translate('messages.role_updated_successfully'));
-        return redirect()->route('admin.users.custom-role.create');
+        return redirect()->route('admin.users.custom-role.add');
     }
 
     public function delete($id): RedirectResponse|View

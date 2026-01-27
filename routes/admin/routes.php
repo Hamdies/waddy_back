@@ -271,7 +271,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
         Route::group(['prefix' => 'users', 'as' => 'users.'], function () {
             Route::group(['prefix' => 'custom-role', 'as' => 'custom-role.', 'middleware' => ['module:custom_role']], function () {
-                Route::get(CustomRole::ADD[URI], [CustomRoleController::class, 'index'])->name('create');
+                Route::get(CustomRole::ADD[URI], [CustomRoleController::class, 'index'])->name('add');
                 Route::post(CustomRole::ADD[URI], [CustomRoleController::class, 'add'])->name('store');
                 Route::get(CustomRole::EDIT[URI].'/{id}', [CustomRoleController::class, 'getUpdateView'])->name('edit');
                 Route::post(CustomRole::UPDATE[URI].'/{id}', [CustomRoleController::class, 'update'])->name('update');

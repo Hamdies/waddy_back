@@ -20,7 +20,7 @@
         <div class="col-md-12">
             <div class="card">
                 <div class="card-body">
-                    <form action="{{route('admin.users.custom-role.create')}}" method="post">
+                    <form action="{{route('admin.users.custom-role.store')}}" method="post">
                         @csrf
                         @if ($language)
                         <ul class="nav nav-tabs mb-4">
