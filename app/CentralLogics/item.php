@@ -699,6 +699,51 @@ class ProductLogic
         ];
     }
 
+    public static function ramadan_featured_products($zone_id, $limit = 25, $offset = 1, $type = 'all', $category_ids = null, $filter = null, $min = 0, $max = false, $rating_count = null, $search = null)
+    {
+        $withCount = [];
+        if ($filter && in_array('top_rated', $filter)) {
+            $withCount[] = 'reviews';
+        }
+        if ($filter && in_array('most_loved', $filter)) {
+            $withCount[] = 'whislists';
+        }
+
+        $category_ids = isset($category_ids) ? (is_array($category_ids) ? $category_ids : json_decode($category_ids)) : [];
+
+        $query = Item::with('store')
+            ->when(config('module.current_module_data'), function ($query) {
+                $query->where('module_id', config('module.current_module_data')['id']);
+            })
+            ->whereHas('store', function ($query) use ($zone_id, $filter) {
+                $query->whereIn('zone_id', json_decode($zone_id, true))
+                    ->when($filter && in_array('free_delivery', $filter), function ($qurey) {
+                        return $qurey->where('free_delivery', 1);
+                    })
+                    ->when($filter && in_array('coupon', $filter), function ($qurey) {
+                        return $qurey->has('activeCoupons');
+                    });
+            })
+            ->where('is_ramadan_featured', 1)
+            ->active()
+            ->type($type);
+
+        $query = self::filterQurey($query, $filter, $min ?? 0, $max, $category_ids, $rating_count, $withCount, $search);
+
+        // Default ordering by latest
+        $query = $query->latest();
+
+        $paginator = $query->paginate($limit, ['*'], 'page', $offset);
+
+        return [
+            'total_size' => $paginator->total(),
+            'limit' => $limit,
+            'offset' => $offset,
+            'products' => $paginator->items(),
+            'categories' => self::getCategoryData($query),
+        ];
+    }
+
 
     private static function filterQurey($query,$filter,$min,$max,$category_ids,$rating_count,$withCount,$search){
         $key = $search ? explode(' ', $search):[];

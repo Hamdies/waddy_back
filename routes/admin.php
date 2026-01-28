@@ -24,6 +24,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         Route::get('/', 'DashboardController@dashboard')->name('dashboard');
 
         Route::get('maintenance-mode', 'SystemController@maintenance_mode')->name('maintenance-mode');
+        Route::get('ramadan-mode', 'SystemController@ramadan_mode')->name('ramadan-mode');
         Route::get('landing-page', 'SystemController@landing_page')->name('landing-page');
 
         Route::group(['prefix' => 'parcel', 'as' => 'parcel.', 'middleware' => ['module:parcel']], function () {

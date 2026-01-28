@@ -378,6 +378,7 @@ class ItemController extends Controller
             $food->organic = $request->organic ?? 0;
         }
         $food->is_halal = $request->is_halal ?? 0;
+        $food->is_ramadan_featured = $request->is_ramadan_featured ?? 0;
         $food->save();
         $food->tags()->sync($tag_ids);
         $food->nutritions()->sync($nutrition_ids);
@@ -740,6 +741,7 @@ class ItemController extends Controller
         $p->stock = $request->current_stock ?? 0;
         $p->organic = $request->organic ?? 0;
         $p->is_halal = $request->is_halal ?? 0;
+        $p->is_ramadan_featured = $request->is_ramadan_featured ?? 0;
 
 
 
@@ -1707,6 +1709,7 @@ class ItemController extends Controller
         $temp_item->veg = $data->veg ?? 0;
         $temp_item->organic = $data->organic ?? 0;
         $temp_item->is_halal = $request->is_halal ?? 0;
+        $temp_item->is_ramadan_featured = $request->is_ramadan_featured ?? 0;
         $temp_item->basic =  $data->basic ?? 0;
         $temp_item->common_condition_id =  $data->common_condition_id;
         $temp_item->brand_id =  $request->brand_id ?? 0;

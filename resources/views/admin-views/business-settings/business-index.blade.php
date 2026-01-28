@@ -41,6 +41,28 @@
                 </div>
             </div>
         </div>
+        <div class="card mb-3">
+            <div class="card-body">
+                <div
+                    class="maintenance-mode-toggle-bar d-flex flex-wrap justify-content-between border border-warning rounded align-items-center p-2">
+                    @php($ramadan_mode = \App\CentralLogics\Helpers::get_business_settings('ramadan_mode'))
+                    <h5 class="text-capitalize m-0 text--warning">
+                        <i class="tio-moon"></i>
+                        {{ translate('messages.ramadan_mode') }}
+                    </h5>
+                    <label class="toggle-switch toggle-switch-sm">
+                        <input type="checkbox" class="status toggle-switch-input ramadan-mode"
+                            {{ isset($ramadan_mode) && $ramadan_mode ? 'checked' : '' }}>
+                        <span class="toggle-switch-label text mb-0">
+                            <span class="toggle-switch-indicator"></span>
+                        </span>
+                    </label>
+                </div>
+                <div class="mt-2">
+                    {{ translate('messages.Enable_Ramadan_Mode_to_show_special_Ramadan_themed_widgets_and_decorations_in_the_app.') }}
+                </div>
+            </div>
+        </div>
         <form action="{{ route('admin.business-settings.update-setup') }}" method="post" enctype="multipart/form-data">
             @csrf
             @php($name = \App\Models\BusinessSetting::where('key', 'business_name')->first())
@@ -1644,6 +1666,21 @@
             })
             @endif
 
+        });
+
+        $(document).on('click', '.ramadan-mode', function () {
+            $.get({
+                url: '{{ route('admin.ramadan-mode') }}',
+                beforeSend: function() {
+                    $('#loading').show();
+                },
+                success: function(data) {
+                    toastr.success(data.message);
+                },
+                complete: function() {
+                    $('#loading').hide();
+                },
+            });
         });
 
 

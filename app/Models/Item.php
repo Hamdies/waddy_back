@@ -46,6 +46,7 @@ class Item extends Model
         'unit_id' => 'integer',
         'is_halal' => 'integer',
         'is_gifted' => 'integer',
+        'is_ramadan_featured' => 'integer',
         'gift_expiry_date' => 'date',
     ];
 
