@@ -175,6 +175,7 @@ class ConfigController extends Controller
                     });
                 }
         }
+        $systemTax = null;
         if(addon_published_status('TaxModule')){
           $systemTax=  \Modules\TaxModule\Entities\SystemTaxSetup::where('is_active', 1)->where('is_default', 1)->first();
         }
