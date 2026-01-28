@@ -339,6 +339,7 @@ class ItemController extends Controller
         $item->stock = $request->current_stock ?? 0;
         $item->images = $images;
         $item->is_halal =  $request->is_halal ?? 0;
+        $item->is_ramadan_featured = $request->is_ramadan_featured ?? 0;
         $item->is_gifted = $request->is_gifted ?? 0;
         $item->gift_name = $request->gift_name;
         $item->gift_expiry_date = $request->gift_expiry_date;
@@ -669,6 +670,7 @@ class ItemController extends Controller
         // $item->module_id= $request->module_id;
         $item->stock = $request->current_stock ?? 0;
         $item->is_halal = $request->is_halal ?? 0;
+        $item->is_ramadan_featured = $request->is_ramadan_featured ?? 0;
         $item->organic = $request->organic ?? 0;
         $item->veg = $request->veg;
         $item->images = $images;

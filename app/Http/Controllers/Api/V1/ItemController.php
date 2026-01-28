@@ -549,6 +549,43 @@ class ItemController extends Controller
         return response()->json($items, 200);
     }
 
+    public function get_ramadan_featured_products(Request $request)
+    {
+        if (!$request->hasHeader('zoneId')) {
+            $errors = [];
+            array_push($errors, ['code' => 'zoneId', 'message' => translate('messages.zone_id_required')]);
+            return response()->json([
+                'errors' => $errors
+            ], 403);
+        }
+
+        $type = $request->query('type', 'all');
+        $min_price = $request->query('min_price');
+        $max_price = $request->query('max_price');
+        $rating_count = $request->query('rating_count');
+
+        $filter = $request->query('filter', '');
+        $filter = $filter ? (is_array($filter) ? $filter : str_getcsv(trim($filter, "[]"), ',')) : '';
+        $category_ids = $request->query('category_ids', '');
+
+        $zone_id = $request->header('zoneId');
+
+        $items = ProductLogic::ramadan_featured_products(
+            zone_id: $zone_id,
+            limit: $request['limit'] ?? 25,
+            offset: $request['offset'] ?? 1,
+            type: $type,
+            category_ids: $category_ids,
+            filter: $filter,
+            min: $min_price,
+            max: $max_price,
+            rating_count: $rating_count,
+            search: $request['search'] ?? null
+        );
+        $items['products'] = Helpers::productListDataFormatting($items['products']);
+        return response()->json($items, 200);
+    }
+
     public function get_set_menus()
     {
         try {

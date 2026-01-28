@@ -32,7 +32,7 @@ class Place extends Model
         if (!$value) {
             return null;
         }
-        return asset('storage/app/public/places/' . $value);
+        return asset('storage/places/' . $value);
     }
 
     /**

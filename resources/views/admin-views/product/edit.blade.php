@@ -445,6 +445,15 @@
                                             </label>
                                         </div>
                                     </div>
+
+                                    <div class="col-sm-6 col-lg-3" id="ramadan_featured">
+                                        <div class="form-check mb-0 p-6">
+                                            <input class="form-check-input" name="is_ramadan_featured" type="checkbox" value="1" id="flexCheckDefaultRamadan" {{ $product->is_ramadan_featured == 1?'checked':((isset($temp_product) && $temp_product == 1 && $product->is_ramadan_featured ==1)?'checked':'') }}>
+                                            <label class="form-check-label" for="flexCheckDefaultRamadan">
+                                                {{ translate('messages.Is_Ramadan_Featured') }}
+                                            </label>
+                                        </div>
+                                    </div>
                                 @endif
 
                                 <div class="col-sm-6 col-lg-3">

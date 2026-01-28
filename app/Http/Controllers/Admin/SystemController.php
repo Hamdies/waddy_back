@@ -118,6 +118,28 @@ class SystemController extends Controller
         return response()->json(['message' => translate('Maintenance is on.')]);
     }
 
+    public function ramadan_mode()
+    {
+        $ramadan_mode = BusinessSetting::where('key', 'ramadan_mode')->first();
+        if (isset($ramadan_mode) == false) {
+            Helpers::businessInsert([
+                'key' => 'ramadan_mode',
+                'value' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        } else {
+            Helpers::businessUpdateOrInsert(['key' => 'ramadan_mode'], [
+                'value' => $ramadan_mode->value == 1 ? 0 : 1
+            ]);
+        }
+
+        if (isset($ramadan_mode) && $ramadan_mode->value) {
+            return response()->json(['message' => translate('Ramadan mode is off.')]);
+        }
+        return response()->json(['message' => translate('Ramadan mode is on.')]);
+    }
+
     public function landing_page()
     {
         $landing_page = BusinessSetting::where('key', 'landing_page')->first();

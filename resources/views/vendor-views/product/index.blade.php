@@ -387,6 +387,15 @@
                                         </label>
                                       </div>
                                 </div>
+
+                                <div class="col-sm-6 col-lg-4" id="ramadan_featured">
+                                    <div class="form-check mb-0 p-6">
+                                        <input class="form-check-input" name="is_ramadan_featured" type="checkbox" value="1" id="flexCheckDefaultRamadan">
+                                        <label class="form-check-label" for="flexCheckDefaultRamadan">
+                                          {{ translate('messages.Is_Ramadan_Featured') }}
+                                        </label>
+                                      </div>
+                                </div>
                                 @endif
                             </div>
                         </div>
