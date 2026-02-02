@@ -60,6 +60,11 @@ class XpController extends Controller
     {
         $user = $request->user();
         
+        // Get user level info if authenticated
+        $userLevel = $user ? $user->level : 0;
+        $userXp = $user ? $user->total_xp : 0;
+        $xpProgress = $user ? $user->xp_progress : null;
+        
         // Get user's prizes indexed by level_prize_id for quick lookup
         $userPrizes = [];
         if ($user) {
@@ -74,9 +79,10 @@ class XpController extends Controller
             }])
             ->orderBy('level_number')
             ->get()
-            ->map(function ($level) use ($userPrizes, $user) {
+            ->map(function ($level) use ($userPrizes, $user, $userLevel) {
                 return [
                     'level_number' => $level->level_number,
+                    'is_unlocked' => $level->level_number <= $userLevel,
                     'name' => $level->name,
                     'xp_required' => $level->xp_required,
                     'description' => $level->description,
@@ -100,7 +106,14 @@ class XpController extends Controller
                 ];
             });
 
-        return response()->json(['levels' => $levels], 200);
+        return response()->json([
+            'levels' => $levels,
+            'current_level' => $userLevel,
+            'current_xp' => $userXp,
+            'xp_for_next_level' => $xpProgress['xp_for_next_level'] ?? null,
+            'xp_to_next_level' => $xpProgress['xp_to_next_level'] ?? 0,
+            'progress_percentage' => $xpProgress['progress_percentage'] ?? 0,
+        ], 200);
     }
 
     /**

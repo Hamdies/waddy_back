@@ -189,6 +189,10 @@ class DeliverymanController extends Controller
     public function get_latest_orders(Request $request)
     {
         $dm = DeliveryMan::where(['auth_token' => $request['token']])->first();
+        
+        // Support optional pagination parameters
+        $limit = $request->input('limit', 50);
+        $offset = $request->input('offset', 1);
 
         $orders = Order::with(['customer', 'store','parcel_category']);
 
@@ -231,15 +235,23 @@ class DeliverymanController extends Controller
         if(isset($dm->vehicle_id )){
             $orders = $orders->where('dm_vehicle_id',$dm->vehicle_id);
         }
-        $orders = $orders->dmOrder()
-        ->Notpos()
-        ->NotDigitalOrder()
-        ->OrderScheduledIn(30)
-        ->whereNull('delivery_man_id')
-        ->orderBy('schedule_at', 'desc')
-        ->get();
-        $orders= Helpers::order_data_formatting($orders, true);
-        return response()->json($orders, 200);
+        
+        $paginator = $orders->dmOrder()
+            ->Notpos()
+            ->NotDigitalOrder()
+            ->OrderScheduledIn(30)
+            ->whereNull('delivery_man_id')
+            ->orderBy('schedule_at', 'desc')
+            ->paginate($limit, ['*'], 'page', $offset);
+            
+        $formattedOrders = Helpers::order_data_formatting($paginator->items(), true);
+        
+        return response()->json([
+            'total_size' => $paginator->total(),
+            'limit' => $limit,
+            'offset' => $offset,
+            'orders' => $formattedOrders
+        ], 200);
     }
 
     public function accept_order(Request $request)
@@ -250,30 +262,19 @@ class DeliverymanController extends Controller
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
-        $dm=DeliveryMan::where(['auth_token' => $request['token']])->first();
-        $order = Order::where('id', $request['order_id'])
-        // ->whereIn('order_status', ['pending', 'confirmed'])
-        ->whereNull('delivery_man_id')
-        ->dmOrder()
-        ->first();
-        if(!$order)
-        {
-            return response()->json([
-                'errors' => [
-                    ['code' => 'order', 'message' => translate('messages.can_not_accept')]
-                ]
-            ], 404);
-        }
-        if($dm->active != 1)
-        {
+        
+        $dm = DeliveryMan::where(['auth_token' => $request['token']])->first();
+        
+        // Pre-validation checks (before transaction)
+        if($dm->active != 1) {
             return response()->json([
                 'errors' => [
                     ['code' => 'active_status', 'message' => translate('messages.You_can_not_accept_order_on_offline')]
                 ]
             ], 404);
         }
-        if($dm->current_orders >= config('dm_maximum_orders'))
-        {
+        
+        if($dm->current_orders >= config('dm_maximum_orders')) {
             return response()->json([
                 'errors'=>[
                     ['code' => 'dm_maximum_order_exceed', 'message'=> translate('messages.dm_maximum_order_exceed_warning')]
@@ -281,65 +282,94 @@ class DeliverymanController extends Controller
             ], 405);
         }
 
-        $payments = $order->payments()->where('payment_method','cash_on_delivery')->exists();
-        $cash_in_hand = $dm?->wallet?->collected_cash ?? 0;
-        $dm_max_cash=BusinessSetting::where('key','dm_max_cash_in_hand')->first();
-        $value=  $dm_max_cash?->value ?? 0;
-
-
-        if(($order->payment_method == "cash_on_delivery" || $payments) && (($cash_in_hand+$order->order_amount) >= $value)){
-
-            return response()->json([
-                'errors'=>[
-                    ['code' => 'dm_maximum_hand_in_cash', 'message'=> \App\CentralLogics\Helpers::format_currency($value) ." ".translate('max_cash_in_hand_exceeds') ]
-                ]
-            ], 405);
-        }
-
-
-        if($order->order_type == 'parcel' && $order->order_status=='confirmed')
-        {
-            $order->order_status = 'handover';
-            $order->handover = now();
-            $order->processing = now();
-        }
-        else{
-            $order->order_status = in_array($order->order_status, ['pending', 'confirmed'])?'accepted':$order->order_status;
-        }
-
-        $order->delivery_man_id = $dm->id;
-        $order->accepted = now();
-        $order->save();
-
-        $dm->current_orders = $dm->current_orders+1;
-        $dm->save();
-
-        $dm->increment('assigned_order_count');
-
-        $fcm_token= $order->is_guest == 0 ? $order?->customer?->cm_firebase_token : $order?->guest?->fcm_token;
-
-
-        $value = Helpers::order_status_update_message('accepted',$order->module->module_type);
-        $value = Helpers::text_variable_data_format(value:$value,store_name:$order->store?->name,order_id:$order->id,user_name:"{$order?->customer?->f_name} {$order?->customer?->l_name}",delivery_man_name:"{$order->delivery_man?->f_name} {$order->delivery_man?->l_name}");
         try {
-            if($value && $fcm_token && Helpers::getNotificationStatusData('customer','customer_order_notification','push_notification_status'))
-            {
-                $data = [
-                    'title' =>translate('Order_Notification'),
-                    'description' => $value,
-                    'order_id' => $order['id'],
-                    'image' => '',
-                    'type'=> 'order_status'
-                ];
-                Helpers::send_push_notif_to_device($fcm_token, $data);
-            }
+            return DB::transaction(function() use ($request, $dm) {
+                // Use pessimistic locking to prevent race conditions
+                $order = Order::where('id', $request['order_id'])
+                    ->whereNull('delivery_man_id')
+                    ->dmOrder()
+                    ->lockForUpdate()
+                    ->first();
+                    
+                if(!$order) {
+                    return response()->json([
+                        'errors' => [
+                            ['code' => 'order', 'message' => translate('messages.can_not_accept')]
+                        ]
+                    ], 404);
+                }
 
+                // Cash in hand validation
+                $payments = $order->payments()->where('payment_method','cash_on_delivery')->exists();
+                $cash_in_hand = $dm?->wallet?->collected_cash ?? 0;
+                $dm_max_cash = BusinessSetting::where('key','dm_max_cash_in_hand')->first();
+                $maxCashValue = $dm_max_cash?->value ?? 0;
+
+                if(($order->payment_method == "cash_on_delivery" || $payments) && (($cash_in_hand + $order->order_amount) >= $maxCashValue)) {
+                    return response()->json([
+                        'errors'=>[
+                            ['code' => 'dm_maximum_hand_in_cash', 'message'=> \App\CentralLogics\Helpers::format_currency($maxCashValue) ." ".translate('max_cash_in_hand_exceeds')]
+                        ]
+                    ], 405);
+                }
+
+                // Update order status
+                if($order->order_type == 'parcel' && $order->order_status == 'confirmed') {
+                    $order->order_status = 'handover';
+                    $order->handover = now();
+                    $order->processing = now();
+                } else {
+                    $order->order_status = in_array($order->order_status, ['pending', 'confirmed']) ? 'accepted' : $order->order_status;
+                }
+
+                $order->delivery_man_id = $dm->id;
+                $order->accepted = now();
+                $order->save();
+
+                // Update delivery man with lock
+                $dm = DeliveryMan::where('id', $dm->id)->lockForUpdate()->first();
+                $dm->current_orders = $dm->current_orders + 1;
+                $dm->assigned_order_count = $dm->assigned_order_count + 1;
+                $dm->save();
+
+                // Send notification (outside critical section)
+                $fcm_token = $order->is_guest == 0 ? $order?->customer?->cm_firebase_token : $order?->guest?->fcm_token;
+
+                $notificationValue = Helpers::order_status_update_message('accepted', $order->module->module_type);
+                $notificationValue = Helpers::text_variable_data_format(
+                    value: $notificationValue,
+                    store_name: $order->store?->name,
+                    order_id: $order->id,
+                    user_name: "{$order?->customer?->f_name} {$order?->customer?->l_name}",
+                    delivery_man_name: "{$dm->f_name} {$dm->l_name}"
+                );
+                
+                try {
+                    if($notificationValue && $fcm_token && Helpers::getNotificationStatusData('customer','customer_order_notification','push_notification_status')) {
+                        $data = [
+                            'title' => translate('Order_Notification'),
+                            'description' => $notificationValue,
+                            'order_id' => $order['id'],
+                            'image' => '',
+                            'type' => 'order_status'
+                        ];
+                        Helpers::send_push_notif_to_device($fcm_token, $data);
+                    }
+                } catch (\Exception $e) {
+                    // Log notification failure but don't fail the order acceptance
+                    info('Order acceptance notification failed: ' . $e->getMessage());
+                }
+
+                return response()->json(['message' => 'Order accepted successfully'], 200);
+            });
         } catch (\Exception $e) {
-
+            info('Order acceptance failed: ' . $e->getMessage());
+            return response()->json([
+                'errors' => [
+                    ['code' => 'error', 'message' => translate('messages.order_acceptance_failed')]
+                ]
+            ], 500);
         }
-
-        return response()->json(['message' => 'Order accepted successfully'], 200);
-
     }
 
     public function record_location_data(Request $request)
@@ -492,13 +522,35 @@ class DeliverymanController extends Controller
             ], 406);
         } */
 
-        if(Config::get('order_delivery_verification')==1 &&  $request['status']=='delivered' && $order->otp != $request['otp'])
+        // Rate-limited OTP verification
+        if(Config::get('order_delivery_verification')==1 && $request['status']=='delivered')
         {
-            return response()->json([
-                'errors' => [
-                    ['code' => 'otp', 'message' => translate('Otp Not matched')]
-                ]
-            ], 406);
+            $cacheKey = "otp_attempts_order_{$order->id}";
+            $maxAttempts = 5;
+            $decayMinutes = 15;
+            
+            // Check rate limit
+            $attempts = \Illuminate\Support\Facades\Cache::get($cacheKey, 0);
+            if ($attempts >= $maxAttempts) {
+                return response()->json([
+                    'errors' => [
+                        ['code' => 'otp_rate_limit', 'message' => translate('messages.too_many_otp_attempts')]
+                    ]
+                ], 429);
+            }
+            
+            if ($order->otp != $request['otp']) {
+                \Illuminate\Support\Facades\Cache::put($cacheKey, $attempts + 1, now()->addMinutes($decayMinutes));
+                $remainingAttempts = $maxAttempts - $attempts - 1;
+                return response()->json([
+                    'errors' => [
+                        ['code' => 'otp', 'message' => translate('Otp Not matched') . ". {$remainingAttempts} " . translate('attempts remaining')]
+                    ]
+                ], 406);
+            }
+            
+            // Clear attempts on success
+            \Illuminate\Support\Facades\Cache::forget($cacheKey);
         }
         if ($request->status == 'delivered')
         {

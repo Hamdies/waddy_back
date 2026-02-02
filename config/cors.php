@@ -17,18 +17,19 @@ return [
 
     'paths' => ['api/*'],
 
-    'allowed_methods' => ['*'],
+    'allowed_methods' => ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
 
-    'allowed_origins' => ['*'],
+    // Configure allowed origins in .env: CORS_ALLOWED_ORIGINS=https://waddyapp.com,https://admin.waddyapp.com
+    'allowed_origins' => array_filter(explode(',', env('CORS_ALLOWED_ORIGINS', 'https://waddyapp.com'))),
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['*'],
+    'allowed_headers' => ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'moduleId', 'zoneId', 'vendorType', 'latitude', 'longitude'],
 
     'exposed_headers' => [],
 
-    'max_age' => 0,
+    'max_age' => 86400,
 
-    'supports_credentials' => false,
+    'supports_credentials' => true,
 
 ];

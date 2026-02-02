@@ -569,104 +569,143 @@ class OrderController extends Controller
         if ($delivery_man_id == 0) {
             return response()->json(['message'=> translate('messages.deliveryman_not_found')  ], 400);
         }
-        $order = Order::withOutGlobalScope(ZoneScope::class)->find($order_id);
+        
+        try {
+            return DB::transaction(function() use ($order_id, $delivery_man_id) {
+                // Lock the order to prevent concurrent modifications
+                $order = Order::withOutGlobalScope(ZoneScope::class)
+                    ->lockForUpdate()
+                    ->find($order_id);
 
-        $deliveryman = DeliveryMan::where('id', $delivery_man_id)->available()->active()->first();
-        if ($order->delivery_man_id == $delivery_man_id) {
-            return response()->json(['message'=> translate('messages.order_already_assign_to_this_deliveryman')  ], 400);
-        }
-        if ($deliveryman) {
-            if ($deliveryman->current_orders >= config('dm_maximum_orders')) {
-                return response()->json(['message'=> translate('messages.dm_maximum_order_exceed_warning')  ], 400);
-            }
-
-            $payments = $order->payments()->where('payment_method','cash_on_delivery')->exists();
-            $cash_in_hand = $deliveryman?->wallet?->collected_cash ?? 0;
-            $dm_max_cash=BusinessSetting::where('key','dm_max_cash_in_hand')->first();
-            $value=  $dm_max_cash?->value ?? 0;
-
-            if(($order->payment_method == "cash_on_delivery" || $payments) && (($cash_in_hand+$order->order_amount) >= $value)){
-                return response()->json(['message'=> \App\CentralLogics\Helpers::format_currency($value) ." ".translate('max_cash_in_hand_exceeds')  ], 400);
-            }
-
-            if ($order->delivery_man) {
-                $dm = $order->delivery_man;
-                $dm->current_orders = $dm->current_orders > 1 ? $dm->current_orders - 1 : 0;
-                $dm->save();
-                if (Helpers::getNotificationStatusData('deliveryman','deliveryman_order_assign_unassign','push_notification_status')) {
-                    $data = [
-                        'title' => translate('Order_Notification'),
-                        'description' => translate('messages.you_are_unassigned_from_a_order'),
-                        'order_id' => '',
-                        'image' => '',
-                        'type' => 'unassign'
-                    ];
-                    Helpers::send_push_notif_to_device($dm->fcm_token, $data);
-
-                    DB::table('user_notifications')->insert([
-                        'data' => json_encode($data),
-                        'delivery_man_id' => $dm->id,
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ]);
+                if (!$order) {
+                    return response()->json(['message'=> translate('messages.order_not_found')], 404);
                 }
 
-            }
-            $order->delivery_man_id = $delivery_man_id;
-            $order->order_status = in_array($order->order_status, ['pending', 'confirmed']) ? 'accepted' : $order->order_status;
-            $order->accepted = now();
-            $order->save();
+                // Lock and get the deliveryman
+                $deliveryman = DeliveryMan::where('id', $delivery_man_id)
+                    ->available()
+                    ->active()
+                    ->lockForUpdate()
+                    ->first();
 
-            $deliveryman->current_orders = $deliveryman->current_orders + 1;
-            $deliveryman->save();
-            $deliveryman->increment('assigned_order_count');
+                if (!$deliveryman) {
+                    return response()->json(['message' => 'Deliveryman not available!'], 400);
+                }
 
-            $fcm_token= $order->is_guest == 0 ? $order?->customer?->cm_firebase_token : $order?->guest?->fcm_token;
-            $value = Helpers::order_status_update_message('accepted',$order->module->module_type,$order->customer?
-            $order?->customer?->current_language_key:'en');
-            $value = Helpers::text_variable_data_format(value:$value,store_name:$order->store?->name,order_id:$order->id,user_name:"{$order?->customer?->f_name} {$order?->customer?->l_name}",delivery_man_name:"{$order->delivery_man?->f_name} {$order->delivery_man?->l_name}");
-            try {
-                if ($value  && Helpers::getNotificationStatusData('customer','customer_order_notification','push_notification_status') && $fcm_token ) {
-                    $data = [
-                        'title' => translate('Order_Notification'),
-                        'description' => $value,
-                        'order_id' => $order['id'],
-                        'image' => '',
-                        'type' => 'order_status'
-                    ];
+                if ($order->delivery_man_id == $delivery_man_id) {
+                    return response()->json(['message'=> translate('messages.order_already_assign_to_this_deliveryman')], 400);
+                }
+                
+                if ($deliveryman->current_orders >= config('dm_maximum_orders')) {
+                    return response()->json(['message'=> translate('messages.dm_maximum_order_exceed_warning')], 400);
+                }
+
+                $payments = $order->payments()->where('payment_method','cash_on_delivery')->exists();
+                $cash_in_hand = $deliveryman?->wallet?->collected_cash ?? 0;
+                $dm_max_cash = BusinessSetting::where('key','dm_max_cash_in_hand')->first();
+                $maxCashValue = $dm_max_cash?->value ?? 0;
+
+                if(($order->payment_method == "cash_on_delivery" || $payments) && (($cash_in_hand + $order->order_amount) >= $maxCashValue)) {
+                    return response()->json(['message'=> \App\CentralLogics\Helpers::format_currency($maxCashValue) ." ".translate('max_cash_in_hand_exceeds')], 400);
+                }
+
+                // Unassign previous delivery man if exists
+                if ($order->delivery_man) {
+                    $previousDm = DeliveryMan::where('id', $order->delivery_man_id)
+                        ->lockForUpdate()
+                        ->first();
+                    if ($previousDm) {
+                        $previousDm->current_orders = $previousDm->current_orders > 1 ? $previousDm->current_orders - 1 : 0;
+                        $previousDm->save();
+                        
+                        if (Helpers::getNotificationStatusData('deliveryman','deliveryman_order_assign_unassign','push_notification_status')) {
+                            $data = [
+                                'title' => translate('Order_Notification'),
+                                'description' => translate('messages.you_are_unassigned_from_a_order'),
+                                'order_id' => '',
+                                'image' => '',
+                                'type' => 'unassign'
+                            ];
+                            Helpers::send_push_notif_to_device($previousDm->fcm_token, $data);
+
+                            DB::table('user_notifications')->insert([
+                                'data' => json_encode($data),
+                                'delivery_man_id' => $previousDm->id,
+                                'created_at' => now(),
+                                'updated_at' => now()
+                            ]);
+                        }
+                    }
+                }
+                
+                // Update order with new delivery man
+                $order->delivery_man_id = $delivery_man_id;
+                $order->order_status = in_array($order->order_status, ['pending', 'confirmed']) ? 'accepted' : $order->order_status;
+                $order->accepted = now();
+                $order->save();
+
+                // Update new delivery man
+                $deliveryman->current_orders = $deliveryman->current_orders + 1;
+                $deliveryman->assigned_order_count = $deliveryman->assigned_order_count + 1;
+                $deliveryman->save();
+
+                // Send notifications (can fail without rolling back transaction)
+                $fcm_token = $order->is_guest == 0 ? $order?->customer?->cm_firebase_token : $order?->guest?->fcm_token;
+                $value = Helpers::order_status_update_message('accepted', $order->module->module_type, $order->customer?
+                    $order?->customer?->current_language_key:'en');
+                $value = Helpers::text_variable_data_format(
+                    value: $value,
+                    store_name: $order->store?->name,
+                    order_id: $order->id,
+                    user_name: "{$order?->customer?->f_name} {$order?->customer?->l_name}",
+                    delivery_man_name: "{$deliveryman->f_name} {$deliveryman->l_name}"
+                );
+                
+                try {
+                    if ($value && Helpers::getNotificationStatusData('customer','customer_order_notification','push_notification_status') && $fcm_token) {
+                        $data = [
+                            'title' => translate('Order_Notification'),
+                            'description' => $value,
+                            'order_id' => $order['id'],
+                            'image' => '',
+                            'type' => 'order_status'
+                        ];
                         Helpers::send_push_notif_to_device($fcm_token, $data);
                         DB::table('user_notifications')->insert([
                             'data' => json_encode($data),
-                            'user_id' => $order?->customer?->id ,
+                            'user_id' => $order?->customer?->id,
                             'created_at' => now(),
                             'updated_at' => now()
                         ]);
-                }
+                    }
 
-                if(Helpers::getNotificationStatusData('deliveryman','deliveryman_order_assign_unassign','push_notification_status')){
-                    $data = [
-                        'title' => translate('Order_Notification'),
-                        'description' => translate('messages.you_are_assigned_to_a_order'),
-                        'order_id' => $order['id'],
-                        'image' => '',
-                        'type' => 'order_status'
-                    ];
-                    Helpers::send_push_notif_to_device($deliveryman->fcm_token, $data);
-                    DB::table('user_notifications')->insert([
-                        'data' => json_encode($data),
-                        'delivery_man_id' => $deliveryman->id,
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ]);
+                    if (Helpers::getNotificationStatusData('deliveryman','deliveryman_order_assign_unassign','push_notification_status')) {
+                        $data = [
+                            'title' => translate('Order_Notification'),
+                            'description' => translate('messages.you_are_assigned_to_a_order'),
+                            'order_id' => $order['id'],
+                            'image' => '',
+                            'type' => 'order_status'
+                        ];
+                        Helpers::send_push_notif_to_device($deliveryman->fcm_token, $data);
+                        DB::table('user_notifications')->insert([
+                            'data' => json_encode($data),
+                            'delivery_man_id' => $deliveryman->id,
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    info('Delivery man assignment notification failed: ' . $e->getMessage());
+                    Toastr::warning(translate('messages.push_notification_faild'));
                 }
-
-            } catch (\Exception $e) {
-                info($e->getMessage());
-                Toastr::warning(translate('messages.push_notification_faild'));
-            }
-            return response()->json([], 200);
+                
+                return response()->json([], 200);
+            });
+        } catch (\Exception $e) {
+            info('Delivery man assignment failed: ' . $e->getMessage());
+            return response()->json(['message' => translate('messages.delivery_man_assignment_failed')], 500);
         }
-        return response()->json(['message' => 'Deliveryman not available!'], 400);
     }
 
     public function update_shipping(Request $request, Order $order)

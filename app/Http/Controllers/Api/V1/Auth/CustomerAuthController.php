@@ -69,39 +69,7 @@ class CustomerAuthController extends Controller
 
             }
 
-            if(env('APP_MODE')=='test')
-            {
-                if($request['otp']=="123456")
-                {
-                    if($request->verification_type == 'email'){
-                        $user->is_email_verified = 1;
-                    }elseif ($request->verification_type == 'phone'){
-                        $user->is_phone_verified = 1;
-                    }
-                    $user->save();
-                    $is_personal_info = 0;
-
-                    if($user->f_name){
-                        $is_personal_info = 1;
-                    }
-
-                    $user_email = null;
-                    if($user->email){
-                        $user_email = $user->email;
-                    }
-                    if (auth()->loginUsingId($user->id)) {
-                        $token = auth()->user()->createToken('RestaurantCustomerAuth')->accessToken;
-                        if(isset($request['guest_id'])){
-                            $this->check_guest_cart($user, $request['guest_id']);
-                        }
-                    }
-
-                    return response()->json(['token' => isset($token)?$token:$temporaryToken, 'is_phone_verified'=>1, 'is_email_verified'=>1, 'is_personal_info' => $is_personal_info, 'is_exist_user' =>null, 'login_type' => $request->login_type, 'email' => $user_email], 200);
-                }
-                return response()->json([
-                    'message' => translate('OTP does not match')
-                ], 404);
-            }
+            // Note: Hardcoded OTP bypass removed for security. Use proper OTP verification only.
 
             if($request->verification_type == 'email'){
                 $data = DB::table('email_verifications')->where([
@@ -253,7 +221,7 @@ class CustomerAuthController extends Controller
                 else{
                     $user = new User();
                     $user->phone = $request['phone'];
-                    $user->password = bcrypt($request['phone']);
+                    $user->password = bcrypt(\Illuminate\Support\Str::random(32)); // Secure: random password for OTP users
                     $user->is_phone_verified = 1;
                     $user->login_medium = 'otp';
                     $user->save();
@@ -381,7 +349,7 @@ class CustomerAuthController extends Controller
             }else{
                 $user = new User();
                 $user->phone = $request['phone'];
-                $user->password = bcrypt($request['phone']);
+                $user->password = bcrypt(\Illuminate\Support\Str::random(32)); // Secure: random password for OTP users
                 $user->is_phone_verified = 1;
                 $user->login_medium = 'otp';
                 $user->save();

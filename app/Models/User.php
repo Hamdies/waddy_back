@@ -22,10 +22,29 @@ class User extends Authenticatable
 
     /**
      * The attributes that are mass assignable.
+     * Using explicit $fillable instead of $guarded for better security
      *
      * @var array
      */
-    protected $guarded = ['id'];
+    protected $fillable = [
+        'f_name',
+        'l_name', 
+        'email',
+        'phone',
+        'password',
+        'image',
+        'zone_id',
+        'ref_code',
+        'ref_by',
+        'cm_firebase_token',
+        'interest',
+        'is_phone_verified',
+        'is_email_verified',
+        'login_medium',
+        'status',
+        'hide_phone',
+        'is_from_pos',
+    ];
 
     /**
      * The attributes that should be hidden for arrays.
