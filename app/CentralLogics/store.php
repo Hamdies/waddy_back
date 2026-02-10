@@ -980,4 +980,49 @@ class StoreLogic
             'stores' => $paginator->items()
         ];
     }
+
+    /**
+     * Get stores similar to the given store (same zone + module).
+     *
+     * @param int $store_id
+     * @param int $limit
+     * @param int $offset
+     * @param float $longitude
+     * @param float $latitude
+     * @return array
+     */
+    public static function get_similar_stores($store_id, $limit = 10, $offset = 1, $longitude = 0, $latitude = 0)
+    {
+        // Find the source store to get its zone_id and module_id
+        $source_store = Store::withoutGlobalScopes()->find($store_id);
+
+        if (!$source_store) {
+            return [
+                'total_size' => 0,
+                'limit' => $limit ?? 10,
+                'offset' => $offset ?? 1,
+                'stores' => []
+            ];
+        }
+
+        $paginator = Store::withOpen($longitude ?? 0, $latitude ?? 0)
+            ->withCount(['items', 'campaigns'])
+            ->with(['discount' => function ($q) {
+                return $q->validate();
+            }])
+            ->where('zone_id', $source_store->zone_id)
+            ->where('module_id', $source_store->module_id)
+            ->where('id', '!=', $source_store->id)
+            ->Active()
+            ->orderBy('open', 'desc')
+            ->orderBy('distance')
+            ->paginate($limit ?? 10, ['*'], 'page', $offset ?? 1);
+
+        return [
+            'total_size' => $paginator->total(),
+            'limit' => $limit ?? 10,
+            'offset' => $offset ?? 1,
+            'stores' => $paginator->items()
+        ];
+    }
 }

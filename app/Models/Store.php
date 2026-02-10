@@ -413,6 +413,15 @@ class Store extends Model
     /**
      * @return HasMany
      */
+    public function bundles(): HasMany
+    {
+        return $this->hasMany(StoreBundle::class);
+    }
+
+
+    /**
+     * @return HasMany
+     */
     public function itemsForReorder(): HasMany
     {
         return $this->items()->orderby('avg_rating','desc')->orderby('recommended','desc');

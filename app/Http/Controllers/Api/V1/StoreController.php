@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Item;
 use App\Models\Store;
+use App\Models\StoreBundle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Review;
@@ -341,6 +342,60 @@ class StoreController extends Controller
 
 
         return response()->json($stores, 200);
+    }
+
+    public function get_similar_stores(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'store_id' => 'required|integer',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+
+        $longitude = $request->header('longitude');
+        $latitude = $request->header('latitude');
+
+        $stores = StoreLogic::get_similar_stores(
+            $request['store_id'],
+            $request['limit'] ?? 10,
+            $request['offset'] ?? 1,
+            $longitude ?? 0,
+            $latitude ?? 0
+        );
+        $stores['stores'] = Helpers::store_data_formatting($stores['stores'], true);
+
+        return response()->json($stores, 200);
+    }
+
+    public function get_bundles(Request $request, $id)
+    {
+        $store = Store::find($id);
+
+        if (!$store) {
+            return response()->json(['message' => translate('messages.store_not_found')], 404);
+        }
+
+        $bundles = StoreBundle::where('store_id', $id)
+            ->active()
+            ->with(['items' => function ($query) {
+                $query->select('items.id', 'items.name', 'items.image', 'items.price', 'items.discount', 'items.discount_type', 'items.store_id', 'items.avg_rating', 'items.rating_count');
+            }])
+            ->latest()
+            ->paginate($request['limit'] ?? 10, ['*'], 'page', $request['offset'] ?? 1);
+
+        $data = $bundles->getCollection()->map(function ($bundle) {
+            $bundle->items = Helpers::product_data_formatting($bundle->items, true, false, app()->getLocale());
+            return $bundle;
+        });
+
+        return response()->json([
+            'total_size' => $bundles->total(),
+            'limit' => (int)($bundles->perPage()),
+            'offset' => (int)($bundles->currentPage()),
+            'bundles' => $data,
+        ], 200);
     }
 
 }

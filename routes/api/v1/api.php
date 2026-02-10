@@ -467,6 +467,8 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
             Route::get('search', 'StoreController@get_searched_stores');
             Route::get('get-data', 'StoreController@get_combined_data');
             Route::get('top-offer-near-me', 'StoreController@get_top_offer_near_me');
+            Route::get('similar', 'StoreController@get_similar_stores');
+            Route::get('{id}/bundles', 'StoreController@get_bundles');
         });
         Route::get('get-combined-data', 'SearchController@get_combined_data');
 
