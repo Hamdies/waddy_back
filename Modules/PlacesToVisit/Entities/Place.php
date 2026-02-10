@@ -5,6 +5,7 @@ namespace Modules\PlacesToVisit\Entities;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Place extends Model
@@ -18,6 +19,7 @@ class Place extends Model
         'longitude' => 'decimal:8',
         'is_active' => 'boolean',
         'is_featured' => 'boolean',
+        'opening_hours' => 'array',
     ];
 
     protected $appends = ['title', 'description'];
@@ -65,6 +67,21 @@ class Place extends Model
         return $this->hasMany(PlaceOffer::class);
     }
 
+    public function images(): HasMany
+    {
+        return $this->hasMany(PlaceImage::class)->orderBy('sort_order');
+    }
+
+    public function favorites(): HasMany
+    {
+        return $this->hasMany(PlaceFavorite::class);
+    }
+
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(PlaceTag::class, 'place_tag_pivot', 'place_id', 'tag_id');
+    }
+
     // ==================== Localization ====================
 
     public function translation(?string $locale = null): ?PlaceTranslation
@@ -82,6 +99,36 @@ class Place extends Model
     public function getDescriptionAttribute(): ?string
     {
         return $this->translation()?->description;
+    }
+
+    // ==================== Opening Hours ====================
+
+    /**
+     * Check if place is currently open based on opening_hours JSON
+     */
+    public function isOpenNow(): ?bool
+    {
+        if (!$this->opening_hours) {
+            return null; // Unknown
+        }
+
+        $dayOfWeek = strtolower(now()->format('l')); // monday, tuesday, etc.
+        $currentTime = now()->format('H:i');
+
+        $todayHours = $this->opening_hours[$dayOfWeek] ?? null;
+
+        if (!$todayHours || ($todayHours['closed'] ?? false)) {
+            return false;
+        }
+
+        $open = $todayHours['open'] ?? null;
+        $close = $todayHours['close'] ?? null;
+
+        if (!$open || !$close) {
+            return null;
+        }
+
+        return $currentTime >= $open && $currentTime <= $close;
     }
 
     // ==================== Voting Stats ====================
@@ -108,6 +155,11 @@ class Place extends Model
             ->where('user_id', $userId)
             ->where('period', $period)
             ->exists();
+    }
+
+    public function isUserFavorite(int $userId): bool
+    {
+        return $this->favorites()->where('user_id', $userId)->exists();
     }
 
     // ==================== Scopes ====================
@@ -145,5 +197,10 @@ class Place extends Model
             ->selectRaw("*, {$haversine} AS distance", [$lat, $lng, $lat])
             ->having('distance', '<', $radiusKm)
             ->orderBy('distance');
+    }
+
+    public function scopeWithTags($query, array $tagIds)
+    {
+        return $query->whereHas('tags', fn($q) => $q->whereIn('place_tags.id', $tagIds));
     }
 }

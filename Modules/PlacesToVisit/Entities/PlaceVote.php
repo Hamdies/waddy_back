@@ -5,6 +5,7 @@ namespace Modules\PlacesToVisit\Entities;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PlaceVote extends Model
 {
@@ -17,6 +18,8 @@ class PlaceVote extends Model
         'is_flagged' => 'boolean',
     ];
 
+    protected $appends = ['image_url'];
+
     public function place(): BelongsTo
     {
         return $this->belongsTo(Place::class);
@@ -25,6 +28,21 @@ class PlaceVote extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function reports(): HasMany
+    {
+        return $this->hasMany(PlaceVoteReport::class, 'vote_id');
+    }
+
+    // ==================== Accessors ====================
+
+    public function getImageUrlAttribute(): ?string
+    {
+        if (!$this->image) {
+            return null;
+        }
+        return asset('storage/place_reviews/' . $this->image);
     }
 
     // ==================== Scopes ====================

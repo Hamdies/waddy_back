@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Modules\PlacesToVisit\Entities\Place;
 use Modules\PlacesToVisit\Entities\PlaceCategory;
+use Modules\PlacesToVisit\Entities\PlaceTag;
 use Modules\PlacesToVisit\Entities\PlaceTranslation;
 use App\CentralLogics\Helpers;
 
@@ -20,6 +21,7 @@ class PlaceController extends Controller
         $places = Place::query()
             ->with(['translations', 'category'])
             ->withCurrentPeriodStats($period)
+            ->withCount('favorites')
             ->when($request->search, function ($q, $search) {
                 $q->whereHas('translations', fn($tq) => 
                     $tq->where('title', 'like', "%{$search}%")
@@ -37,7 +39,8 @@ class PlaceController extends Controller
     public function create(): View
     {
         $categories = PlaceCategory::active()->ordered()->get();
-        return view('placestovisit::admin.places.create', compact('categories'));
+        $tags = PlaceTag::active()->get();
+        return view('placestovisit::admin.places.create', compact('categories', 'tags'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -51,7 +54,14 @@ class PlaceController extends Controller
             'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
             'address' => 'nullable|string|max:500',
+            'phone' => 'nullable|string|max:30',
+            'website' => 'nullable|url|max:255',
+            'instagram' => 'nullable|string|max:255',
+            'opening_hours' => 'nullable|array',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'gallery.*' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'tags' => 'nullable|array',
+            'tags.*' => 'exists:place_tags,id',
         ]);
 
         $imagePath = null;
@@ -64,6 +74,10 @@ class PlaceController extends Controller
             'latitude' => $request->latitude,
             'longitude' => $request->longitude,
             'address' => $request->address,
+            'phone' => $request->phone,
+            'website' => $request->website,
+            'instagram' => $request->instagram,
+            'opening_hours' => $request->opening_hours,
             'image' => $imagePath,
             'is_active' => $request->has('is_active'),
             'is_featured' => $request->has('is_featured'),
@@ -87,6 +101,23 @@ class PlaceController extends Controller
             ]);
         }
 
+        // Handle gallery uploads
+        if ($request->hasFile('gallery')) {
+            foreach ($request->file('gallery') as $index => $file) {
+                $galleryPath = Helpers::upload('places/', 'png', $file);
+                $place->images()->create([
+                    'image' => $galleryPath,
+                    'sort_order' => $index,
+                    'is_primary' => $index === 0 && !$imagePath,
+                ]);
+            }
+        }
+
+        // Attach tags
+        if ($request->tags) {
+            $place->tags()->sync($request->tags);
+        }
+
         \Toastr::success(translate('messages.place_created_successfully'));
         return redirect()->route('admin.places.index');
     }
@@ -98,12 +129,14 @@ class PlaceController extends Controller
 
     public function edit(Place $place): View
     {
-        $place->load('translations');
+        $place->load(['translations', 'images', 'tags']);
         $categories = PlaceCategory::active()->ordered()->get();
+        $tags = PlaceTag::active()->get();
         
         $translations = $place->translations->keyBy('locale');
+        $selectedTags = $place->tags->pluck('id')->toArray();
         
-        return view('placestovisit::admin.places.edit', compact('place', 'categories', 'translations'));
+        return view('placestovisit::admin.places.edit', compact('place', 'categories', 'tags', 'translations', 'selectedTags'));
     }
 
     public function update(Request $request, Place $place): RedirectResponse
@@ -117,7 +150,14 @@ class PlaceController extends Controller
             'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
             'address' => 'nullable|string|max:500',
+            'phone' => 'nullable|string|max:30',
+            'website' => 'nullable|url|max:255',
+            'instagram' => 'nullable|string|max:255',
+            'opening_hours' => 'nullable|array',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'gallery.*' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'tags' => 'nullable|array',
+            'tags.*' => 'exists:place_tags,id',
         ]);
 
         $imagePath = $place->raw_image;
@@ -133,6 +173,10 @@ class PlaceController extends Controller
             'latitude' => $request->latitude,
             'longitude' => $request->longitude,
             'address' => $request->address,
+            'phone' => $request->phone,
+            'website' => $request->website,
+            'instagram' => $request->instagram,
+            'opening_hours' => $request->opening_hours,
             'image' => $imagePath,
             'is_active' => $request->has('is_active'),
             'is_featured' => $request->has('is_featured'),
@@ -152,6 +196,22 @@ class PlaceController extends Controller
             );
         }
 
+        // Handle gallery uploads
+        if ($request->hasFile('gallery')) {
+            $maxOrder = $place->images()->max('sort_order') ?? -1;
+            foreach ($request->file('gallery') as $index => $file) {
+                $galleryPath = Helpers::upload('places/', 'png', $file);
+                $place->images()->create([
+                    'image' => $galleryPath,
+                    'sort_order' => $maxOrder + $index + 1,
+                    'is_primary' => false,
+                ]);
+            }
+        }
+
+        // Sync tags
+        $place->tags()->sync($request->tags ?? []);
+
         \Toastr::success(translate('messages.place_updated_successfully'));
         return redirect()->route('admin.places.index');
     }
@@ -160,6 +220,11 @@ class PlaceController extends Controller
     {
         if ($place->raw_image) {
             Helpers::check_and_delete('places/', $place->raw_image);
+        }
+        
+        // Delete gallery images
+        foreach ($place->images as $img) {
+            Helpers::check_and_delete('places/', $img->image);
         }
         
         $place->delete();

@@ -4,6 +4,7 @@ namespace Modules\PlacesToVisit\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Modules\PlacesToVisit\Services\LeaderboardService;
+use Modules\PlacesToVisit\Services\TrendingService;
 use Modules\PlacesToVisit\Services\VotingService;
 
 class PlacesToVisitServiceProvider extends ServiceProvider
@@ -26,6 +27,7 @@ class PlacesToVisitServiceProvider extends ServiceProvider
         // Register services as singletons
         $this->app->singleton(LeaderboardService::class);
         $this->app->singleton(VotingService::class);
+        $this->app->singleton(TrendingService::class);
     }
 
     protected function registerConfig(): void
@@ -68,6 +70,7 @@ class PlacesToVisitServiceProvider extends ServiceProvider
         return [
             LeaderboardService::class,
             VotingService::class,
+            TrendingService::class,
         ];
     }
 

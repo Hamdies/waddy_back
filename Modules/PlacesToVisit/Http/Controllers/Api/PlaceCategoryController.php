@@ -5,6 +5,7 @@ namespace Modules\PlacesToVisit\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Modules\PlacesToVisit\Entities\PlaceCategory;
+use Modules\PlacesToVisit\Entities\PlaceTag;
 
 class PlaceCategoryController extends Controller
 {
@@ -17,7 +18,15 @@ class PlaceCategoryController extends Controller
         $categories = PlaceCategory::query()
             ->active()
             ->ordered()
-            ->get(['id', 'name', 'image', 'priority']);
+            ->withCount(['places' => fn($q) => $q->active()])
+            ->get()
+            ->map(fn($cat) => [
+                'id' => $cat->id,
+                'name' => $cat->localized_name,
+                'image' => $cat->image,
+                'priority' => $cat->priority,
+                'places_count' => $cat->places_count,
+            ]);
 
         return response()->json([
             'success' => true,
@@ -39,12 +48,37 @@ class PlaceCategoryController extends Controller
         }
 
         $category->load(['places' => function ($q) {
-            $q->active()->with('translations');
+            $q->active()->with(['translations', 'images', 'tags']);
         }]);
 
         return response()->json([
             'success' => true,
-            'data' => $category,
+            'data' => [
+                'id' => $category->id,
+                'name' => $category->localized_name,
+                'image' => $category->image,
+                'places' => $category->places,
+            ],
+        ]);
+    }
+
+    /**
+     * List all active tags
+     * GET /api/v1/places/tags
+     */
+    public function tags(): JsonResponse
+    {
+        $tags = PlaceTag::active()
+            ->get()
+            ->map(fn($tag) => [
+                'id' => $tag->id,
+                'name' => $tag->localized_name,
+                'icon' => $tag->icon,
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $tags,
         ]);
     }
 }

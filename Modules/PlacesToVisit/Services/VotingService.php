@@ -2,9 +2,11 @@
 
 namespace Modules\PlacesToVisit\Services;
 
+use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Modules\PlacesToVisit\Entities\Place;
 use Modules\PlacesToVisit\Entities\PlaceVote;
+use Modules\PlacesToVisit\Entities\PlaceVoteReport;
 
 class VotingService
 {
@@ -15,7 +17,8 @@ class VotingService
         int $placeId,
         int $userId,
         ?int $rating = null,
-        ?string $review = null
+        ?string $review = null,
+        ?string $image = null
     ): array {
         $period = $this->getCurrentPeriod();
         
@@ -27,10 +30,14 @@ class VotingService
 
         if ($existingVote) {
             // Update existing vote
-            $existingVote->update([
+            $updateData = [
                 'rating' => $rating,
                 'review' => $review,
-            ]);
+            ];
+            if ($image !== null) {
+                $updateData['image'] = $image;
+            }
+            $existingVote->update($updateData);
             
             $this->clearLeaderboardCache();
             
@@ -49,9 +56,26 @@ class VotingService
             'period' => $period,
             'rating' => $rating,
             'review' => $review,
+            'image' => $image,
         ]);
 
         $this->clearLeaderboardCache();
+
+        // Award XP for vote
+        $user = User::find($userId);
+        if ($user) {
+            PlaceXpService::awardVoteXp($user, $vote->id);
+            
+            // Bonus XP for writing a review
+            if ($review && trim($review) !== '') {
+                PlaceXpService::awardReviewXp($user, $vote->id);
+            }
+
+            // Bonus XP for photo review
+            if ($image) {
+                PlaceXpService::awardPhotoReviewXp($user, $vote->id);
+            }
+        }
 
         return [
             'success' => true,
@@ -114,7 +138,50 @@ class VotingService
     }
 
     /**
-     * Flag a vote for moderation
+     * Report/flag a review with hardened validation
+     */
+    public function reportVote(int $voteId, int $reporterId, ?string $reason = null): array
+    {
+        $vote = PlaceVote::find($voteId);
+
+        if (!$vote) {
+            return ['success' => false, 'message' => translate('messages.review_not_found')];
+        }
+
+        // Can't report your own review
+        if ($vote->user_id === $reporterId) {
+            return ['success' => false, 'message' => translate('messages.cannot_report_own_review')];
+        }
+
+        // Check if already reported by this user
+        $alreadyReported = PlaceVoteReport::where('vote_id', $voteId)
+            ->where('reporter_id', $reporterId)
+            ->exists();
+
+        if ($alreadyReported) {
+            return ['success' => false, 'message' => translate('messages.already_reported')];
+        }
+
+        // Create report
+        PlaceVoteReport::create([
+            'vote_id' => $voteId,
+            'reporter_id' => $reporterId,
+            'reason' => $reason,
+        ]);
+
+        // Auto-flag after N reports
+        $reportThreshold = config('placestovisit.report_auto_flag_threshold', 3);
+        $reportCount = PlaceVoteReport::where('vote_id', $voteId)->count();
+
+        if ($reportCount >= $reportThreshold) {
+            $vote->update(['is_flagged' => true]);
+        }
+
+        return ['success' => true, 'message' => translate('messages.review_reported')];
+    }
+
+    /**
+     * Flag a vote for moderation (admin)
      */
     public function flagVote(int $voteId): bool
     {
@@ -122,7 +189,7 @@ class VotingService
     }
 
     /**
-     * Unflag a vote
+     * Unflag a vote (admin)
      */
     public function unflagVote(int $voteId): bool
     {
@@ -143,5 +210,6 @@ class VotingService
     protected function clearLeaderboardCache(): void
     {
         app(LeaderboardService::class)->clearCache();
+        app(TrendingService::class)->clearCache();
     }
 }

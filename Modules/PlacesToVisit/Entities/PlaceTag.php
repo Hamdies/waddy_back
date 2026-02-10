@@ -3,24 +3,25 @@
 namespace Modules\PlacesToVisit\Entities;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-class PlaceCategory extends Model
+class PlaceTag extends Model
 {
-    protected $table = 'place_categories';
-    
+    protected $table = 'place_tags';
+
     protected $guarded = ['id'];
 
     protected $casts = [
         'is_active' => 'boolean',
-        'priority' => 'integer',
     ];
 
     protected $appends = ['localized_name'];
 
-    public function places(): HasMany
+    // ==================== Relationships ====================
+
+    public function places(): BelongsToMany
     {
-        return $this->hasMany(Place::class, 'category_id');
+        return $this->belongsToMany(Place::class, 'place_tag_pivot', 'tag_id', 'place_id');
     }
 
     // ==================== Accessors ====================
@@ -36,10 +37,5 @@ class PlaceCategory extends Model
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
-    }
-
-    public function scopeOrdered($query)
-    {
-        return $query->orderBy('priority', 'desc');
     }
 }

@@ -57,4 +57,24 @@ Route::group([
         Route::get('{banner}/toggle-status', 'PlaceBannerController@toggleStatus')->name('toggle-status');
         Route::get('{banner}/toggle-featured', 'PlaceBannerController@toggleFeatured')->name('toggle-featured');
     });
+
+    // Offers
+    Route::group(['prefix' => 'offers', 'as' => 'offers.'], function () {
+        Route::get('/', 'PlaceOfferController@index')->name('index');
+        Route::get('create', 'PlaceOfferController@create')->name('create');
+        Route::post('/', 'PlaceOfferController@store')->name('store');
+        Route::get('{offer}/edit', 'PlaceOfferController@edit')->name('edit');
+        Route::put('{offer}', 'PlaceOfferController@update')->name('update');
+        Route::delete('{offer}', 'PlaceOfferController@destroy')->name('destroy');
+        Route::get('{offer}/toggle-status', 'PlaceOfferController@toggleStatus')->name('toggle-status');
+    });
+
+    // Submissions
+    Route::group(['prefix' => 'submissions', 'as' => 'submissions.'], function () {
+        Route::get('/', 'PlaceSubmissionController@index')->name('index');
+        Route::get('{submission}', 'PlaceSubmissionController@show')->name('show');
+        Route::post('{submission}/approve', 'PlaceSubmissionController@approve')->name('approve');
+        Route::post('{submission}/reject', 'PlaceSubmissionController@reject')->name('reject');
+        Route::delete('{submission}', 'PlaceSubmissionController@destroy')->name('destroy');
+    });
 });
