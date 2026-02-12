@@ -60,6 +60,7 @@
                             <th>{{ translate('messages.votes') }}</th>
                             <th>{{ translate('messages.rating') }}</th>
                             <th>{{ translate('messages.featured') }}</th>
+                            <th>{{ translate('messages.favorites') }}</th>
                             <th>{{ translate('messages.status') }}</th>
                             <th class="text-center">{{ translate('messages.action') }}</th>
                         </tr>
@@ -77,7 +78,7 @@
                                 <strong>{{ $place->title }}</strong>
                                 <br><small class="text-muted">{{ Str::limit($place->address, 30) }}</small>
                             </td>
-                            <td>{{ $place->category?->name ?? '-' }}</td>
+                            <td>{{ $place->category?->localized_name ?? '-' }}</td>
                             <td>
                                 <span class="badge badge-soft-primary">
                                     {{ $place->votes_count ?? 0 }} {{ translate('messages.votes') }}
@@ -95,6 +96,11 @@
                                    class="badge badge-soft-{{ $place->is_featured ? 'warning' : 'secondary' }}">
                                     {{ $place->is_featured ? translate('messages.featured') : translate('messages.normal') }}
                                 </a>
+                            </td>
+                            <td>
+                                <span class="badge badge-soft-info">
+                                    <i class="tio-heart"></i> {{ $place->favorites_count ?? 0 }}
+                                </span>
                             </td>
                             <td>
                                 <a href="{{ route('admin.places.toggle-status', $place->id) }}"
@@ -120,7 +126,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="9" class="text-center py-4">
+                            <td colspan="10" class="text-center py-4">
                                 {{ translate('messages.no_data_found') }}
                             </td>
                         </tr>

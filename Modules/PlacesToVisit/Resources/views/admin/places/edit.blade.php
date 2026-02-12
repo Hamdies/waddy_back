@@ -196,6 +196,145 @@
                     </div>
                 </div>
 
+                <!-- Contact Info -->
+                <div class="card bg-light mb-3">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="tio-call"></i> {{ translate('messages.contact_info') }}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="input-label">{{ translate('messages.phone') }}</label>
+                                    <input type="text" name="phone" class="form-control"
+                                           value="{{ $place->phone }}"
+                                           placeholder="{{ translate('messages.enter_phone') }}">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="input-label">{{ translate('messages.website') }}</label>
+                                    <input type="url" name="website" class="form-control"
+                                           value="{{ $place->website }}"
+                                           placeholder="https://example.com">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="input-label">{{ translate('messages.instagram') }}</label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text">@</span>
+                                        </div>
+                                        <input type="text" name="instagram" class="form-control"
+                                               value="{{ $place->instagram }}"
+                                               placeholder="username">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Existing Gallery -->
+                @if($place->images && $place->images->count() > 0)
+                <div class="card bg-light mb-3">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="tio-album"></i> {{ translate('messages.current_gallery') }}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            @foreach($place->images as $img)
+                            <div class="col-md-2 col-4 mb-3 text-center">
+                                <img src="{{ $img->image_full_url }}" class="rounded" width="100" height="80"
+                                     style="object-fit: cover;"
+                                     onerror="this.src='{{ asset('public/assets/admin/img/160x160/img1.jpg') }}'">
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+                @endif
+
+                <!-- Add More Gallery Images -->
+                <div class="card bg-light mb-3">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="tio-add-photo"></i> {{ translate('messages.add_gallery_images') }}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <input type="file" name="gallery[]" class="form-control" accept="image/*" multiple>
+                        <small class="text-muted">{{ translate('messages.select_multiple_images') }}</small>
+                    </div>
+                </div>
+
+                <!-- Tags -->
+                @if(isset($tags) && $tags->count() > 0)
+                <div class="card bg-light mb-3">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="tio-label"></i> {{ translate('messages.tags') }}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            @foreach($tags as $tag)
+                            <div class="col-md-3 col-6 mb-2">
+                                <label class="d-flex align-items-center">
+                                    <input type="checkbox" name="tags[]" value="{{ $tag->id }}" class="mr-2"
+                                           {{ in_array($tag->id, $selectedTags ?? []) ? 'checked' : '' }}>
+                                    {{ $tag->localized_name }}
+                                </label>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+                @endif
+
+                <!-- Opening Hours -->
+                <div class="card bg-light mb-3">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="tio-time"></i> {{ translate('messages.opening_hours') }}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @php
+                            $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+                            $hours = $place->opening_hours ?? [];
+                        @endphp
+                        @foreach($days as $day)
+                        <div class="row align-items-center mb-2">
+                            <div class="col-md-2">
+                                <strong>{{ ucfirst($day) }}</strong>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="time" name="opening_hours[{{ $day }}][open]" class="form-control form-control-sm"
+                                       value="{{ $hours[$day]['open'] ?? '' }}">
+                            </div>
+                            <div class="col-md-1 text-center">to</div>
+                            <div class="col-md-3">
+                                <input type="time" name="opening_hours[{{ $day }}][close]" class="form-control form-control-sm"
+                                       value="{{ $hours[$day]['close'] ?? '' }}">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="d-flex align-items-center mb-0">
+                                    <input type="checkbox" name="opening_hours[{{ $day }}][closed]" value="1" class="mr-2"
+                                           {{ !empty($hours[$day]['closed']) ? 'checked' : '' }}>
+                                    {{ translate('messages.closed') }}
+                                </label>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+
                 <!-- Status -->
                 <div class="row">
                     <div class="col-md-6">

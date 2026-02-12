@@ -24,6 +24,8 @@ use App\Models\OfflinePaymentMethod;
 use Illuminate\Support\Facades\Mail;
 use App\Models\ParcelDeliveryInstruction;
 use App\Traits\PlaceNewOrder;
+use App\Models\Cart;
+use App\Models\Item;
 use Illuminate\Support\Facades\Validator;
 
 class OrderController extends Controller
@@ -574,6 +576,145 @@ class OrderController extends Controller
             });
 
         return response()->json(Helpers::store_data_formatting($data, true), 200);
+    }
+
+    public function reorder(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'order_id' => 'required|integer',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'errors' => [['code' => 'auth', 'message' => translate('messages.unauthenticated')]]
+            ], 401);
+        }
+
+        $order = Order::with('details')
+            ->where('user_id', $user->id)
+            ->where('is_guest', 0)
+            ->find($request->order_id);
+
+        if (!$order) {
+            return response()->json([
+                'errors' => [['code' => 'order', 'message' => translate('messages.not_found')]]
+            ], 404);
+        }
+
+        $added = [];
+        $unavailable = [];
+        $module_id = $order->module_id;
+
+        foreach ($order->details as $detail) {
+            $item = Item::active()
+                ->when(config('module.current_module_data'), function($query) {
+                    $query->module(config('module.current_module_data')['id']);
+                })
+                ->find($detail->item_id);
+
+            // Resolve item name from the stored item_details snapshot
+            $itemDetails = is_string($detail->item_details)
+                ? json_decode($detail->item_details, true)
+                : $detail->item_details;
+            $itemName = $itemDetails['name'] ?? 'Unknown';
+
+            if (!$item) {
+                $unavailable[] = [
+                    'item_id' => $detail->item_id,
+                    'item_name' => $itemName,
+                    'reason' => 'item_not_available',
+                ];
+                continue;
+            }
+
+            // Check stock for non-food modules
+            if (config('module.current_module_data')
+                && config('module.current_module_data')['module_type'] !== 'food'
+                && $item->stock !== null
+                && $item->stock <= 0) {
+                $unavailable[] = [
+                    'item_id' => $detail->item_id,
+                    'item_name' => $item->name,
+                    'reason' => 'out_of_stock',
+                ];
+                continue;
+            }
+
+            // Check if item already in cart
+            $existingCart = Cart::where('item_id', $item->id)
+                ->where('item_type', 'App\Models\Item')
+                ->where('user_id', $user->id)
+                ->where('is_guest', 0)
+                ->where('module_id', $module_id)
+                ->first();
+
+            if ($existingCart) {
+                $added[] = [
+                    'item_id' => $item->id,
+                    'item_name' => $item->name,
+                    'status' => 'already_in_cart',
+                ];
+                continue;
+            }
+
+            // Parse variation from order detail
+            $variation = $detail->variation;
+            if (is_string($variation)) {
+                $variation = json_decode($variation, true) ?? [];
+            }
+
+            // Parse add-ons from order detail
+            $addOns = is_string($detail->add_ons)
+                ? json_decode($detail->add_ons, true)
+                : ($detail->add_ons ?? []);
+            $addOnIds = [];
+            $addOnQtys = [];
+            if (is_array($addOns)) {
+                foreach ($addOns as $addon) {
+                    if (isset($addon['id'])) {
+                        $addOnIds[] = $addon['id'];
+                        $addOnQtys[] = $addon['quantity'] ?? 1;
+                    }
+                }
+            }
+
+            $cart = new Cart();
+            $cart->user_id = $user->id;
+            $cart->module_id = $module_id;
+            $cart->item_id = $item->id;
+            $cart->is_guest = 0;
+            $cart->item_type = 'Item';
+            $cart->price = $item->price; // Use current price
+            $cart->quantity = $detail->quantity;
+            $cart->variation = json_encode($variation);
+            $cart->add_on_ids = json_encode($addOnIds);
+            $cart->add_on_qtys = json_encode($addOnQtys);
+            $cart->save();
+
+            $added[] = [
+                'item_id' => $item->id,
+                'item_name' => $item->name,
+                'status' => 'added',
+                'price' => $item->price,
+            ];
+        }
+
+        $addedCount = count(array_filter($added, fn($a) => $a['status'] === 'added'));
+
+        return response()->json([
+            'message' => $addedCount > 0
+                ? translate('messages.items_added_to_cart')
+                : translate('messages.no_items_could_be_added'),
+            'added' => $added,
+            'unavailable' => $unavailable,
+            'added_count' => $addedCount,
+            'unavailable_count' => count($unavailable),
+        ], 200);
     }
 
 

@@ -192,6 +192,118 @@
                     </div>
                 </div>
 
+                <!-- Contact Info -->
+                <div class="card bg-light mb-3">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="tio-call"></i> {{ translate('messages.contact_info') }}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="input-label">{{ translate('messages.phone') }}</label>
+                                    <input type="text" name="phone" class="form-control"
+                                           placeholder="{{ translate('messages.enter_phone') }}">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="input-label">{{ translate('messages.website') }}</label>
+                                    <input type="url" name="website" class="form-control"
+                                           placeholder="https://example.com">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="input-label">{{ translate('messages.instagram') }}</label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text">@</span>
+                                        </div>
+                                        <input type="text" name="instagram" class="form-control"
+                                               placeholder="username">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gallery -->
+                <div class="card bg-light mb-3">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="tio-album"></i> {{ translate('messages.gallery') }}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label class="input-label">{{ translate('messages.additional_images') }}</label>
+                            <input type="file" name="gallery[]" class="form-control" accept="image/*" multiple>
+                            <small class="text-muted">{{ translate('messages.select_multiple_images') }}</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tags -->
+                @if(isset($tags) && $tags->count() > 0)
+                <div class="card bg-light mb-3">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="tio-label"></i> {{ translate('messages.tags') }}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            @foreach($tags as $tag)
+                            <div class="col-md-3 col-6 mb-2">
+                                <label class="d-flex align-items-center">
+                                    <input type="checkbox" name="tags[]" value="{{ $tag->id }}" class="mr-2">
+                                    {{ $tag->localized_name }}
+                                </label>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+                @endif
+
+                <!-- Opening Hours -->
+                <div class="card bg-light mb-3">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="tio-time"></i> {{ translate('messages.opening_hours') }}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @php
+                            $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+                        @endphp
+                        @foreach($days as $day)
+                        <div class="row align-items-center mb-2">
+                            <div class="col-md-2">
+                                <strong>{{ ucfirst($day) }}</strong>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="time" name="opening_hours[{{ $day }}][open]" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-1 text-center">to</div>
+                            <div class="col-md-3">
+                                <input type="time" name="opening_hours[{{ $day }}][close]" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="d-flex align-items-center mb-0">
+                                    <input type="checkbox" name="opening_hours[{{ $day }}][closed]" value="1" class="mr-2">
+                                    {{ translate('messages.closed') }}
+                                </label>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+
                 <!-- Status -->
                 <div class="row">
                     <div class="col-md-6">

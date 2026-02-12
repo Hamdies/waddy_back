@@ -119,6 +119,7 @@ class ItemController extends Controller
         $min = $request->query('min_price');
         $max = $request->query('max_price');
         $rating_count = $request->query('rating_count');
+        $sort_by = $request->query('sort_by', 'default');
 
         $query = Item::active()->type($type)
         ->with('store', function($query){
@@ -215,6 +216,22 @@ class ItemController extends Controller
         })
         ->when($filter&&in_array('low',$filter),function ($qurey){
             $qurey->orderBy('price', 'asc');
+        })
+        // User-facing sort_by param (overrides filter-based sorts when specified)
+        ->when($sort_by && $sort_by !== 'default', function($query) use ($sort_by, $request) {
+            match($sort_by) {
+                'price_low_to_high' => $query->orderBy('price', 'asc'),
+                'price_high_to_low' => $query->orderBy('price', 'desc'),
+                'rating' => $query->orderByDesc('avg_rating'),
+                'popularity' => $query->orderByDesc('order_count'),
+                'newest' => $query->orderByDesc('items.created_at'),
+                'distance' => $query->join('stores as sort_stores', 'sort_stores.id', '=', 'items.store_id')
+                    ->orderByRaw(
+                        "(6371 * acos(cos(radians(?)) * cos(radians(sort_stores.latitude)) * cos(radians(sort_stores.longitude) - radians(?)) + sin(radians(?)) * sin(radians(sort_stores.latitude))))",
+                        [(float)$request->header('latitude', 0), (float)$request->header('longitude', 0), (float)$request->header('latitude', 0)]
+                    ),
+                default => $query,
+            };
         });
 
 
