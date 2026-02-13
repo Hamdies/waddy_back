@@ -95,6 +95,17 @@
                                         {{ $order['delivery_instruction'] }}
                                     </h6>
                                 @endif
+                                @if ($order['voice_instruction'])
+                                    <h6 class="w-100 badge-soft-info mt-2">
+                                        <span class="text-dark">
+                                            {{ translate('messages.voice_instruction') }} :
+                                        </span>
+                                        <audio controls style="max-width: 250px; height: 30px; vertical-align: middle;">
+                                            <source src="{{ asset('storage/' . $order['voice_instruction']) }}" type="audio/mp4">
+                                            {{ translate('messages.browser_does_not_support_audio') }}
+                                        </audio>
+                                    </h6>
+                                @endif
                                 @if ($order['order_note'])
                                     <h6>
                                         {{ translate('messages.order_note') }} :

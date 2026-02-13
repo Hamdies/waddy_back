@@ -56,6 +56,7 @@ trait PlaceNewOrder
             'contact_person_email' => $request->user ? 'nullable' : 'required',
             'password' => $request->create_new_user ? ['required', Password::min(8)] : 'nullable',
             'order_attachment' => $is_prescription ? ['required'] : 'nullable',
+            'voice_instruction' => 'nullable|file|mimes:m4a,mp3,wav,ogg,webm,aac|max:5120',
         ]);
 
         if ($validator->fails()) {
@@ -189,6 +190,13 @@ trait PlaceNewOrder
             $order->order_note = $request['order_note'];
             $order->unavailable_item_note = $request['unavailable_item_note'];
             $order->delivery_instruction = $request['delivery_instruction'];
+
+            // Handle voice instruction file upload
+            if ($request->hasFile('voice_instruction')) {
+                $voicePath = $request->file('voice_instruction')->store('orders/voice_instructions', 'public');
+                $order->voice_instruction = $voicePath;
+            }
+
             $order->order_type = $request['order_type'];
             $order->store_id = $request['store_id'];
             $order->delivery_charge = round($delivery_charge, config('round_up_to_digit')) ?? 0;

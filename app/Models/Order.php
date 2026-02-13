@@ -48,7 +48,7 @@ class Order extends Model
         'sub_status_updated_at' => 'datetime',
     ];
 
-    protected $appends = ['module_type','order_attachment_full_url','order_proof_full_url'];
+    protected $appends = ['module_type','order_attachment_full_url','order_proof_full_url','voice_instruction_full_url'];
 
     public function getOrderAttachmentFullUrlAttribute(){
         $images = [];
@@ -82,6 +82,13 @@ class Order extends Model
         }
 
         return $images;
+    }
+
+    public function getVoiceInstructionFullUrlAttribute()
+    {
+        return $this->voice_instruction
+            ? asset('storage/' . $this->voice_instruction)
+            : null;
     }
 
     private function isValidJson($string)
