@@ -387,6 +387,8 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
             Route::group(['prefix'=>'xp'], function() {
                 Route::get('level', 'XpController@getLevel');
                 Route::get('levels', 'XpController@getAllLevels');
+                Route::get('level-details', 'XpController@getLevelDetails');
+                Route::get('history', 'XpController@getHistory');
                 Route::get('transactions', 'XpController@getTransactions');
                 Route::get('challenges', 'XpController@getChallenges');
                 Route::post('challenges/{id}/claim', 'XpController@claimChallenge');
@@ -394,6 +396,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
                 Route::post('prizes/{id}/claim', 'XpController@claimPrize');
                 Route::get('checkout-prizes', 'XpController@getCheckoutPrizes');
                 Route::get('reward-items', 'XpController@getRewardItems');
+                Route::get('leaderboard', 'XpController@getLeaderboard');
             });
 
             Route::get('visit-again', 'OrderController@order_again');

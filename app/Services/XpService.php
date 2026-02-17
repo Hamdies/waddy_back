@@ -7,6 +7,7 @@ use App\Models\Level;
 use App\Models\LevelPrize;
 use App\Models\XpTransaction;
 use App\Models\UserLevelPrize;
+use App\Models\UserStreak;
 use App\Models\XpSetting;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -105,6 +106,26 @@ class XpService
                 $order->id,
                 "Spent {$orderAmount} EGP (x" . XpSetting::getMultiplier($moduleType) . " multiplier)"
             );
+        }
+
+        // Update streak and award streak bonus XP
+        try {
+            $streak = UserStreak::recordActivity($user);
+            if ($streak->current_streak > 1) {
+                $streakBonusXp = XpSetting::getInt('streak_bonus_xp', 10);
+                if ($streakBonusXp > 0) {
+                    self::addXp(
+                        $user,
+                        'streak_bonus',
+                        $streakBonusXp,
+                        'order',
+                        $order->id,
+                        "Streak day {$streak->current_streak} bonus"
+                    );
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error("Streak update failed: " . $e->getMessage());
         }
     }
 
@@ -210,6 +231,8 @@ class XpService
                     'description' => translate("Congratulations! You've reached") . " $levelName",
                     'image' => $levelModel->badge_image_url ?? '',
                     'type' => 'level_up',
+                    'level' => (string) $level,
+                    'level_name' => $levelName,
                     'order_id' => '',
                     'module_id' => '',
                     'order_type' => '',
@@ -255,5 +278,27 @@ class XpService
                 'xp_required' => $nextLevel->xp_required,
             ] : null,
         ];
+    }
+
+    /**
+     * Add XP for a referral (when referred user places first order).
+     */
+    public static function addReferralXp(User $referrer, User $referredUser, $order): void
+    {
+        $xp = XpSetting::getInt('xp_referral_bonus', 50);
+        if ($xp > 0) {
+            // Only award for the referred user's first order
+            $orderCount = $referredUser->orders()->where('order_status', 'delivered')->count();
+            if ($orderCount <= 1) {
+                self::addXp(
+                    $referrer,
+                    'referral_bonus',
+                    $xp,
+                    'referral',
+                    $referredUser->id,
+                    'Referral bonus: ' . ($referredUser->f_name ?? 'User') . ' placed first order'
+                );
+            }
+        }
     }
 }

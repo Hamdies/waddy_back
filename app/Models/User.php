@@ -156,6 +156,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get user's streak data.
+     */
+    public function streak()
+    {
+        return $this->hasOne(UserStreak::class);
+    }
+
+    /**
      * Get current level details.
      */
     public function currentLevel()

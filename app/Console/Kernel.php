@@ -24,7 +24,8 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // $schedule->command('inspire')->hourly();
+        // Send push notifications for prizes expiring within 24 hours
+        $schedule->command('xp:prize-expiry-reminders')->dailyAt('10:00');
     }
 
     /**
