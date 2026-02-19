@@ -214,6 +214,7 @@ class ConfigController extends Controller
             'digital_payment_info' => $digital_payment_infos,
             'demo' => (boolean)(env('APP_MODE') == 'demo' ? true : false),
             'maintenance_mode' => (boolean)Helpers::get_business_settings('maintenance_mode') ?? 0,
+            'ramadan_mode' => (boolean)(isset($settings['ramadan_mode']) ? $settings['ramadan_mode'] : 0),
             'order_confirmation_model' => config('order_confirmation_model'),
             'show_dm_earning' => (boolean)$settings['show_dm_earning'],
             'canceled_by_deliveryman' => (boolean)$settings['canceled_by_deliveryman'],
