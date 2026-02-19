@@ -13,6 +13,8 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Modules\Rental\Entities\Trips;
 
+use Illuminate\Support\Facades\Cache;
+
 class SystemController extends Controller
 {
 
@@ -111,6 +113,7 @@ class SystemController extends Controller
                 'value' => $maintenance_mode->value == 1 ? 0 : 1
             ]);
         }
+        Cache::forget('business_settings_config_keys');
 
         if (isset($maintenance_mode) && $maintenance_mode->value) {
             return response()->json(['message' => translate('Maintenance is off.')]);
@@ -133,6 +136,7 @@ class SystemController extends Controller
                 'value' => $ramadan_mode->value == 1 ? 0 : 1
             ]);
         }
+        Cache::forget('business_settings_config_keys');
 
         if (isset($ramadan_mode) && $ramadan_mode->value) {
             return response()->json(['message' => translate('Ramadan mode is off.')]);
