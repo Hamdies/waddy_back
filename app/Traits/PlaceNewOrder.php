@@ -493,10 +493,6 @@ trait PlaceNewOrder
 
             //DM TIPS
             $order->order_amount = $order->order_amount + $order->dm_tips + $order->additional_charge + $order->extra_packaging_amount;
-
-            // Calculate estimated delivery time
-            $order->estimated_delivery_at = EstimatedDeliveryService::calculateInitialEstimate($order, $store ?? null);
-
             if ($request->payment_method == 'wallet' && $request->user->wallet_balance < $order->order_amount) {
                 DB::rollBack();
                 return response()->json([
