@@ -7,6 +7,7 @@ use App\Models\DeliveryMan;
 use App\Models\OrderStatusLog;
 use App\CentralLogics\Helpers;
 use App\CentralLogics\OrderLogic;
+use App\Services\EstimatedDeliveryService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 
@@ -119,6 +120,12 @@ class OrderStatusService
                 
                 if ($newStatus == 'processing' && isset($options['processing_time'])) {
                     $order->processing_time = $options['processing_time'];
+                }
+                
+                // Recalculate estimated delivery time
+                $recalculated = EstimatedDeliveryService::recalculateOnStatusChange($order, $newStatus);
+                if ($recalculated) {
+                    $order->estimated_delivery_at = $recalculated;
                 }
                 
                 $order[$newStatus] = now();

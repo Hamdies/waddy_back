@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use App\Models\OrderPayment;
 use App\Traits\PlaceNewOrder;
+use App\Services\EstimatedDeliveryService;
 use Brian2694\Toastr\Facades\Toastr;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -360,6 +361,13 @@ class OrderController extends Controller
         if($request->order_status == 'processing') {
             $order->processing_time = ($request?->processing_time) ? $request->processing_time : explode('-', $order['store']['delivery_time'])[0];
         }
+
+        // Recalculate estimated delivery time
+        $recalculated = EstimatedDeliveryService::recalculateOnStatusChange($order, $request->order_status);
+        if ($recalculated) {
+            $order->estimated_delivery_at = $recalculated;
+        }
+
         $order[$request['order_status']] = now();
         $order->save();
         if(!Helpers::send_order_notification($order))

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api\V1\Vendor;
 
+use App\Services\EstimatedDeliveryService;
+
 use App\Models\Item;
 use App\Models\Admin;
 use App\Models\Order;
@@ -487,6 +489,13 @@ class VendorController extends Controller
         if($order->order_status == 'processing') {
             $order->processing_time = ($request?->processing_time) ? $request->processing_time : explode('-', $order['store']['delivery_time'])[0];
         }
+
+        // Recalculate estimated delivery time
+        $recalculated = EstimatedDeliveryService::recalculateOnStatusChange($order, $request['status']);
+        if ($recalculated) {
+            $order->estimated_delivery_at = $recalculated;
+        }
+
         $order[$request['status']] = now();
         $order->save();
         Helpers::send_order_notification($order);
