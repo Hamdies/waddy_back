@@ -73,18 +73,11 @@ class PasswordResetController extends Controller
 
 
             $token = rand(100000,999999);
-            if(env('APP_MODE') == 'test'){
-                $token = '123456';
-            }
                DB::table('password_resets')->updateOrInsert(isset($request->phone) ? ['phone' => $request->phone] : ['email' => $request->email],
                [
                 'token' => $token,
                 'created_at' => now(),
             ]);
-
-            if(env('APP_MODE') == 'test'){
-                return response()->json(['message' => translate('messages.Use_test_OTP')], 200);
-            }
 
             $is_sms_active= Setting::whereJsonContains('live_values->status','1')->where('settings_type', 'sms_config')->exists();
             if($is_sms_active ){
@@ -167,17 +160,6 @@ class PasswordResetController extends Controller
             return response()->json(['errors' => [
                 ['code' => 'not-found', 'message' => translate('Phone_number_not_found!')]
             ]], 404);
-        }
-
-        if(env('APP_MODE')=='test')
-        {
-            if($request['reset_token']=="123456")
-            {
-                return response()->json(['message'=>"OTP found, you can proceed"], 200);
-            }
-            return response()->json(['errors' => [
-                ['code' => 'invalid', 'message' => translate('Invalid OTP.')]
-            ]], 400);
         }
 
         $data = DB::table('password_resets')->where(['token' => $request['reset_token']])->where(isset($request->phone) ? ['phone' => $request->phone] : ['email' => $request->email])->first();
@@ -272,24 +254,6 @@ class PasswordResetController extends Controller
 
 
         $data = PasswordReset::where(['token' => $request['reset_token']])->where(isset($request->phone) ? ['phone' => $request->phone] : ['email' => $request->email])->first();
-
-        if(env('APP_MODE')=='test')
-        {
-            if($request['reset_token']=="123456")
-            {
-                $user->password = bcrypt($request['confirm_password']);
-                $user->save();
-
-                if (isset($data)) {
-                    PasswordReset::where(['token' => $request['reset_token']])->where(isset($request->phone) ? ['phone' => $request->phone] : ['email' => $request->email])->delete();
-                }
-                return response()->json(['message' => translate('Password changed successfully.')], 200);
-            }
-            return response()->json([
-                'message' => translate('OTP does not match')
-            ], 404);
-        }
-
 
         if (isset($data)) {
             if ($request['password'] == $request['confirm_password']) {

@@ -222,9 +222,9 @@ class PaytmController extends Controller
 
     public function callback(Request $request): JsonResponse|Redirector|RedirectResponse|Application
     {
-        $paramList = $_POST;
+        $paramList = $request->post();
 
-        $paytmChecksum = isset($_POST["CHECKSUMHASH"]) ? $_POST["CHECKSUMHASH"] : "";
+        $paytmChecksum = $request->input("CHECKSUMHASH", "");
 
         $isValidChecksum = $this->verifychecksum_e($paramList, Config::get('paytm_config.PAYTM_MERCHANT_KEY'), $paytmChecksum); //will return TRUE or FALSE string.
 

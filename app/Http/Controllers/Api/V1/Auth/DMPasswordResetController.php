@@ -33,7 +33,7 @@ class DMPasswordResetController extends Controller
         $deliveryman = DeliveryMan::Where(['phone' => $request['phone']])->first();
 
         if (isset($deliveryman)) {
-            if($firebase_otp_verification || env('APP_MODE') =='demo')
+            if($firebase_otp_verification)
             {
                 return response()->json(['message' => translate('messages.otp_sent_successfull')], 200);
             }
@@ -145,17 +145,6 @@ class DMPasswordResetController extends Controller
             return response()->json(['errors' => $errors
             ], 404);
         }
-        if(env('APP_MODE')=='demo')
-        {
-            if($request['reset_token'] == '123456')
-            {
-                return response()->json(['message'=>"Token found, you can proceed"], 200);
-            }
-            $errors = [];
-            array_push($errors, ['code' => 'reset_token', 'message' => 'Invalid token.']);
-            return response()->json(['errors' => $errors
-                ], 400);
-        }
         $data = DB::table('password_resets')->where(['token' => $request['reset_token'],'email'=>$user->email])->first();
         if (isset($data)) {
             return response()->json(['message'=>"Token found, you can proceed"], 200);
@@ -241,19 +230,6 @@ class DMPasswordResetController extends Controller
 
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
-        }
-        if(env('APP_MODE')=='demo')
-        {
-            if($request['reset_token']=="123456")
-            {
-                DB::table('delivery_men')->where(['phone' => $request['phone']])->update([
-                    'password' => bcrypt($request['confirm_password'])
-                ]);
-                return response()->json(['message' => 'Password changed successfully.'], 200);
-            }
-            $errors = [];
-            array_push($errors, ['code' => 'invalid', 'message' => 'Invalid token.']);
-            return response()->json(['errors' => $errors], 400);
         }
         $data = DB::table('password_resets')->where(['token' => $request['reset_token']])->first();
         if (isset($data)) {

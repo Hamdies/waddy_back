@@ -39,7 +39,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
     // Public XP config endpoint (no auth required - for client-side XP calculation)
     Route::get('xp/config', 'XpController@getConfig');
 
-    Route::group(['prefix' => 'auth', 'namespace' => 'Auth'], function () {
+    Route::group(['prefix' => 'auth', 'namespace' => 'Auth', 'middleware' => 'throttle:auth'], function () {
         Route::post('sign-up', 'CustomerAuthController@register');
         Route::post('login', 'CustomerAuthController@login');
         Route::post('external-login', 'CustomerAuthController@customerLoginFromDrivemond');
@@ -47,7 +47,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
         Route::post('update-info', 'CustomerAuthController@update_info');
         Route::post('firebase-verify-token', 'CustomerAuthController@firebase_auth_verify');
 
-        Route::post('forgot-password', 'PasswordResetController@reset_password_request');
+        Route::post('forgot-password', 'PasswordResetController@reset_password_request')->middleware('throttle:otp');
         Route::post('verify-token', 'PasswordResetController@verify_token');
         Route::put('reset-password', 'PasswordResetController@reset_password_submit');
         Route::put('firebase-reset-password', 'PasswordResetController@firebase_auth_verify');

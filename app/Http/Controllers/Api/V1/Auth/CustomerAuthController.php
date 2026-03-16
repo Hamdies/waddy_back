@@ -113,7 +113,7 @@ class CustomerAuthController extends Controller
                     $user_email = $user->email;
                 }
                 if ($is_personal_info == 1 && auth()->loginUsingId($user->id)) {
-                    $token = auth()->user()->createToken('RestaurantCustomerAuth')->accessToken;
+                    $token = auth()->user()->createToken('WaddyCustomerAuth')->accessToken;
                     if(isset($request['guest_id'])){
                         $this->check_guest_cart($user, $request['guest_id']);
                     }
@@ -211,7 +211,7 @@ class CustomerAuthController extends Controller
                         $user_email = $user->email;
                     }
                     if ($is_personal_info == 1 && auth()->loginUsingId($user->id)) {
-                        $token = auth()->user()->createToken('RestaurantCustomerAuth')->accessToken;
+                        $token = auth()->user()->createToken('WaddyCustomerAuth')->accessToken;
                         if(isset($request['guest_id'])){
                             $this->check_guest_cart($user, $request['guest_id']);
                         }
@@ -300,7 +300,7 @@ class CustomerAuthController extends Controller
                 $user_email = $user->email;
             }
             if ($is_personal_info == 1 && auth()->loginUsingId($user->id)) {
-                $token = auth()->user()->createToken('RestaurantCustomerAuth')->accessToken;
+                $token = auth()->user()->createToken('WaddyCustomerAuth')->accessToken;
                 if(isset($request['guest_id'])){
                     $this->check_guest_cart($user, $request['guest_id']);
                 }
@@ -340,7 +340,7 @@ class CustomerAuthController extends Controller
                     $user_email = $user->email;
                 }
                 if ($is_personal_info == 1 && auth()->loginUsingId($user->id)) {
-                    $token = auth()->user()->createToken('RestaurantCustomerAuth')->accessToken;
+                    $token = auth()->user()->createToken('WaddyCustomerAuth')->accessToken;
                     if(isset($request['guest_id'])){
                         $this->check_guest_cart($user, $request['guest_id']);
                     }
@@ -456,7 +456,7 @@ class CustomerAuthController extends Controller
         $user->ref_code = Helpers::generate_referer_code($user);
         $user->save();
 
-        $token = $user->createToken('RestaurantCustomerAuth')->accessToken;
+        $token = $user->createToken('WaddyCustomerAuth')->accessToken;
 
         $login_settings = array_column(BusinessSetting::whereIn('key',['manual_login_status','otp_login_status','social_login_status','google_login_status','facebook_login_status','apple_login_status','email_verification_status','phone_verification_status'
         ])->get(['key','value'])->toArray(), 'value', 'key');
@@ -479,9 +479,6 @@ class CustomerAuthController extends Controller
                 }
 
                 $otp = rand(100000, 999999);
-                if(env('APP_MODE') == 'test'){
-                    $otp = '123456';
-                }
                 DB::table('phone_verifications')->updateOrInsert(['phone' => $request['phone']],
                     [
                         'token' => $otp,
@@ -505,7 +502,7 @@ class CustomerAuthController extends Controller
                 }
 
                 $token = null;
-                if(env('APP_MODE') != 'test' && $response !== 'success') {
+                if($response !== 'success') {
                     $errors = [];
                     array_push($errors, ['code' => 'otp', 'message' => translate('messages.failed_to_send_sms')]);
                     return response()->json([
@@ -517,9 +514,6 @@ class CustomerAuthController extends Controller
         }elseif (isset($login_settings['email_verification_status']) && $login_settings['email_verification_status'] == 1 && $request->email){
             $mail =0;
             $otp = rand(100000, 999999);
-            if(env('APP_MODE') == 'test'){
-                $otp = '123456';
-            }
             DB::table('email_verifications')->updateOrInsert(['email' => $request['email']],
                 [
                     'token' => $otp,
@@ -540,7 +534,7 @@ class CustomerAuthController extends Controller
                 $mailResponse=null;
             }
             $token = null;
-            if(env('APP_MODE') != 'test' && $mailResponse !== 'success') {
+            if($mailResponse !== 'success') {
                 $errors = [];
                 array_push($errors, ['code' => 'otp', 'message' => translate('messages.failed_to_send_mail')]);
                 return response()->json([
@@ -795,7 +789,7 @@ class CustomerAuthController extends Controller
             }
 
             if ($is_personal_info == 1 && auth()->loginUsingId($user->id)) {
-                $token = auth()->user()->createToken('RestaurantCustomerAuth')->accessToken;
+                $token = auth()->user()->createToken('WaddyCustomerAuth')->accessToken;
                 if(isset($request_data['guest_id'])){
                     $this->check_guest_cart($user, $request_data['guest_id']);
                 }
@@ -856,7 +850,7 @@ class CustomerAuthController extends Controller
 
             $token = null;
             if ($is_personal_info == 1 && auth()->loginUsingId($user->id)) {
-                $token = auth()->user()->createToken('RestaurantCustomerAuth')->accessToken;
+                $token = auth()->user()->createToken('WaddyCustomerAuth')->accessToken;
                 if(isset($request_data['guest_id'])){
                     $this->check_guest_cart($user, $request_data['guest_id']);
                 }
@@ -958,7 +952,7 @@ class CustomerAuthController extends Controller
 
             $token = null;
             if ($is_personal_info == 1 && auth()->loginUsingId($user->id)) {
-                $token = auth()->user()->createToken('RestaurantCustomerAuth')->accessToken;
+                $token = auth()->user()->createToken('WaddyCustomerAuth')->accessToken;
                 if(isset($request_data['guest_id'])){
                     $this->check_guest_cart($user, $request_data['guest_id']);
                 }
@@ -995,9 +989,6 @@ class CustomerAuthController extends Controller
             }
 
             $otp = rand(100000, 999999);
-            if(env('APP_MODE') == 'test'){
-                $otp = '123456';
-            }
             DB::table('phone_verifications')->updateOrInsert(['phone' => $request_data['phone']],
                 [
                     'token' => $otp,
@@ -1021,7 +1012,7 @@ class CustomerAuthController extends Controller
                 $response = SMS_module::send($request_data['phone'],$otp);
             }
 
-            if((env('APP_MODE') != 'test') && $response !== 'success')
+            if($response !== 'success')
             {
                 $errors = [];
                 array_push($errors, ['code' => 'otp', 'message' => translate('messages.failed_to_send_sms')]);
@@ -1171,7 +1162,7 @@ class CustomerAuthController extends Controller
         $user->save();
         $token = null;
         if (auth()->loginUsingId($user->id)) {
-            $token = auth()->user()->createToken('RestaurantCustomerAuth')->accessToken;
+            $token = auth()->user()->createToken('WaddyCustomerAuth')->accessToken;
 
             if(isset($request['guest_id'])){
                 $this->check_guest_cart($user, $request['guest_id']);
@@ -1228,7 +1219,7 @@ class CustomerAuthController extends Controller
                         $drivemondCustomer = $drivemondCustomerResponse['data'];
                         if (User::where('email', $drivemondCustomer['email'])->first()) {
                             $errors = [];
-                            array_push($errors, ['code' => 'email_unique_402', 'message' => translate('messages.Email already exists, Please update mart email and switch 6ammart')]);
+                            array_push($errors, ['code' => 'email_unique_402', 'message' => translate('messages.Email already exists, Please update your email')]);
                             return response()->json([
                                 'errors' => $errors
                             ], 403);
@@ -1265,7 +1256,7 @@ class CustomerAuthController extends Controller
 
 
             if (Auth::loginUsingId($user->id)) {
-                $token = auth()->user()->createToken('RestaurantCustomerAuth')->accessToken;
+                $token = auth()->user()->createToken('WaddyCustomerAuth')->accessToken;
                 if (!auth()->user()->status) {
                     $errors = [];
                     array_push($errors, ['code' => 'auth-003', 'message' => translate('messages.your_account_is_blocked')]);

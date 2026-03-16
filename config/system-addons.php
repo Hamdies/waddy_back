@@ -1,56 +1,56 @@
 <?php return array (
-  'admin_panel' => 
+  'admin_panel' =>
   array (
     'active' => '1',
-    'username' => 'siptsgcr',
-    'purchase_key' => '7a7b2216-4acb-4dc6-b243-99edabf3ba66',
-    'software_id' => 'MzY3NzIxMTI=',
-    'domain' => 'localhost/Backend-6amMart/public',
+    'username' => '',
+    'purchase_key' => '',
+    'software_id' => '',
+    'domain' => '',
     'software_type' => 'product',
   ),
-  'vendor_panel' => 
+  'vendor_panel' =>
   array (
-    'active' => '0',
+    'active' => '1',
     'username' => '',
     'purchase_key' => '',
     'software_id' => '',
     'domain' => '',
     'software_type' => 'addon',
   ),
-  'user_app' => 
+  'user_app' =>
   array (
-    'active' => '0',
+    'active' => '1',
     'username' => '',
     'purchase_key' => '',
     'software_id' => '',
     'domain' => '',
     'software_type' => 'addon',
   ),
-  'vendor_app' => 
+  'vendor_app' =>
   array (
     'active' => '1',
-    'username' => 'siptsgcr',
-    'purchase_key' => '7a7b2216-4acb-4dc6-b243-99edabf3ba66',
-    'software_id' => 'MzY3NzIxNzM=',
-    'domain' => 'localhost/Backend-6amMart/public',
+    'username' => '',
+    'purchase_key' => '',
+    'software_id' => '',
+    'domain' => '',
     'software_type' => 'addon',
   ),
-  'deliveryman_app' => 
+  'deliveryman_app' =>
   array (
     'active' => '1',
-    'username' => 'siptsgcr',
-    'purchase_key' => '7a7b2216-4acb-4dc6-b243-99edabf3ba66',
-    'software_id' => 'MzY3NzIxNDg=',
-    'domain' => 'localhost/Backend-6amMart/public',
+    'username' => '',
+    'purchase_key' => '',
+    'software_id' => '',
+    'domain' => '',
     'software_type' => 'addon',
   ),
-  'react_web' => 
+  'react_web' =>
   array (
     'active' => '1',
-    'username' => 'siptsgcr',
-    'purchase_key' => '7a7b2216-4acb-4dc6-b243-99edabf3ba66',
-    'software_id' => 'NDUzNzAzNTE=',
-    'domain' => 'localhost/Backend-6amMart/public',
+    'username' => '',
+    'purchase_key' => '',
+    'software_id' => '',
+    'domain' => '',
     'software_type' => 'addon',
   ),
 );

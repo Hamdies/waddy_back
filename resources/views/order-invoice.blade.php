@@ -580,7 +580,7 @@ $site_direction = \App\CentralLogics\Helpers::system_default_direction();
                         {{ translate('for any queries, we’re always happy to help.') }}
                     </div>
                     <div class="copyright" style="text-align:center" id="mail-copyright">
-                        {{ $BusinessData['footer_text'] ?? translate('Copyright 2023 6ammart. All right reserved') }}
+                        {{ $BusinessData['footer_text'] ?? translate('Copyright 2024 Waddy. All rights reserved') }}
                     </div>
                 </td>
             </tr>

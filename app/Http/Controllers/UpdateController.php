@@ -39,12 +39,9 @@ class UpdateController extends Controller
             $filesystem->cleanDirectory('database/migrations');
         }
 
-        Helpers::setEnvironmentValue('BUYER_USERNAME', $request['username']);
-        Helpers::setEnvironmentValue('PURCHASE_CODE', $request['purchase_key']);
         Helpers::setEnvironmentValue('APP_MODE', 'live');
-        Helpers::setEnvironmentValue('SOFTWARE_VERSION', '3.3');
-        Helpers::setEnvironmentValue('REACT_APP_KEY', '45370351');
-        Helpers::setEnvironmentValue('APP_NAME', '6amMart' . time());
+        Helpers::setEnvironmentValue('SOFTWARE_VERSION', '1.0');
+        Helpers::setEnvironmentValue('APP_NAME', 'Waddy' . time());
 
         // $data = Helpers::requestSender();
         // if (!$data['active']) {
@@ -71,7 +68,7 @@ class UpdateController extends Controller
             "app_url_ios_status" => "0",
             "app_url_ios" => "https://www.apple.com/app-store",
             "web_app_url_status" => "0",
-            "web_app_url" => "https://6ammart-web.6amtech.com/"
+            "web_app_url" => ""
         ]));
 
         //version 1.5.0

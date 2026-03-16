@@ -619,7 +619,7 @@ $site_direction = \App\CentralLogics\Helpers::system_default_direction();
                         @endif
                     </span>
                     <span class="copyright" id="mail-copyright">
-                        {{ $copyright_text ?? translate('Copyright 2023 6ammart. All right reserved') }}
+                        {{ $copyright_text ?? translate('Copyright 2024 Waddy. All rights reserved') }}
                     </span>
                 </td>
             </tr>

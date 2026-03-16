@@ -22,7 +22,7 @@ trait VatTaxConfiguration
     public static function getPorjectWiseSystemData($key = null)
     {
         $allProjects = [
-            '6ammart' => [
+            'waddy' => [
                 'tax_calculate_from' => ['Calculate_Tax_on_Billing_Address_Location'],
 
                 'tax_calculate_on' => ['order_wise', 'product_wise', 'category_wise'],
@@ -57,7 +57,7 @@ trait VatTaxConfiguration
     public static function getProjectWiseViewPath($name)
     {
         $allProjects = [
-            '6ammart' => [
+            'waddy' => [
                 'tax_list_export' =>  'taxmodule::file-exports.tax_list_export',
                 'tax_list' =>  'taxmodule::tax.tax_list',
                 'system_tax_setup' =>  'taxmodule::tax.system_tax_setup',
@@ -80,7 +80,7 @@ trait VatTaxConfiguration
     public static function getClassNames($model)
     {
         $allProjects = [
-            '6ammart' => [
+            'waddy' => [
                 'product' => 'App\Models\Item',
                 'category' =>  'App\Models\Category',
                 'addon' =>  'App\Models\AddOn',

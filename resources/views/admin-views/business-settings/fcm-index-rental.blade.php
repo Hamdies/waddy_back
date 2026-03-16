@@ -435,7 +435,7 @@
                                         <p>
                                             {{ translate('Please check the documentation below for detailed instructions on setting up your mobile app to receive Firebase Cloud Messaging (FCM) notifications.') }}
                                         </p>
-                                        <a href="https://docs.6amtech.com/docs-six-am-mart/mobile-apps/mandatory-setup"
+                                        <a href=""
                                             target="_blank">{{ translate('Click Here') }}</a>
                                     </div>
                                 </div>

@@ -29,12 +29,14 @@ class VendorPasswordResetController extends Controller
         $vendor = Vendor::Where(['email' => $request['email']])->first();
 
         if (isset($vendor)) {
-            $token = rand(1000,9999);
-            DB::table('password_resets')->updateOrInsert([
-                'email' => $vendor['email'],
-                'token' => $token,
-                'created_at' => now(),
-            ]);
+            $token = rand(100000,999999);
+            DB::table('password_resets')->updateOrInsert(
+                ['email' => $vendor['email']],
+                [
+                    'token' => $token,
+                    'created_at' => now(),
+                ]
+            );
             if (config('mail.status')) {
                 Mail::to($vendor['email'])->send(new \App\Mail\PasswordResetMail($token));
             }
@@ -57,7 +59,7 @@ class VendorPasswordResetController extends Controller
         }
 
         $data = DB::table('password_resets')->where(['token' => $request['reset_token'],'email'=>$request->email])->first();
-        if (isset($data) || (env('APP_MODE')=='demo'&& $request['reset_token'] == '123456' )) {
+        if (isset($data)) {
             return response()->json(['message'=>translate("OTP found, you can proceed")], 200);
         } else{
             // $otp_hit = BusinessSetting::where('key', 'max_otp_hit')->first();
@@ -143,24 +145,6 @@ class VendorPasswordResetController extends Controller
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
-        if(env('APP_MODE')=='demo') {
-            if ($request['reset_token'] != '123456') {
-                return response()->json(['errors' => [
-                    ['code' => 'invalid', 'message' => trans('messages.invalid_otp')]
-                ]], 400);
-            }
-            if ($request['password'] == $request['confirm_password']) {
-                DB::table('vendors')->where(['email' => $request->email])->update([
-                    'password' => bcrypt($request['confirm_password'])
-                ]);
-                DB::table('password_resets')->where(['token' => $request['reset_token']])->delete();
-                return response()->json(['message' => translate('Password changed successfully.')], 200);
-            }
-            return response()->json(['errors' => [
-                ['code' => 'mismatch', 'message' => translate('messages.password_mismatch')]
-            ]], 401);
-        }
-
         $data = DB::table('password_resets')->where(['email'=>$request['email'],'token' => $request['reset_token']])->first();
         if (isset($data)) {
             if ($request['password'] == $request['confirm_password']) {

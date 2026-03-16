@@ -56,7 +56,7 @@ trait NotificationTrait
                     ],
                     "android" => [
                         "notification" => [
-                            "channelId" => '6ammart',
+                            "channelId" => 'waddy',
                         ]
                     ],
                     "apns" => [
@@ -100,7 +100,7 @@ trait NotificationTrait
                     ],
                     "android" => [
                         "notification" => [
-                            "channelId" => '6ammart',
+                            "channelId" => 'waddy',
                         ]
                     ],
                     "apns" => [
@@ -184,7 +184,7 @@ trait NotificationTrait
                 ],
                 "android" => [
                     "notification" => [
-                        "channelId" => '6ammart',
+                        "channelId" => 'waddy',
                     ]
                 ],
                 "apns" => [

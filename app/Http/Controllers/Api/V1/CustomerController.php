@@ -485,9 +485,6 @@ class CustomerController extends Controller
         }
 
         $otp = rand(100000, 999999);
-        if(env('APP_MODE') == 'test'){
-            $otp = '123456';
-        }
         DB::table('phone_verifications')->updateOrInsert(
             ['phone' => $phone],
             [
@@ -509,7 +506,7 @@ class CustomerController extends Controller
         } else {
             $response = SMS_module::send($phone, $otp);
         }
-        if (env('APP_MODE') != 'test' && $response !== 'success') {
+        if ($response !== 'success') {
             return ['is_success' => false,  'message' => translate('failed_to_send_otp'), 'code' => 403];
         }
         return  ['is_success' => true,  'message' => translate('OTP_successfully_send'), 'code' => 200];
@@ -517,9 +514,6 @@ class CustomerController extends Controller
     private function verification_check_email($data)
     {
         $otp = rand(100000, 999999);
-        if(env('APP_MODE') == 'test'){
-            $otp = '123456';
-        }
         DB::table('email_verifications')->updateOrInsert(
             ['email' => $data['email']],
             [
@@ -541,7 +535,7 @@ class CustomerController extends Controller
             info($ex->getMessage());
             $mailResponse = null;
         }
-        if (env('APP_MODE') != 'test' && $mailResponse !== 'success') {
+        if ($mailResponse !== 'success') {
             return  ['is_success' => false,  'message' => translate('failed_to_send_mail'), 'code' => 403];
         }
         return  ['is_success' => true,  'message' => translate('OTP_successfully_send_to_mail'), 'code' => 200];

@@ -144,7 +144,7 @@ class SocialAuthController extends Controller
             $customer_verification = BusinessSetting::where('key','customer_verification')->first()->value;
             $firebase_otp_verification = BusinessSetting::where('key', 'firebase_otp_verification')->first()->value??0;
             if (auth()->attempt($data)) {
-                $token = auth()->user()->createToken('RestaurantCustomerAuth')->accessToken;
+                $token = auth()->user()->createToken('WaddyCustomerAuth')->accessToken;
                 if(!auth()->user()->status)
                 {
                     $errors = [];
@@ -341,7 +341,7 @@ class SocialAuthController extends Controller
             $customer_verification = BusinessSetting::where('key','customer_verification')->first()->value;
             $firebase_otp_verification = BusinessSetting::where('key', 'firebase_otp_verification')->first()->value??0;
             if (auth()->loginUsingId($user->id)) {
-                $token = auth()->user()->createToken('RestaurantCustomerAuth')->accessToken;
+                $token = auth()->user()->createToken('WaddyCustomerAuth')->accessToken;
                 if(!auth()->user()->status)
                 {
                     $errors = [];
@@ -552,7 +552,7 @@ class SocialAuthController extends Controller
         $customer_verification = BusinessSetting::where('key','customer_verification')->first()->value;
         $firebase_otp_verification = BusinessSetting::where('key', 'firebase_otp_verification')->first()->value??0;
         if (auth()->loginUsingId($user->id)) {
-            $token = auth()->user()->createToken('RestaurantCustomerAuth')->accessToken;
+            $token = auth()->user()->createToken('WaddyCustomerAuth')->accessToken;
             if(!auth()->user()->status)
             {
                 $errors = [];

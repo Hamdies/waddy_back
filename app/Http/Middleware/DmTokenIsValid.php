@@ -18,12 +18,23 @@ class DmTokenIsValid
      */
     public function handle(Request $request, Closure $next)
     {
-        $validator = Validator::make($request->all(), [
-            'token' => 'required|exists:delivery_men,auth_token'
-        ]);
-        if ($validator->fails()) {
-            return response()->json(['errors' => Helpers::error_processor($validator)], 401);
+        $token = $request->bearerToken() ?? $request->input('token');
+        if(!$token || strlen($token) < 1) {
+            return response()->json([
+                'errors' => [
+                    ['code' => 'auth-001', 'message' => 'Unauthorized.']
+                ]
+            ], 401);
         }
+        $dm = \App\Models\DeliveryMan::where('auth_token', $token)->first();
+        if(!$dm) {
+            return response()->json([
+                'errors' => [
+                    ['code' => 'auth-001', 'message' => 'Unauthorized.']
+                ]
+            ], 401);
+        }
+        $request->merge(['dm' => $dm]);
         return $next($request);
     }
 }

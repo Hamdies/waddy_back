@@ -16,11 +16,15 @@ class APIGuestMiddleware
      */
     public function handle(Request $request, Closure $next)
     {
-        if($request->header('Authorization') && $request->header('Authorization') !== 'Bearer null' && app('auth')->guard('api')) {
-            $request->merge(['user'=>auth('api')->user()]);
-            return $next($request);
+        $token = $request->bearerToken();
+        if($token && $token !== 'null' && strlen($token) > 1) {
+            $user = auth('api')->user();
+            if($user) {
+                $request->merge(['user' => $user]);
+                return $next($request);
+            }
         }
-        elseif($request->guest_id) {
+        if($request->guest_id) {
             return $next($request);
         }
         return response()->json(['errors' => 'Unauthorized'], 401);

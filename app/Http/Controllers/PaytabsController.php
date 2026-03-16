@@ -143,8 +143,8 @@ class PaytabsController extends Controller
     public function callback(Request $request)
     {
         $plugin = new Paytabs();
-        $response_data = $_POST;
-        $transRef = filter_input(INPUT_POST, 'tranRef');
+        $response_data = $request->post();
+        $transRef = $request->input('tranRef');
 
         if (!$transRef) {
             return response()->json($this->response_formatter(GATEWAYS_DEFAULT_204), 200);

@@ -87,7 +87,7 @@ class InstallController extends Controller
 
     public function purchase_code(Request $request)
     {
-        Helpers::setEnvironmentValue('SOFTWARE_ID', 'MzY3NzIxMTI=');
+        Helpers::setEnvironmentValue('SOFTWARE_ID', '');
         Helpers::setEnvironmentValue('BUYER_USERNAME', $request['username']);
         Helpers::setEnvironmentValue('PURCHASE_CODE', $request['purchase_key']);
 
@@ -164,44 +164,40 @@ class InstallController extends Controller
         if (self::check_database_connection($request->DB_HOST, $request->DB_DATABASE, $request->DB_USERNAME, $request->DB_PASSWORD)) {
 
             $key = base64_encode(random_bytes(32));
-            $output = 'APP_NAME=6ammart'.time().
-                    'APP_ENV=live
-                    APP_KEY=base64:' . $key . '
-                    APP_DEBUG=false
-                    APP_INSTALL=true
-                    APP_LOG_LEVEL=debug
-                    APP_MODE=live
-                    APP_URL=' . URL::to('/') . '
+            $output = 'APP_NAME=Waddy'.time().
+                    '
+APP_ENV=live
+APP_KEY=base64:' . $key . '
+APP_DEBUG=false
+APP_INSTALL=true
+APP_LOG_LEVEL=debug
+APP_MODE=live
+APP_URL=' . URL::to('/') . '
 
-                    DB_CONNECTION=mysql
-                    DB_HOST=' . $request->DB_HOST . '
-                    DB_PORT=3306
-                    DB_DATABASE=' . $request->DB_DATABASE . '
-                    DB_USERNAME=' . $request->DB_USERNAME . '
-                    DB_PASSWORD="' . $request->DB_PASSWORD . '"
+DB_CONNECTION=mysql
+DB_HOST=' . $request->DB_HOST . '
+DB_PORT=3306
+DB_DATABASE=' . $request->DB_DATABASE . '
+DB_USERNAME=' . $request->DB_USERNAME . '
+DB_PASSWORD="' . $request->DB_PASSWORD . '"
 
-                    BROADCAST_DRIVER=log
-                    CACHE_DRIVER=database
-                    SESSION_DRIVER=file
-                    SESSION_LIFETIME=120
-                    QUEUE_DRIVER=sync
+BROADCAST_DRIVER=log
+CACHE_DRIVER=database
+SESSION_DRIVER=file
+SESSION_LIFETIME=120
+QUEUE_DRIVER=sync
 
-                    REDIS_HOST=127.0.0.1
-                    REDIS_PASSWORD=null
-                    REDIS_PORT=6379
+REDIS_HOST=127.0.0.1
+REDIS_PASSWORD=null
+REDIS_PORT=6379
 
-                    PUSHER_APP_ID=
-                    PUSHER_APP_KEY=
-                    PUSHER_APP_SECRET=
-                    PUSHER_APP_CLUSTER=mt1
+PUSHER_APP_ID=
+PUSHER_APP_KEY=
+PUSHER_APP_SECRET=
+PUSHER_APP_CLUSTER=mt1
 
-                    PURCHASE_CODE=' . session('purchase_key') . '
-                    BUYER_USERNAME=' . session('username') . '
-                    SOFTWARE_ID=MzY3NzIxMTI=
-
-                    SOFTWARE_VERSION=3.3
-                    REACT_APP_KEY=45370351
-                    ';
+SOFTWARE_VERSION=1.0
+';
             $file = fopen(base_path('.env'), 'w');
             fwrite($file, $output);
             fclose($file);
