@@ -399,6 +399,9 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
                 Route::get('leaderboard', 'XpController@getLeaderboard');
             });
 
+            // iOS Live Activity token storage
+            Route::post('live-activity-token', 'LiveActivityController@store');
+
             Route::get('visit-again', 'OrderController@order_again');
 
             Route::get('review-reminder', 'CustomerController@review_reminder');

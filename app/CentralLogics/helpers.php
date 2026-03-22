@@ -1790,6 +1790,8 @@ class Helpers
                     'image' => '',
                     'type' => 'order_status',
                 ];
+                // Merge extended order status fields for rich client-side updates
+                $data = array_merge($data, \App\Services\OrderNotificationService::buildExtendedPayload($order));
                 self::send_push_notif_to_device($user_fcm, $data);
                 DB::table('user_notifications')->insert([
                     'data' => json_encode($data),
