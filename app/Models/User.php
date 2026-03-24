@@ -224,9 +224,8 @@ class User extends Authenticatable
                     return;
                 }
                 
-                // Find Level 1 with 0 XP requirement
+                // Find Level 1
                 $level1 = Level::where('level_number', 1)
-                    ->where('xp_required', 0)
                     ->where('status', true)
                     ->first();
                 

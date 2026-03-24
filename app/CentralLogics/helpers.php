@@ -289,6 +289,7 @@ class Helpers
                 'module_type' => $module_type,
                 'halal_tag_status' => (int) ($item->store->storeConfig->halal_tag_status ?? 0),
                 'free_delivery' => $item->store?->free_delivery,
+                'potential_xp' => \App\Services\XpService::calculateItemXp((float) $item->price, 1, $module_type ?? 'food'),
             ];
         })->toArray();
     }
@@ -383,6 +384,8 @@ class Helpers
                 $item['tax_data']= \Modules\TaxModule\Entities\Tax::whereIn('id', $item['tax_data'])->get(['id', 'name', 'tax_rate']);
                 unset($item['taxVats']);
 
+
+                $item['potential_xp'] = \App\Services\XpService::calculateItemXp((float) $item['price'], 1, $item['module_type'] ?? 'food');
 
                 unset($item['nutritions']);
                 unset($item['allergies']);
@@ -483,7 +486,8 @@ class Helpers
             $data['tax_data']= \Modules\TaxModule\Entities\Tax::whereIn('id', $data['tax_data'])->get(['id', 'name', 'tax_rate']);
             unset($data['taxVats']);
 
-    
+            $data['potential_xp'] = \App\Services\XpService::calculateItemXp((float) $data['price'], 1, $data['module_type'] ?? 'food');
+
             unset($data['pharmacy_item_details']);
             unset($data['store']);
             unset($data['rating']);

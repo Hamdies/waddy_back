@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class UserLevelPrize extends Model
@@ -126,33 +127,45 @@ class UserLevelPrize extends Model
     }
 
     /**
-     * Record a usage of this prize.
+     * Record a usage of this prize (with pessimistic locking).
      */
     public function recordUsage(int $orderId = null): void
     {
-        $prize = $this->prize;
-        
-        // Reset period if needed
-        if ($this->shouldResetPeriod()) {
-            $this->uses_count = 0;
-            $this->period_started_at = now();
-        }
-        
-        $this->uses_count++;
-        $this->last_used_at = now();
-        $this->order_id = $orderId;
-        
-        // Mark as used if it's a one-time prize or exceeded usage limit
-        $shouldMarkUsed = !$prize 
-            || $prize->period_type === 'once' 
-            || ($prize->max_uses_per_period && $this->uses_count >= $prize->max_uses_per_period && $prize->period_type === 'once');
-        
-        if ($shouldMarkUsed) {
-            $this->status = 'used';
-            $this->used_at = now();
-        }
-        
-        $this->save();
+        DB::transaction(function () use ($orderId) {
+            // Re-fetch with lock to prevent concurrent usage
+            $locked = static::lockForUpdate()->find($this->id);
+            if (!$locked || !in_array($locked->status, ['unlocked', 'claimed'])) {
+                return;
+            }
+
+            $prize = $locked->prize;
+
+            // Reset period if needed
+            if ($locked->shouldResetPeriod()) {
+                $locked->uses_count = 0;
+                $locked->period_started_at = now();
+            }
+
+            $locked->uses_count++;
+            $locked->last_used_at = now();
+            $locked->order_id = $orderId;
+
+            // Mark as used if: no prize definition, one-time prize, or period limit exhausted
+            $shouldMarkUsed = !$prize
+                || $prize->period_type === 'once'
+                || (!$prize->period_type)
+                || ($prize->max_uses_per_period && $locked->uses_count >= $prize->max_uses_per_period);
+
+            if ($shouldMarkUsed) {
+                $locked->status = 'used';
+                $locked->used_at = now();
+            }
+
+            $locked->save();
+
+            // Sync state back to this instance
+            $this->refresh();
+        });
     }
 
     /**

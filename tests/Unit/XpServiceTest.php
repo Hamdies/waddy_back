@@ -165,4 +165,94 @@ class XpServiceTest extends TestCase
         $this->assertNotNull($levelInfo['next_level']);
         $this->assertEquals(2, $levelInfo['next_level']['level_number']);
     }
+
+    /**
+     * Test calculateItemXp returns correct XP for given inputs.
+     */
+    public function test_calculate_item_xp(): void
+    {
+        // Set the rate: 0.1 XP per LE
+        XpSetting::create(['key' => 'xp_per_currency_unit', 'value' => '0.1']);
+        // Default multiplier for food = 1.0
+        XpSetting::create(['key' => 'multiplier_food', 'value' => '1.0']);
+
+        // 250 LE × 1 qty × 1.0 multiplier × 0.1 rate = 25 XP
+        $this->assertEquals(25, XpService::calculateItemXp(250, 1, 'food'));
+
+        // 180 LE × 2 qty × 1.0 multiplier × 0.1 rate = 36 XP
+        $this->assertEquals(36, XpService::calculateItemXp(180, 2, 'food'));
+
+        // 99 LE × 1 qty × 1.0 multiplier × 0.1 rate = floor(9.9) = 9 XP
+        $this->assertEquals(9, XpService::calculateItemXp(99, 1, 'food'));
+    }
+
+    /**
+     * Test calculateItemXp with different module multipliers.
+     */
+    public function test_calculate_item_xp_with_multipliers(): void
+    {
+        XpSetting::create(['key' => 'xp_per_currency_unit', 'value' => '0.1']);
+        XpSetting::create(['key' => 'multiplier_food', 'value' => '1.0']);
+        XpSetting::create(['key' => 'multiplier_grocery', 'value' => '0.5']);
+
+        // Food: 200 LE × 1 × 1.0 × 0.1 = 20 XP
+        $this->assertEquals(20, XpService::calculateItemXp(200, 1, 'food'));
+
+        // Grocery: 200 LE × 1 × 0.5 × 0.1 = 10 XP
+        $this->assertEquals(10, XpService::calculateItemXp(200, 1, 'grocery'));
+    }
+
+    /**
+     * Test that addItemXp creates separate XP transactions per order detail.
+     */
+    public function test_add_item_xp_creates_transactions_per_detail(): void
+    {
+        // Enable XP system
+        XpSetting::create(['key' => 'leveling_enabled', 'value' => '1']);
+        XpSetting::create(['key' => 'xp_per_currency_unit', 'value' => '0.1']);
+        XpSetting::create(['key' => 'multiplier_food', 'value' => '1.0']);
+
+        Level::create(['level_number' => 1, 'xp_required' => 0, 'name' => 'Starter', 'status' => true]);
+
+        $user = User::factory()->create(['total_xp' => 0, 'level' => 0]);
+
+        // Create a mock order with details
+        $order = \App\Models\Order::factory()->create([
+            'user_id' => $user->id,
+            'order_status' => 'delivered',
+        ]);
+
+        // Create two order details
+        $detail1 = \App\Models\OrderDetail::create([
+            'order_id' => $order->id,
+            'item_id' => null,
+            'price' => 250,
+            'quantity' => 1,
+        ]);
+        $detail2 = \App\Models\OrderDetail::create([
+            'order_id' => $order->id,
+            'item_id' => null,
+            'price' => 100,
+            'quantity' => 2,
+        ]);
+
+        XpService::addItemXp($user, $order);
+
+        // Verify two item_purchase transactions were created
+        $itemTransactions = XpTransaction::where('user_id', $user->id)
+            ->where('xp_source', 'item_purchase')
+            ->get();
+
+        $this->assertCount(2, $itemTransactions);
+
+        // Detail 1: 250 × 1 × 1.0 × 0.1 = 25 XP
+        $tx1 = $itemTransactions->firstWhere('reference_id', $detail1->id);
+        $this->assertNotNull($tx1);
+        $this->assertEquals(25, $tx1->xp_amount);
+
+        // Detail 2: 100 × 2 × 1.0 × 0.1 = 20 XP
+        $tx2 = $itemTransactions->firstWhere('reference_id', $detail2->id);
+        $this->assertNotNull($tx2);
+        $this->assertEquals(20, $tx2->xp_amount);
+    }
 }

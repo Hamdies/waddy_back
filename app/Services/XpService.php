@@ -76,15 +76,11 @@ class XpService
     }
 
     /**
-     * Add XP for a completed order with vertical weighting.
+     * Add XP for a completed order with per-item XP calculation.
      */
     public static function addOrderXp(User $user, $order): void
     {
-        // Get order amount and module type
-        $orderAmount = $order->order_amount ?? 0;
-        $moduleType = $order->module?->module_type ?? 'food';
-
-        // XP for order completion
+        // XP for order completion (flat bonus)
         $completionXp = XpSetting::getInt('xp_per_order', 20);
         self::addXp(
             $user,
@@ -95,18 +91,8 @@ class XpService
             'Order completed'
         );
 
-        // XP for amount spent (weighted by vertical)
-        $spendXp = self::calculateWeightedXp($orderAmount, $moduleType);
-        if ($spendXp > 0) {
-            self::addXp(
-                $user,
-                'spend_amount',
-                $spendXp,
-                'order',
-                $order->id,
-                "Spent {$orderAmount} EGP (x" . XpSetting::getMultiplier($moduleType) . " multiplier)"
-            );
-        }
+        // XP for each item based on price
+        self::addItemXp($user, $order);
 
         // Update streak and award streak bonus XP
         try {
@@ -127,6 +113,56 @@ class XpService
         } catch (\Exception $e) {
             Log::error("Streak update failed: " . $e->getMessage());
         }
+    }
+
+    /**
+     * Add XP for each item in the order based on its price.
+     */
+    public static function addItemXp(User $user, $order): void
+    {
+        $moduleType = $order->module?->module_type ?? 'food';
+        $details = $order->details;
+
+        foreach ($details as $detail) {
+            $price = $detail->price ?? 0;
+            $quantity = $detail->quantity ?? 1;
+
+            $itemXp = self::calculateItemXp($price, $quantity, $moduleType);
+
+            if ($itemXp > 0) {
+                $itemName = $detail->item?->name ?? 'Item';
+                self::addXp(
+                    $user,
+                    'item_purchase',
+                    $itemXp,
+                    'order_detail',
+                    $detail->id,
+                    "{$itemName} — {$price} LE × {$quantity} (x" . XpSetting::getMultiplier($moduleType) . " multiplier)"
+                );
+            }
+        }
+    }
+
+    /**
+     * Calculate XP for a single item based on price, quantity, and module multiplier.
+     * Formula: floor(price × quantity × multiplier × xp_per_currency_unit)
+     */
+    public static function calculateItemXp(float $price, int $quantity, string $moduleType): int
+    {
+        $multiplier = XpSetting::getMultiplier($moduleType);
+        $rate = XpSetting::getFloat('xp_per_currency_unit', 0.1);
+
+        // Apply event multiplier if active and not expired
+        $eventActive = (string) XpSetting::getValue('multiplier_event_active', '0') === '1';
+        if ($eventActive) {
+            $endsAt = XpSetting::getValue('multiplier_event_ends_at');
+            if (!$endsAt || now()->lt($endsAt)) {
+                $eventMultiplier = XpSetting::getFloat('multiplier_event_multiplier', 1.0);
+                $multiplier *= $eventMultiplier;
+            }
+        }
+
+        return (int) floor($price * $quantity * $multiplier * $rate);
     }
 
     /**
@@ -202,26 +238,21 @@ class XpService
                 ->get();
 
             foreach ($prizes as $prize) {
-                // Check if user already has this prize
-                $exists = UserLevelPrize::where('user_id', $user->id)
-                    ->where('level_prize_id', $prize->id)
-                    ->exists();
+                $validityDays = $prize->validity_days ?? XpSetting::getInt('prize_validity_days', 30);
+                $status = $prize->isBadge() ? 'used' : 'unlocked';
 
-                if (!$exists) {
-                    $validityDays = $prize->validity_days ?? XpSetting::getInt('prize_validity_days', 30);
-                    
-                    // Badges (non-claimable) are auto-marked as 'used', claimable prizes are 'unlocked'
-                    $status = $prize->isBadge() ? 'used' : 'unlocked';
-
-                    UserLevelPrize::create([
+                UserLevelPrize::firstOrCreate(
+                    [
                         'user_id' => $user->id,
                         'level_prize_id' => $prize->id,
+                    ],
+                    [
                         'status' => $status,
                         'unlocked_at' => now(),
                         'expires_at' => $prize->isBadge() ? null : now()->addDays($validityDays),
                         'used_at' => $prize->isBadge() ? now() : null,
-                    ]);
-                }
+                    ]
+                );
             }
 
             if ($user->cm_firebase_token) {

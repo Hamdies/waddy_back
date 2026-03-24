@@ -14,6 +14,7 @@ use App\Services\XpService;
 use App\Services\ChallengeService;
 use App\CentralLogics\Helpers;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class XpController extends Controller
@@ -381,24 +382,27 @@ class XpController extends Controller
             ], 403);
         }
 
-        // Mark as claimed
-        $userPrize->update([
-            'status' => 'claimed',
-            'claimed_at' => now(),
-        ]);
+        // Wrap claim + wallet credit in a single transaction
+        DB::transaction(function () use ($userPrize, $user) {
+            $userPrize->update([
+                'status' => 'claimed',
+                'claimed_at' => now(),
+            ]);
 
-        // Handle wallet credit prizes
-        if ($userPrize->prize->prize_type === 'wallet_credit' && $userPrize->prize->value > 0) {
-            // Add to wallet using existing CustomerLogic
-            \App\CentralLogics\CustomerLogic::create_wallet_transaction(
-                $user->id,
-                $userPrize->prize->value,
-                'add_fund_by_admin',
-                'Level Prize: ' . $userPrize->prize->title
-            );
-            
-            $userPrize->markUsed();
-        }
+            // Handle wallet credit prizes — auto-use immediately
+            if ($userPrize->prize->prize_type === 'wallet_credit' && $userPrize->prize->value > 0) {
+                \App\CentralLogics\CustomerLogic::create_wallet_transaction(
+                    $user->id,
+                    $userPrize->prize->value,
+                    'add_fund_by_admin',
+                    'Level Prize: ' . $userPrize->prize->title
+                );
+
+                $userPrize->markUsed();
+            }
+        });
+
+        $userPrize->refresh();
 
         return response()->json([
             'message' => translate('messages.prize_claimed_successfully'),
@@ -475,9 +479,9 @@ class XpController extends Controller
         foreach ($paginator->items() as $tx) {
             // Map xp_source to frontend-friendly type
             $type = match(true) {
-                in_array($tx->xp_source, ['completion_bonus', 'spend_amount']) => 'order',
+                in_array($tx->xp_source, ['completion_bonus', 'spend_amount', 'item_purchase']) => 'order',
                 $tx->xp_source === 'review_bonus' => 'review',
-                $tx->xp_source === 'challenge_reward' => 'challenge',
+                in_array($tx->xp_source, ['challenge_reward', 'daily_challenge', 'weekly_challenge']) => 'challenge',
                 $tx->xp_source === 'signup_bonus' => 'signup',
                 $tx->xp_source === 'streak_bonus' => 'streak',
                 $tx->xp_source === 'referral_bonus' => 'referral',

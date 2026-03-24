@@ -369,13 +369,17 @@ class XpController extends Controller
     {
         $keys = [
             'xp_per_order', 'xp_per_review', 'xp_daily_challenge', 'xp_weekly_challenge',
-            'xp_signup_bonus',
+            'xp_signup_bonus', 'xp_per_currency_unit', 'streak_bonus_xp',
             'multiplier_food', 'multiplier_pharmacy', 'multiplier_grocery', 'multiplier_parcel',
+            'multiplier_ecommerce', 'multiplier_service',
+            'multiplier_event_active', 'multiplier_event_multiplier', 'multiplier_event_ends_at',
             'prize_validity_days', 'leveling_status'
         ];
 
+        $booleanKeys = ['leveling_status', 'multiplier_event_active'];
+
         foreach ($keys as $key) {
-            if ($key === 'leveling_status') {
+            if (in_array($key, $booleanKeys)) {
                 XpSetting::updateOrCreate(
                     ['key' => $key],
                     ['value' => $request->has($key) ? '1' : '0']
@@ -428,8 +432,8 @@ class XpController extends Controller
     public function addUserXp(Request $request, $id)
     {
         $request->validate([
-            'xp_amount' => 'required|integer|min:1',
-            'description' => 'nullable|string|max:255',
+            'xp_amount' => 'required|integer|min:1|max:10000',
+            'description' => 'required|string|max:255',
         ]);
 
         $user = User::findOrFail($id);
