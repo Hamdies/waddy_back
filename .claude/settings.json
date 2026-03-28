@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/mac/Waddi/**)",
+      "Bash(find /Users/mac/Waddi/waddy_back/database/migrations -name *order* -type f)",
+      "Bash(find /Users/mac/Waddi/waddy_back/database -name *.php -type f -exec grep -l \"CREATE TABLE.*order\\\\|orders\" {})",
+      "Bash(grep -l \"create_orders_table\\\\|CREATE TABLE.*orders\" /Users/mac/Waddi/waddy_back/database/migrations/*.php)",
+      "Bash(php -r \"echo ''PHP '' . PHP_VERSION . PHP_EOL;\")",
+      "Bash(grep -n \"DB::table\\\\|cache_table\\\\|cache_lock\" /Users/mac/Waddi/waddy_back/database/migrations/*.php)"
+    ]
+  }
+}

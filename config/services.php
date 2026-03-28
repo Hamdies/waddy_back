@@ -40,6 +40,10 @@ return [
     | Apple Developer → Keys → Configure.
     |
     */
+    'order_security' => [
+        'hmac_secret' => env('ORDER_HMAC_SECRET', 'waddi_order_sec_2026'),
+    ],
+
     'apns' => [
         'team_id'     => env('APNS_TEAM_ID'),
         'key_id'      => env('APNS_KEY_ID'),

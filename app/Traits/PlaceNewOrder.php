@@ -58,11 +58,30 @@ trait PlaceNewOrder
             'password' => $request->create_new_user ? ['required', Password::min(8)] : 'nullable',
             'order_attachment' => $is_prescription ? ['required'] : 'nullable',
             'voice_instruction' => 'nullable|file|mimes:m4a,mp3,wav,ogg,webm,aac|max:5120',
+            'idempotency_key' => 'nullable|uuid',
+            'device_fingerprint' => 'nullable|string|size:64',
+            'order_signature' => 'nullable|string|size:64',
+            'order_timestamp' => 'nullable|integer',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
+
+        $securityService = app(\App\Services\OrderSecurityService::class);
+
+        $idempotencyResult = $securityService->checkIdempotency($request);
+        if ($idempotencyResult) {
+            return $idempotencyResult;
+        }
+
+        $cooldownResult = $securityService->checkOrderCooldown($request);
+        if ($cooldownResult) {
+            return $cooldownResult;
+        }
+
+        $securityService->verifySignature($request);
+
         try {
             DB::beginTransaction();
             $createNewUser =  $this->createNewUser($request);
@@ -519,6 +538,7 @@ trait PlaceNewOrder
                 ], 203);
             }
 
+            $securityService->storeSecurityFields($order, $request);
 
             $order->save();
             if ($request->order_type !== 'parcel') {
