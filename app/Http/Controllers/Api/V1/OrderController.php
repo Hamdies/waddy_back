@@ -588,7 +588,7 @@ class OrderController extends Controller
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
 
-        $user = $request->user();
+        $user = $request->user;
         if (!$user) {
             return response()->json([
                 'errors' => [['code' => 'auth', 'message' => translate('messages.unauthenticated')]]
