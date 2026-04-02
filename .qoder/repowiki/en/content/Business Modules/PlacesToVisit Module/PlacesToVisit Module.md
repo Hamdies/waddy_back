@@ -47,7 +47,15 @@
 - [PlaceSubmissionController.php](file://Modules/PlacesToVisit/Http/Controllers/Admin/PlaceSubmissionController.php)
 - [web.php](file://Modules/PlacesToVisit/Routes/web.php)
 - [api.php](file://Modules/PlacesToVisit/Routes/api/v1/api.php)
+- [PlacesToVisitServiceProvider.php](file://Modules/PlacesToVisit/Providers/PlacesToVisitServiceProvider.php)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Updated routing architecture section to reflect consolidated route registration in PlacesToVisitServiceProvider
+- Removed references to separate RouteServiceProvider
+- Updated service provider integration documentation
+- Enhanced architectural overview to show integrated approach
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -81,8 +89,7 @@ The module follows a feature-based structure under Modules/PlacesToVisit, with c
 - Routes: API and web route definitions
 - Database/Migrations: Schema and evolution scripts
 - Config: Module configuration and constants
-- Resources/lang: Localization keys for messages
-- Providers: Service provider and route registration
+- Providers: Integrated service provider with consolidated route registration
 
 ```mermaid
 graph TB
@@ -94,6 +101,7 @@ Controllers["Http/Controllers/*"]
 Routes["Routes/*"]
 DB["Database/Migrations/*"]
 Views["Resources/views/admin/*"]
+Provider["Providers/PlacesToVisitServiceProvider.php"]
 end
 Config --> Services
 Entities --> Services
@@ -101,6 +109,8 @@ Services --> Controllers
 Controllers --> Routes
 DB --> Entities
 Views --> Controllers
+Provider --> Routes
+Provider --> Services
 ```
 
 **Diagram sources**
@@ -109,11 +119,13 @@ Views --> Controllers
 - [VotingService.php:1-216](file://Modules/PlacesToVisit/Services/VotingService.php#L1-L216)
 - [PlaceController.php](file://Modules/PlacesToVisit/Http/Controllers/Api/PlaceController.php)
 - [api.php](file://Modules/PlacesToVisit/Routes/api/v1/api.php)
+- [PlacesToVisitServiceProvider.php:67-77](file://Modules/PlacesToVisit/Providers/PlacesToVisitServiceProvider.php#L67-L77)
 
 **Section sources**
 - [module.json:1-17](file://Modules/PlacesToVisit/module.json#L1-L17)
 - [composer.json:1-16](file://Modules/PlacesToVisit/composer.json#L1-L16)
 - [config.php:1-53](file://Modules/PlacesToVisit/Config/config.php#L1-L53)
+- [PlacesToVisitServiceProvider.php:11-30](file://Modules/PlacesToVisit/Providers/PlacesToVisitServiceProvider.php#L11-L30)
 
 ## Core Components
 This section documents the core entities and their responsibilities, relationships, and key behaviors.
@@ -167,10 +179,15 @@ This section documents the core entities and their responsibilities, relationshi
 - [PlaceSubmission.php:1-86](file://Modules/PlacesToVisit/Entities/PlaceSubmission.php#L1-L86)
 
 ## Architecture Overview
-The module’s architecture separates persistence (entities), business logic (services), and presentation (controllers and routes). Configuration drives leaderboard thresholds, XP rewards, and moderation policies.
+The module's architecture separates persistence (entities), business logic (services), and presentation (controllers and routes). Configuration drives leaderboard thresholds, XP rewards, and moderation policies. The routing system is now consolidated directly into the PlacesToVisitServiceProvider, providing a streamlined integration approach.
 
 ```mermaid
 classDiagram
+class PlacesToVisitServiceProvider {
++register()
++boot()
++registerRoutes()
+}
 class Place {
 +category()
 +zone()
@@ -225,6 +242,7 @@ class PlaceOffer {
 +scopeCurrent()
 +isValid()
 }
+PlacesToVisitServiceProvider --> Place : "routes integrated"
 PlaceCategory --> Place : "hasMany"
 Place --> PlaceCategory : "belongsTo"
 Place --> PlaceVote : "hasMany"
@@ -239,6 +257,7 @@ PlaceBanner --> Place : "belongsTo"
 ```
 
 **Diagram sources**
+- [PlacesToVisitServiceProvider.php:67-77](file://Modules/PlacesToVisit/Providers/PlacesToVisitServiceProvider.php#L67-L77)
 - [Place.php:1-218](file://Modules/PlacesToVisit/Entities/Place.php#L1-L218)
 - [PlaceCategory.php:1-46](file://Modules/PlacesToVisit/Entities/PlaceCategory.php#L1-L46)
 - [PlaceVote.php:1-78](file://Modules/PlacesToVisit/Entities/PlaceVote.php#L1-L78)
@@ -246,6 +265,42 @@ PlaceBanner --> Place : "belongsTo"
 - [PlaceOffer.php:1-66](file://Modules/PlacesToVisit/Entities/PlaceOffer.php#L1-L66)
 
 ## Detailed Component Analysis
+
+### Routing Architecture and Service Provider Integration
+The PlacesToVisit module now uses a consolidated routing approach through the PlacesToVisitServiceProvider. This eliminates the need for a separate RouteServiceProvider and provides a more streamlined integration pattern.
+
+Key aspects of the routing architecture:
+- Routes are registered directly within the service provider's boot method
+- Web routes are loaded with 'web' middleware and admin namespace
+- API routes are loaded with 'api' middleware and versioned prefix
+- Route groups provide organized access to admin and public functionality
+- Single point of control for all module routes
+
+```mermaid
+sequenceDiagram
+participant App as "Laravel Application"
+participant SP as "PlacesToVisitServiceProvider"
+participant Router as "Route Facade"
+App->>SP : "boot()"
+SP->>SP : "registerRoutes()"
+SP->>Router : "Route : : middleware('web')"
+SP->>Router : "Route : : prefix('api/v1')"
+SP->>Router : "Load web.php routes"
+SP->>Router : "Load api/v1/api.php routes"
+Router-->>App : "Routes registered"
+```
+
+**Diagram sources**
+- [PlacesToVisitServiceProvider.php:23-30](file://Modules/PlacesToVisit/Providers/PlacesToVisitServiceProvider.php#L23-L30)
+- [PlacesToVisitServiceProvider.php:67-77](file://Modules/PlacesToVisit/Providers/PlacesToVisitServiceProvider.php#L67-L77)
+
+**Updated** The routing architecture has been consolidated into the PlacesToVisitServiceProvider, eliminating the separate RouteServiceProvider and providing a more integrated approach.
+
+**Section sources**
+- [PlacesToVisitServiceProvider.php:23-30](file://Modules/PlacesToVisit/Providers/PlacesToVisitServiceProvider.php#L23-L30)
+- [PlacesToVisitServiceProvider.php:67-77](file://Modules/PlacesToVisit/Providers/PlacesToVisitServiceProvider.php#L67-L77)
+- [web.php:1-92](file://Modules/PlacesToVisit/Routes/web.php#L1-L92)
+- [api.php:1-51](file://Modules/PlacesToVisit/Routes/api/v1/api.php#L1-L51)
 
 ### Voting System Implementation
 The voting system supports monthly periods, one vote per user per place per period, optional rating and review, and moderation via flagging and reporting. It also awards XP to users for participation.
@@ -265,7 +320,7 @@ participant Service as "VotingService"
 participant Vote as "PlaceVote"
 participant XP as "PlaceXpService"
 participant LB as "LeaderboardService"
-Client->>API : "POST /api/v1/votes"
+Client->>API : "POST /api/v1/places/{place}/vote"
 API->>Service : "vote(placeId, userId, rating, review, image)"
 Service->>Vote : "upsert monthly vote"
 alt "new vote"
@@ -366,42 +421,46 @@ The module exposes REST endpoints for consumers and administrators.
 - Place Endpoints
   - GET /api/v1/places
   - GET /api/v1/places/{id}
-  - POST /api/v1/places
-  - PUT /api/v1/places/{id}
-  - DELETE /api/v1/places/{id}
+  - GET /api/v1/places/leaderboard
+  - GET /api/v1/places/top-voters
+  - GET /api/v1/places/trending
 
 - Category Endpoints
-  - GET /api/v1/categories
-  - GET /api/v1/categories/{id}
-  - POST /api/v1/categories
-  - PUT /api/v1/categories/{id}
-  - DELETE /api/v1/categories/{id}
+  - GET /api/v1/places/categories
+  - GET /api/v1/places/categories/{id}
+  - GET /api/v1/places/tags
 
 - Voting Endpoints
-  - POST /api/v1/votes
-  - DELETE /api/v1/votes/{placeId}/{userId}
+  - POST /api/v1/places/{place}/vote
+  - DELETE /api/v1/places/{place}/vote
+  - GET /api/v1/places/{place}/vote-status
+  - POST /api/v1/places/votes/{vote}/report
 
 - Banner Endpoints
-  - GET /api/v1/banners
-  - GET /api/v1/banners/{id}
+  - GET /api/v1/places/banners
+  - GET /api/v1/places/banners/featured
 
 - Favorite Endpoints
-  - POST /api/v1/favorites
-  - DELETE /api/v1/favorites/{placeId}
+  - GET /api/v1/places/favorites/my
+  - POST /api/v1/places/{place}/favorite
+  - DELETE /api/v1/places/{place}/favorite
+  - POST /api/v1/places/{place}/toggle-favorite
 
 - Submission Endpoints
-  - POST /api/v1/submissions
-  - GET /api/v1/submissions/{id}
+  - GET /api/v1/places/submissions/my
+  - POST /api/v1/places/submissions
+  - GET /api/v1/places/submissions/{id}
 
 - Admin Endpoints
-  - Leaderboard management
-  - Category management
-  - Place management
-  - Banner management
-  - Offer management
-  - Submission moderation
+  - Categories: GET/POST/PUT/DELETE with toggle-status
+  - Zones: GET/POST/PUT/DELETE with toggle-status
+  - Places: GET/POST/PUT/DELETE with toggle-status/featured
+  - Leaderboard: GET votes, toggle-flag, delete-vote, clear-cache
+  - Banners: GET/POST/PUT/DELETE with toggle-status/featured
+  - Offers: GET/POST/PUT/DELETE with toggle-status
+  - Submissions: GET/show, approve/reject, DELETE
 
-Note: Endpoint paths and methods are defined in the module’s route files and controllers.
+**Updated** The API endpoints are now registered through the consolidated routing approach in PlacesToVisitServiceProvider, providing a unified entry point for all module routes.
 
 **Section sources**
 - [PlaceController.php](file://Modules/PlacesToVisit/Http/Controllers/Api/PlaceController.php)
@@ -475,10 +534,13 @@ The module depends on shared application models (User, Zone) and central logic h
 
 ```mermaid
 graph LR
-VS["VotingService"] --> PV["PlaceVote"]
+SP["PlacesToVisitServiceProvider"] --> VS["VotingService"]
+SP --> LB["LeaderboardService"]
+SP --> TR["TrendingService"]
+VS --> PV["PlaceVote"]
 VS --> PX["PlaceXpService"]
-VS --> LB["LeaderboardService"]
-VS --> TR["TrendingService"]
+VS --> LB
+VS --> TR
 PL["Place"] --> PC["PlaceCategory"]
 PL --> Z["Zone"]
 PL --> PT["PlaceTranslation"]
@@ -494,12 +556,14 @@ PO --> PL
 ```
 
 **Diagram sources**
+- [PlacesToVisitServiceProvider.php:16-21](file://Modules/PlacesToVisit/Providers/PlacesToVisitServiceProvider.php#L16-L21)
 - [VotingService.php:1-216](file://Modules/PlacesToVisit/Services/VotingService.php#L1-L216)
 - [Place.php:1-218](file://Modules/PlacesToVisit/Entities/Place.php#L1-L218)
 - [PlaceBanner.php:1-125](file://Modules/PlacesToVisit/Entities/PlaceBanner.php#L1-L125)
 - [PlaceOffer.php:1-66](file://Modules/PlacesToVisit/Entities/PlaceOffer.php#L1-L66)
 
 **Section sources**
+- [PlacesToVisitServiceProvider.php:16-21](file://Modules/PlacesToVisit/Providers/PlacesToVisitServiceProvider.php#L16-L21)
 - [VotingService.php:1-216](file://Modules/PlacesToVisit/Services/VotingService.php#L1-L216)
 - [Place.php:1-218](file://Modules/PlacesToVisit/Entities/Place.php#L1-L218)
 - [PlaceBanner.php:1-125](file://Modules/PlacesToVisit/Entities/PlaceBanner.php#L1-L125)
@@ -535,7 +599,7 @@ Common issues and resolutions:
 - [config.php:8-12](file://Modules/PlacesToVisit/Config/config.php#L8-L12)
 
 ## Conclusion
-The PlacesToVisit module provides a robust foundation for location discovery, community engagement, and content moderation. Its entity-centric design, service-layer logic, and administrative controls enable scalable place management, fair voting, and insightful leaderboards. Proper indexing, caching, and pagination ensure good performance at scale.
+The PlacesToVisit module provides a robust foundation for location discovery, community engagement, and content moderation. Its entity-centric design, service-layer logic, and administrative controls enable scalable place management, fair voting, and insightful leaderboards. The consolidated routing approach through PlacesToVisitServiceProvider simplifies integration and provides a more streamlined architecture. Proper indexing, caching, and pagination ensure good performance at scale.
 
 ## Appendices
 
@@ -714,3 +778,16 @@ PLACE_BANNERS }o--o{ PLACES : "targets"
 - [2026_01_04_000006_create_place_banners_table.php:1-46](file://Modules/PlacesToVisit/Database/Migrations/2026_01_04_000006_create_place_banners_table.php#L1-L46)
 - [2026_02_10_000001_add_details_to_places_table.php:1-26](file://Modules/PlacesToVisit/Database/Migrations/2026_02_10_000001_add_details_to_places_table.php#L1-L26)
 - [2026_02_10_000005_create_place_tags_tables.php](file://Modules/PlacesToVisit/Database/Migrations/2026_02_10_000005_create_place_tags_tables.php)
+
+### Service Provider Integration Pattern
+The PlacesToVisit module demonstrates an integrated service provider pattern where routing is consolidated directly into the service provider. This approach offers several advantages:
+
+- **Simplified Architecture**: Single point of control for module registration
+- **Reduced Complexity**: Eliminates need for separate route service providers
+- **Streamlined Integration**: Direct access to route registration within module lifecycle
+- **Maintained Separation of Concerns**: Services, controllers, and routes remain distinct while sharing a common registration point
+
+**Section sources**
+- [PlacesToVisitServiceProvider.php:11-30](file://Modules/PlacesToVisit/Providers/PlacesToVisitServiceProvider.php#L11-L30)
+- [PlacesToVisitServiceProvider.php:67-77](file://Modules/PlacesToVisit/Providers/PlacesToVisitServiceProvider.php#L67-L77)
+- [module.json:11-13](file://Modules/PlacesToVisit/module.json#L11-L13)

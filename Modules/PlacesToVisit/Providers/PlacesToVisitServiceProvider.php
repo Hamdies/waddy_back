@@ -3,7 +3,6 @@
 namespace Modules\PlacesToVisit\Providers;
 
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\Route;
 use Modules\PlacesToVisit\Services\LeaderboardService;
 use Modules\PlacesToVisit\Services\TrendingService;
 use Modules\PlacesToVisit\Services\VotingService;
@@ -15,6 +14,7 @@ class PlacesToVisitServiceProvider extends ServiceProvider
 
     public function register(): void
     {
+        $this->app->register(RouteServiceProvider::class);
         $this->app->singleton(LeaderboardService::class);
         $this->app->singleton(VotingService::class);
         $this->app->singleton(TrendingService::class);
@@ -26,7 +26,7 @@ class PlacesToVisitServiceProvider extends ServiceProvider
         $this->registerViews();
         $this->registerTranslations();
         $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
-        $this->registerRoutes();
+        // Routes are auto-loaded by nwidart/laravel-modules
     }
 
     protected function registerConfig(): void
@@ -62,18 +62,6 @@ class PlacesToVisitServiceProvider extends ServiceProvider
         } else {
             $this->loadTranslationsFrom(module_path($this->moduleName, 'Resources/lang'), $this->moduleNameLower);
         }
-    }
-
-    protected function registerRoutes(): void
-    {
-        Route::middleware('web')
-            ->namespace('Modules\PlacesToVisit\Http\Controllers')
-            ->group(module_path('PlacesToVisit', '/Routes/web.php'));
-
-        Route::prefix('api/v1')
-            ->middleware('api')
-            ->namespace('Modules\PlacesToVisit\Http\Controllers\Api')
-            ->group(module_path('PlacesToVisit', '/Routes/api/v1/api.php'));
     }
 
     public function provides(): array
