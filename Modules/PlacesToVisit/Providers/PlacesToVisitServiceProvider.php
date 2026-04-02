@@ -1,3 +1,5 @@
+<?php
+
 namespace Modules\PlacesToVisit\Providers;
 
 use Illuminate\Support\Facades\Route;
