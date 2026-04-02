@@ -7,13 +7,24 @@
 - [LeaderboardService.php](file://Modules/PlacesToVisit/Services/LeaderboardService.php)
 - [TrendingService.php](file://Modules/PlacesToVisit/Services/TrendingService.php)
 - [VoteController.php](file://Modules/PlacesToVisit/Http/Controllers/Api/VoteController.php)
+- [LeaderboardController.php](file://Modules/PlacesToVisit/Http/Controllers/Admin/LeaderboardController.php)
+- [PlaceController.php](file://Modules/PlacesToVisit/Http/Controllers/Api/PlaceController.php)
 - [PlaceVote.php](file://Modules/PlacesToVisit/Entities/PlaceVote.php)
 - [PlaceVoteReport.php](file://Modules/PlacesToVisit/Entities/PlaceVoteReport.php)
+- [Place.php](file://Modules/PlacesToVisit/Entities/Place.php)
 - [Place.php](file://Modules/PlacesToVisit/Entities/Place.php)
 - [2026_01_04_000004_create_place_votes_table.php](file://Modules/PlacesToVisit/Database/Migrations/2026_01_04_000004_create_place_votes_table.php)
 - [2026_02_10_000006_create_place_vote_reports_table.php](file://Modules/PlacesToVisit/Database/Migrations/2026_02_10_000006_create_place_vote_reports_table.php)
 - [config.php](file://Modules/PlacesToVisit/Config/config.php)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Enhanced leaderboard functionality with improved vote counting through withCount('votes')
+- Expanded translation support for new UI elements in admin interfaces
+- Improved integration with enhanced leaderboard administrative interface
+- Added comprehensive translation keys for voting and leaderboard features
+- Updated admin controllers to support enhanced translation and filtering capabilities
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -21,21 +32,25 @@
 3. [Core Components](#core-components)
 4. [Architecture Overview](#architecture-overview)
 5. [Detailed Component Analysis](#detailed-component-analysis)
-6. [Dependency Analysis](#dependency-analysis)
-7. [Performance Considerations](#performance-considerations)
-8. [Troubleshooting Guide](#troubleshooting-guide)
-9. [Conclusion](#conclusion)
+6. [Enhanced Leaderboard Integration](#enhanced-leaderboard-integration)
+7. [Translation Support and UI Elements](#translation-support-and-ui-elements)
+8. [Dependency Analysis](#dependency-analysis)
+9. [Performance Considerations](#performance-considerations)
+10. [Troubleshooting Guide](#troubleshooting-guide)
+11. [Conclusion](#conclusion)
 
 ## Introduction
-This document describes the Place voting and rating system within the PlacesToVisit module. It covers the PlaceVote entity structure, vote scoring and aggregation, user interaction patterns, authentication and validation, duplicate prevention, moderation via PlaceVoteReport, XP rewards, and ranking systems for leaderboards and trending. It also documents the VotingService class methods and business logic, and explains how time-based weighting contributes to community-driven quality ranking.
+This document describes the Place voting and rating system within the PlacesToVisit module. It covers the PlaceVote entity structure, vote scoring and aggregation, user interaction patterns, authentication and validation, duplicate prevention, moderation via PlaceVoteReport, XP rewards, and ranking systems for leaderboards and trending. The system now features enhanced integration with leaderboard functionality, improved vote counting through withCount('votes'), and expanded translation support for new UI elements. It documents the VotingService class methods and business logic, and explains how time-based weighting contributes to community-driven quality ranking.
 
 ## Project Structure
-The voting system spans several layers:
+The voting system spans several layers with enhanced leaderboard integration:
 - Database migrations define the schema for votes and reports
-- Entity models encapsulate relationships and helpers
-- Services implement business logic for voting, XP rewards, leaderboard, and trending
-- An API controller handles user requests and integrates with services
+- Entity models encapsulate relationships and helpers with translation support
+- Services implement business logic for voting, XP rewards, leaderboard, and trending with improved aggregation
+- API controllers handle user requests and integrate with services
+- Admin controllers provide enhanced leaderboard management with translation support
 - Configuration defines thresholds and limits for moderation and ranking
+- Comprehensive translation system supports multilingual UI elements
 
 ```mermaid
 graph TB
@@ -56,33 +71,41 @@ PXPS["PlaceXpService"]
 end
 subgraph "API Layer"
 VC["VoteController"]
+PC["PlaceController"]
+end
+subgraph "Admin Layer"
+ALC["LeaderboardController"]
 end
 VC --> VS
+PC --> LBS
+ALC --> LBS
 VS --> PlaceVote
 VS --> PlaceVoteReport
 VS --> PXPS
 LBS --> Place
 LBS --> PlaceVote
 TS --> Place
-TS --> PlaceVote
 PlaceVote --> PV
 PlaceVoteReport --> PVR
+Place --> PlaceVote
 ```
 
 **Diagram sources**
 - [VoteController.php:13-148](file://Modules/PlacesToVisit/Http/Controllers/Api/VoteController.php#L13-L148)
+- [PlaceController.php:181-219](file://Modules/PlacesToVisit/Http/Controllers/Api/PlaceController.php#L181-L219)
+- [LeaderboardController.php:19-93](file://Modules/PlacesToVisit/Http/Controllers/Admin/LeaderboardController.php#L19-L93)
 - [VotingService.php:11-216](file://Modules/PlacesToVisit/Services/VotingService.php#L11-L216)
 - [LeaderboardService.php:12-141](file://Modules/PlacesToVisit/Services/LeaderboardService.php#L12-L141)
 - [TrendingService.php:10-87](file://Modules/PlacesToVisit/Services/TrendingService.php#L10-L87)
 - [PlaceVote.php:10-78](file://Modules/PlacesToVisit/Entities/PlaceVote.php#L10-L78)
 - [PlaceVoteReport.php:9-25](file://Modules/PlacesToVisit/Entities/PlaceVoteReport.php#L9-L25)
 - [Place.php:12-218](file://Modules/PlacesToVisit/Entities/Place.php#L12-L218)
-- [2026_01_04_000004_create_place_votes_table.php:11-23](file://Modules/PlacesToVisit/Database/Migrations/2026_01_04_000004_create_place_votes_table.php#L11-L23)
-- [2026_02_10_000006_create_place_vote_reports_table.php:11-19](file://Modules/PlacesToVisit/Database/Migrations/2026_02_10_000006_create_place_vote_reports_table.php#L11-L19)
 
 **Section sources**
 - [VotingService.php:11-216](file://Modules/PlacesToVisit/Services/VotingService.php#L11-L216)
 - [VoteController.php:13-148](file://Modules/PlacesToVisit/Http/Controllers/Api/VoteController.php#L13-L148)
+- [PlaceController.php:181-219](file://Modules/PlacesToVisit/Http/Controllers/Api/PlaceController.php#L181-L219)
+- [LeaderboardController.php:19-93](file://Modules/PlacesToVisit/Http/Controllers/Admin/LeaderboardController.php#L19-L93)
 - [PlaceVote.php:10-78](file://Modules/PlacesToVisit/Entities/PlaceVote.php#L10-L78)
 - [PlaceVoteReport.php:9-25](file://Modules/PlacesToVisit/Entities/PlaceVoteReport.php#L9-L25)
 - [LeaderboardService.php:12-141](file://Modules/PlacesToVisit/Services/LeaderboardService.php#L12-L141)
@@ -95,9 +118,11 @@ PlaceVoteReport --> PVR
 - PlaceVoteReport entity: Tracks user reports against votes with uniqueness constraints to prevent duplicate reports.
 - VotingService: Orchestrates voting, updates, removal, duplicate prevention, moderation reporting, and cache invalidation.
 - PlaceXpService: Awards XP for voting, reviewing, and photo reviews via centralized XP service.
-- LeaderboardService: Computes top places and top voters using aggregated counts and averages, with caching and configurable thresholds.
+- LeaderboardService: Computes top places and top voters using enhanced withCount('votes') aggregation, with caching and configurable thresholds.
 - TrendingService: Computes trending places using a recency-weighted score within a rolling window.
 - VoteController: Validates requests, authenticates users, and delegates to VotingService.
+- LeaderboardController: Enhanced admin interface for managing leaderboard data with translation support and filtering capabilities.
+- PlaceController: API endpoints for leaderboard and top voters with enhanced translation support.
 
 **Section sources**
 - [PlaceVote.php:10-78](file://Modules/PlacesToVisit/Entities/PlaceVote.php#L10-L78)
@@ -107,13 +132,16 @@ PlaceVoteReport --> PVR
 - [LeaderboardService.php:12-141](file://Modules/PlacesToVisit/Services/LeaderboardService.php#L12-L141)
 - [TrendingService.php:10-87](file://Modules/PlacesToVisit/Services/TrendingService.php#L10-L87)
 - [VoteController.php:13-148](file://Modules/PlacesToVisit/Http/Controllers/Api/VoteController.php#L13-L148)
+- [LeaderboardController.php:19-93](file://Modules/PlacesToVisit/Http/Controllers/Admin/LeaderboardController.php#L19-L93)
+- [PlaceController.php:181-219](file://Modules/PlacesToVisit/Http/Controllers/Api/PlaceController.php#L181-L219)
 
 ## Architecture Overview
-The system follows a layered architecture:
+The system follows a layered architecture with enhanced leaderboard integration:
 - API layer validates and authenticates requests
-- Service layer encapsulates business rules and persistence
-- Entity layer models domain objects and relationships
+- Service layer encapsulates business rules and persistence with improved aggregation
+- Entity layer models domain objects and relationships with translation support
 - Database layer persists structured voting data and reports
+- Admin layer provides comprehensive management interface with translation support
 
 ```mermaid
 sequenceDiagram
@@ -165,6 +193,8 @@ class Place {
 +votes() HasMany
 +getVotesCountForPeriod(period) int
 +getAverageRatingForPeriod(period) float
++translations() HasMany
++localized_name getter
 }
 class PlaceVote {
 +long id
@@ -279,6 +309,7 @@ end
 
 ### Ranking Systems: Leaderboard and Trending
 - LeaderboardService
+  - Enhanced withCount('votes') aggregation for improved performance
   - Aggregates per-place vote counts and average ratings for the current period
   - Requires minimum votes threshold to qualify
   - Ranks by popularity (total votes) then quality (average rating)
@@ -290,8 +321,8 @@ end
 
 ```mermaid
 flowchart TD
-A["Leaderboard Query"] --> B["Aggregate votes_count<br/>for period"]
-B --> C["Aggregate avg(rating)<br/>where rating not null"]
+A["Leaderboard Query"] --> B["withCount('votes')<br/>for period"]
+B --> C["withAvg('votes')<br/>where rating not null"]
 C --> D["Filter by min_votes"]
 D --> E["Order by votes_count desc,<br/>then avg_rating desc"]
 F["Trending Query"] --> G["Count recent_votes<br/>within window"]
@@ -344,8 +375,8 @@ J --> K["Order by score desc,<br/>then avg_rating desc"]
   - VotingService updates rating and/or review; preserves image if not provided
 - Example 3: Auto-flagging after 3 reports
   - PlaceVoteReport increments; threshold met → vote flagged
-- Example 4: Leaderboard computation
-  - LeaderboardService filters places with ≥5 votes, orders by votes_count then avg_rating
+- Example 4: Leaderboard computation with enhanced aggregation
+  - LeaderboardService uses withCount('votes') for improved performance, filters places with ≥5 votes, orders by votes_count then avg_rating
 - Example 5: Trending computation
   - TrendingService weights recent votes 2x within a 7-day window
 
@@ -355,20 +386,129 @@ J --> K["Order by score desc,<br/>then avg_rating desc"]
 - [LeaderboardService.php:28-59](file://Modules/PlacesToVisit/Services/LeaderboardService.php#L28-L59)
 - [TrendingService.php:28-72](file://Modules/PlacesToVisit/Services/TrendingService.php#L28-L72)
 
+## Enhanced Leaderboard Integration
+
+### Improved Vote Counting Through withCount('votes')
+The leaderboard system now utilizes Laravel's withCount('votes') method for enhanced performance and accuracy in vote aggregation. This approach provides:
+
+- **Database-Level Aggregation**: Efficient counting of votes per place at the database level
+- **Reduced Memory Usage**: Eliminates the need to load all vote records into memory
+- **Improved Performance**: Significantly faster queries for large datasets
+- **Accurate Results**: Real-time vote counts with proper period filtering
+
+```mermaid
+flowchart TD
+A["Leaderboard Query"] --> B["withCount('votes')<br/>period filter"]
+B --> C["withAvg('votes')<br/>rating filter"]
+C --> D["having('votes_count', '>=', min_votes)"]
+D --> E["orderByDesc('votes_count')"]
+E --> F["orderByDesc('votes_avg_rating')"]
+```
+
+**Diagram sources**
+- [LeaderboardService.php:34-58](file://Modules/PlacesToVisit/Services/LeaderboardService.php#L34-L58)
+
+**Section sources**
+- [LeaderboardService.php:28-59](file://Modules/PlacesToVisit/Services/LeaderboardService.php#L28-L59)
+
+### Enhanced Admin Leaderboard Interface
+The admin controller now provides comprehensive management capabilities:
+
+- **Period Filtering**: Dropdown to select different voting periods (last 12 months)
+- **Statistics Dashboard**: Real-time metrics including total votes, participating places, average rating
+- **Vote Management**: Filterable list of all votes with moderation controls
+- **Translation Support**: Full internationalization support for all UI elements
+- **Cache Management**: Direct cache clearing functionality
+
+**Section sources**
+- [LeaderboardController.php:19-93](file://Modules/PlacesToVisit/Http/Controllers/Admin/LeaderboardController.php#L19-L93)
+
+### API Endpoints for Leaderboard Data
+The system now exposes dedicated API endpoints:
+
+- **GET /api/v1/places/leaderboard**: Retrieves top places for leaderboard
+- **GET /api/v1/places/top-voters**: Retrieves top voters/chillers
+- **Enhanced Response Format**: Includes period information and current period context
+
+**Section sources**
+- [PlaceController.php:181-219](file://Modules/PlacesToVisit/Http/Controllers/Api/PlaceController.php#L181-L219)
+
+## Translation Support and UI Elements
+
+### Comprehensive Translation Keys
+The system now includes extensive translation support for all UI elements:
+
+#### Leaderboard Translations
+- `messages.top_10_places`: "Top 10 Places"
+- `messages.view_all_votes`: "View All Votes"
+- `messages.clear_cache`: "Clear Cache"
+- `messages.no_places_qualified_yet`: "No places qualified yet"
+- `messages.min_votes_required`: "Minimum {count} votes required"
+
+#### Admin Interface Translations
+- `messages.places_leaderboard`: "Places Leaderboard"
+- `messages.total_votes`: "Total Votes"
+- `messages.participating_places`: "Participating Places"
+- `messages.average_rating`: "Average Rating"
+- `messages.total_places`: "Total Places"
+- `messages.rank`: "Rank"
+- `messages.place`: "Place"
+- `messages.votes`: "Votes"
+- `messages.rating`: "Rating"
+
+#### Vote Management Translations
+- `messages.vote_flag_updated`: "Vote flag updated"
+- `messages.vote_deleted`: "Vote deleted"
+- `messages.cache_cleared`: "Cache cleared"
+- `messages.guest`: "Guest"
+- `messages.flagged`: "Flagged"
+- `messages.active`: "Active"
+- `messages.no_votes_found`: "No votes found"
+
+#### Voting Translations
+- `messages.vote_recorded`: "Vote recorded"
+- `messages.vote_updated`: "Vote updated"
+- `messages.vote_removed`: "Vote removed"
+- `messages.no_vote_found`: "No vote found"
+- `messages.review_not_found`: "Review not found"
+- `messages.cannot_report_own_review`: "Cannot report own review"
+- `messages.already_reported`: "Already reported"
+- `messages.review_reported`: "Review reported"
+
+**Section sources**
+- [resources/lang/en/messages.php:671-673](file://resources/lang/en/messages.php#L671-L673)
+- [Modules/PlacesToVisit/Resources/views/admin/leaderboard/index.blade.php:67-140](file://Modules/PlacesToVisit/Resources/views/admin/leaderboard/index.blade.php#L67-L140)
+- [Modules/PlacesToVisit/Resources/views/admin/leaderboard/votes.blade.php:101-129](file://Modules/PlacesToVisit/Resources/views/admin/leaderboard/votes.blade.php#L101-L129)
+
+### Translation Implementation Patterns
+The system uses consistent translation patterns across all components:
+
+- **Blade Templates**: `{{ translate('messages.key_name') }}`
+- **JavaScript**: `{{ translate('messages.key_name') }}` with proper escaping
+- **Controller Responses**: `translate('messages.key_name')` for Toastr notifications
+- **Configuration**: Translation keys in config files for dynamic content
+
+**Section sources**
+- [LeaderboardController.php:73-91](file://Modules/PlacesToVisit/Http/Controllers/Admin/LeaderboardController.php#L73-L91)
+- [Modules/PlacesToVisit/Resources/views/admin/leaderboard/index.blade.php:3-25](file://Modules/PlacesToVisit/Resources/views/admin/leaderboard/index.blade.php#L3-L25)
+
 ## Dependency Analysis
-- Controller depends on VotingService
+- Controller depends on VotingService and LeaderboardService
 - VotingService depends on PlaceVote, PlaceVoteReport, User, and services for cache invalidation
-- LeaderboardService and TrendingService depend on Place and PlaceVote
+- LeaderboardService and TrendingService depend on Place and PlaceVote with enhanced aggregation
 - PlaceVote depends on Place and PlaceVoteReport
 - PlaceVoteReport depends on PlaceVote and User
+- Admin controllers depend on enhanced translation system
 
 ```mermaid
 graph LR
 VC["VoteController"] --> VS["VotingService"]
+PC["PlaceController"] --> LBS["LeaderboardService"]
+ALC["LeaderboardController"] --> LBS
 VS --> PV["PlaceVote"]
 VS --> PVR["PlaceVoteReport"]
 VS --> PXPS["PlaceXpService"]
-LBS["LeaderboardService"] --> Place["Place"]
+LBS --> Place["Place"]
 LBS --> PV
 TS["TrendingService"] --> Place
 TS --> PV
@@ -378,6 +518,8 @@ PVR --> PV
 
 **Diagram sources**
 - [VoteController.php:15-17](file://Modules/PlacesToVisit/Http/Controllers/Api/VoteController.php#L15-L17)
+- [PlaceController.php:181-219](file://Modules/PlacesToVisit/Http/Controllers/Api/PlaceController.php#L181-L219)
+- [LeaderboardController.php:15-17](file://Modules/PlacesToVisit/Http/Controllers/Admin/LeaderboardController.php#L15-L17)
 - [VotingService.php:5-9](file://Modules/PlacesToVisit/Services/VotingService.php#L5-L9)
 - [LeaderboardService.php:9-10](file://Modules/PlacesToVisit/Services/LeaderboardService.php#L9-L10)
 - [TrendingService.php](file://Modules/PlacesToVisit/Services/TrendingService.php#L8)
@@ -387,6 +529,8 @@ PVR --> PV
 
 **Section sources**
 - [VoteController.php:15-17](file://Modules/PlacesToVisit/Http/Controllers/Api/VoteController.php#L15-L17)
+- [PlaceController.php:181-219](file://Modules/PlacesToVisit/Http/Controllers/Api/PlaceController.php#L181-L219)
+- [LeaderboardController.php:15-17](file://Modules/PlacesToVisit/Http/Controllers/Admin/LeaderboardController.php#L15-L17)
 - [VotingService.php:5-9](file://Modules/PlacesToVisit/Services/VotingService.php#L5-L9)
 - [LeaderboardService.php:9-10](file://Modules/PlacesToVisit/Services/LeaderboardService.php#L9-L10)
 - [TrendingService.php](file://Modules/PlacesToVisit/Services/TrendingService.php#L8)
@@ -396,12 +540,12 @@ PVR --> PV
 
 ## Performance Considerations
 - Caching: LeaderboardService and TrendingService cache results with configurable TTL; caches are cleared on vote changes to maintain freshness
+- Enhanced Aggregation: Using withCount('votes') instead of manual counting improves performance significantly
 - Indexing: Unique composite index on (place_id, user_id, period) prevents duplicates and supports fast lookups
-- Aggregation Efficiency: Using database-level aggregations (count, avg) minimizes PHP overhead
+- Aggregation Efficiency: Database-level aggregations (count, avg) minimize PHP overhead
 - Recency Weighting: TrendingService computes scores within a bounded window to avoid scanning entire history
 - Image Handling: Controller validates and limits image size to reduce storage and bandwidth costs
-
-[No sources needed since this section provides general guidance]
+- Translation Performance: Translation keys are cached and loaded efficiently across the application
 
 ## Troubleshooting Guide
 - Duplicate Vote Error: Ensure the unique constraint is respected; verify user, place, and period combination
@@ -410,6 +554,9 @@ PVR --> PV
 - Already Reported: Duplicate reports are prevented; each user can report a vote only once
 - Auto-Flag Threshold: Adjust configuration value for report_auto_flag_threshold if needed
 - Cache Stale Data: Invoke cache clearing after bulk operations or administrative changes
+- Translation Issues: Verify translation keys exist in messages.php; check locale configuration
+- Leaderboard Performance: Monitor withCount('votes') queries; ensure proper indexing
+- Admin Interface Problems: Check translation loading in admin templates; verify controller dependencies
 
 **Section sources**
 - [VotingService.php:91-114](file://Modules/PlacesToVisit/Services/VotingService.php#L91-L114)
@@ -417,4 +564,4 @@ PVR --> PV
 - [config.php:44-44](file://Modules/PlacesToVisit/Config/config.php#L44-L44)
 
 ## Conclusion
-The Place voting and rating system provides a robust foundation for community-driven discovery and quality assessment. It enforces fair participation through duplicate prevention, moderation, and XP incentives, while delivering timely insights via leaderboards and trending. The modular design enables easy extension and maintenance, with caching and aggregation ensuring scalability.
+The Place voting and rating system provides a robust foundation for community-driven discovery and quality assessment. The enhanced integration with leaderboard functionality, improved vote counting through withCount('votes'), and expanded translation support deliver a comprehensive solution for managing place ratings and community engagement. The system enforces fair participation through duplicate prevention, moderation, and XP incentives, while delivering timely insights via leaderboards and trending. The modular design enables easy extension and maintenance, with caching and aggregation ensuring scalability. The enhanced admin interface with full translation support provides administrators with powerful tools for managing the voting ecosystem and maintaining community standards.

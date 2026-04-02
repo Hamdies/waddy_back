@@ -14,7 +14,17 @@
 - [create_place_zones_table.php](file://Modules/PlacesToVisit/Database/Migrations/2026_04_02_000002_create_place_zones_table.php)
 - [config.php](file://Modules/PlacesToVisit/Config/config.php)
 - [index.blade.php](file://Modules/PlacesToVisit/Resources/views/admin/leaderboard/index.blade.php)
+- [votes.blade.php](file://Modules/PlacesToVisit/Resources/views/admin/leaderboard/votes.blade.php)
+- [web.php](file://Modules/PlacesToVisit/Routes/web.php)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Added comprehensive votes management interface with filtering, pagination, and moderation capabilities
+- Enhanced leaderboard controller with new votes listing functionality and administrative controls
+- Improved leaderboard index view with enhanced dashboard interface and statistics cards
+- Added 24 new translation keys for Arabic and English language support
+- Integrated withCount('votes') method for optimized vote counting in leaderboard queries
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -29,21 +39,21 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document describes the leaderboard and ranking system for the PlacesToVisit module. It covers the LeaderboardService implementation, ranking algorithms, score calculation methods, periodic updates, and integration with the voting system and place management components. It also documents leaderboard generation workflows, caching strategies, performance optimization techniques, display formats, pagination, filtering options, administrative controls, manual adjustments, and maintenance procedures.
+This document describes the leaderboard and ranking system for the PlacesToVisit module. It covers the LeaderboardService implementation, ranking algorithms, score calculation methods, periodic updates, and integration with the voting system and place management components. The system now includes comprehensive administrative oversight capabilities through the new votes management interface, providing filtering, pagination, and moderation features for user-generated content.
 
 ## Project Structure
-The leaderboard system spans several layers:
+The leaderboard system spans several layers with enhanced administrative capabilities:
 - Services: LeaderboardService, VotingService, TrendingService
 - Entities: Place, PlaceVote, PlaceZone
-- Controllers: Admin LeaderboardController, API VoteController, API PlaceController
+- Controllers: Admin LeaderboardController (enhanced with votes management), API VoteController, API PlaceController
 - Configuration: Module config.php
-- Views: Admin leaderboard index view
+- Views: Admin leaderboard index view and comprehensive votes management interface
 - Database: Migrations for place_votes and place_zones
 
 ```mermaid
 graph TB
 subgraph "Controllers"
-AC["Admin LeaderboardController"]
+AC["Admin LeaderboardController<br/>Enhanced with votes management"]
 VC["API VoteController"]
 PC["API PlaceController"]
 end
@@ -53,15 +63,16 @@ VS["VotingService"]
 TS["TrendingService"]
 end
 subgraph "Entities"
-P["Place"]
-PV["PlaceVote"]
+P["Place<br/>with withCount('votes')"]
+PV["PlaceVote<br/>with moderation flags"]
 PZ["PlaceZone"]
 end
 subgraph "Config"
 CFG["Config: placestovisit"]
 end
 subgraph "Views"
-VADMIN["Admin Leaderboard View"]
+VADMIN["Admin Leaderboard View<br/>Enhanced dashboard"]
+VOTES["Votes Management View<br/>Filtering & moderation"]
 end
 AC --> LS
 PC --> LS
@@ -75,6 +86,7 @@ TS --> P
 CFG --> LS
 CFG --> TS
 AC --> VADMIN
+AC --> VOTES
 ```
 
 **Diagram sources**
@@ -87,7 +99,8 @@ AC --> VADMIN
 - [Place.php:1-218](file://Modules/PlacesToVisit/Entities/Place.php#L1-L218)
 - [PlaceVote.php:1-78](file://Modules/PlacesToVisit/Entities/PlaceVote.php#L1-L78)
 - [config.php:1-53](file://Modules/PlacesToVisit/Config/config.php#L1-L53)
-- [index.blade.php:1-135](file://Modules/PlacesToVisit/Resources/views/admin/leaderboard/index.blade.php#L1-L135)
+- [index.blade.php:1-151](file://Modules/PlacesToVisit/Resources/views/admin/leaderboard/index.blade.php#L1-L151)
+- [votes.blade.php:1-142](file://Modules/PlacesToVisit/Resources/views/admin/leaderboard/votes.blade.php#L1-L142)
 
 **Section sources**
 - [LeaderboardService.php:1-141](file://Modules/PlacesToVisit/Services/LeaderboardService.php#L1-L141)
@@ -101,14 +114,15 @@ AC --> VADMIN
 - [create_place_votes_table.php:1-31](file://Modules/PlacesToVisit/Database/Migrations/2026_01_04_000004_create_place_votes_table.php#L1-L31)
 - [create_place_zones_table.php:1-27](file://Modules/PlacesToVisit/Database/Migrations/2026_04_02_000002_create_place_zones_table.php#L1-L27)
 - [config.php:1-53](file://Modules/PlacesToVisit/Config/config.php#L1-L53)
-- [index.blade.php:1-135](file://Modules/PlacesToVisit/Resources/views/admin/leaderboard/index.blade.php#L1-L135)
+- [index.blade.php:1-151](file://Modules/PlacesToVisit/Resources/views/admin/leaderboard/index.blade.php#L1-L151)
+- [votes.blade.php:1-142](file://Modules/PlacesToVisit/Resources/views/admin/leaderboard/votes.blade.php#L1-L142)
 
 ## Core Components
 - LeaderboardService: Computes monthly leaderboard rankings by total votes and average rating, with caching and filtering by category and zone.
 - VotingService: Handles vote creation/update/removal, integrates with XP rewards, and triggers cache invalidation.
 - TrendingService: Computes trending places using a recency-weighted scoring algorithm.
-- Place and PlaceVote entities: Define data model, scopes, and computed attributes for localization and URLs.
-- Admin LeaderboardController: Provides admin UI for viewing leaderboards, managing votes, and clearing cache.
+- Place and PlaceVote entities: Define data model, scopes, and computed attributes for localization and URLs, with enhanced vote counting capabilities.
+- Admin LeaderboardController: Provides admin UI for viewing leaderboards, managing votes, moderating content, and clearing cache.
 - API endpoints: Expose leaderboard and voter queries to clients.
 
 **Section sources**
@@ -121,11 +135,12 @@ AC --> VADMIN
 - [PlaceController.php:181-219](file://Modules/PlacesToVisit/Http/Controllers/Api/PlaceController.php#L181-L219)
 
 ## Architecture Overview
-The system follows a service-layer architecture:
+The system follows a service-layer architecture with enhanced administrative capabilities:
 - Controllers receive requests and delegate to services.
 - Services encapsulate ranking logic, caching, and data aggregation.
-- Entities define relationships and scopes for efficient queries.
+- Entities define relationships and scopes for efficient queries with optimized vote counting.
 - Configuration drives thresholds, limits, and cache durations.
+- Enhanced admin interface provides comprehensive oversight of user-generated content.
 
 ```mermaid
 sequenceDiagram
@@ -138,8 +153,8 @@ Client->>PC : GET /api/v1/places/leaderboard
 PC->>LS : getTopPlaces(period, categoryId, zoneId, limit)
 LS->>Cache : remember(cacheKey, ttl)
 alt Cache miss
-LS->>DB : Query places with votes_count and avg_rating
-DB-->>LS : Aggregated rows
+LS->>DB : Query places with withCount('votes') and withAvg('rating')
+DB-->>LS : Aggregated rows with optimized vote counts
 LS-->>Cache : Store collection
 else Cache hit
 Cache-->>LS : Return cached collection
@@ -151,12 +166,13 @@ PC-->>Client : JSON response
 **Diagram sources**
 - [PlaceController.php:181-219](file://Modules/PlacesToVisit/Http/Controllers/Api/PlaceController.php#L181-L219)
 - [LeaderboardService.php:28-59](file://Modules/PlacesToVisit/Services/LeaderboardService.php#L28-L59)
+- [Place.php:188-195](file://Modules/PlacesToVisit/Entities/Place.php#L188-L195)
 
 ## Detailed Component Analysis
 
 ### LeaderboardService
-Implements the core ranking algorithm:
-- Primary sort: votes_count (total votes per month).
+Implements the core ranking algorithm with enhanced performance:
+- Primary sort: votes_count (total votes per month, optimized with withCount).
 - Secondary sort: votes_avg_rating (quality).
 - Filters: minimum votes threshold, category, zone, and period.
 - Caching: per-period, per-category, per-zone keys with configurable TTL.
@@ -181,6 +197,7 @@ class Place {
 +scopeActive()
 +scopeInCategory()
 +scopeInZone()
++scopeWithCurrentPeriodStats()
 }
 class PlaceVote {
 +forPeriod() Scope
@@ -194,7 +211,7 @@ class User {
 +f_name
 +image
 }
-LeaderboardService --> Place : "queries"
+LeaderboardService --> Place : "queries with optimized vote counting"
 LeaderboardService --> PlaceVote : "aggregates"
 LeaderboardService --> User : "joins"
 ```
@@ -210,7 +227,7 @@ LeaderboardService --> User : "joins"
 - [config.php:8-15](file://Modules/PlacesToVisit/Config/config.php#L8-L15)
 
 ### Ranking Criteria and Score Calculation
-- Total votes per month: primary popularity metric.
+- Total votes per month: primary popularity metric, optimized with database-level counting.
 - Average rating per month: secondary quality metric.
 - Minimum votes threshold: prevents trivial rankings.
 - Geographic proximity: not part of the leaderboard algorithm; nearby search is available via Place::scopeNearby.
@@ -219,7 +236,8 @@ LeaderboardService --> User : "joins"
 ```mermaid
 flowchart TD
 Start(["Compute Rankings"]) --> Fetch["Fetch places with aggregated votes and ratings"]
-Fetch --> FilterMin["Filter by min_votes_for_leaderboard"]
+Fetch --> Optimize["Optimized withCount('votes') and withAvg('rating')"]
+Optimize --> FilterMin["Filter by min_votes_for_leaderboard"]
 FilterMin --> SortPrimary["Sort by votes_count desc"]
 SortPrimary --> SortSecondary["Sort by votes_avg_rating desc"]
 SortSecondary --> Limit["Limit to leaderboard_limit"]
@@ -228,6 +246,7 @@ Limit --> Return(["Return ranked collection"])
 
 **Diagram sources**
 - [LeaderboardService.php:28-59](file://Modules/PlacesToVisit/Services/LeaderboardService.php#L28-L59)
+- [Place.php:188-195](file://Modules/PlacesToVisit/Entities/Place.php#L188-L195)
 - [config.php:8-12](file://Modules/PlacesToVisit/Config/config.php#L8-L12)
 
 **Section sources**
@@ -262,9 +281,10 @@ Note over Cache : Next request rebuilds cache
 - [config.php:14](file://Modules/PlacesToVisit/Config/config.php#L14)
 
 ### Leaderboard Generation Workflows
-- Admin dashboard: renders top places for a selected period, with stats and filters.
+- Admin dashboard: renders top places for a selected period with enhanced statistics cards and quick access to votes management.
 - API endpoint: returns top places with metadata and current period.
 - Top voters: returns top contributors by vote count.
+- Comprehensive votes management: provides filtering, pagination, and moderation capabilities for administrative oversight.
 
 ```mermaid
 sequenceDiagram
@@ -275,72 +295,89 @@ participant View as "Admin View"
 Admin->>AC : GET /admin/places/leaderboard
 AC->>LS : getTopPlaces(period)
 LS-->>AC : Collection
-AC->>View : Render with stats and periods
-View-->>Admin : HTML table
+AC->>View : Render with enhanced dashboard and stats
+View-->>Admin : HTML table with statistics cards
+Admin->>AC : GET /admin/places/leaderboard/votes
+AC->>View : Render votes management interface
+View-->>Admin : Filterable, paginated vote list with moderation controls
 ```
 
 **Diagram sources**
 - [LeaderboardController.php:19-44](file://Modules/PlacesToVisit/Http/Controllers/Admin/LeaderboardController.php#L19-L44)
-- [index.blade.php:109-135](file://Modules/PlacesToVisit/Resources/views/admin/leaderboard/index.blade.php#L109-L135)
+- [LeaderboardController.php:46-67](file://Modules/PlacesToVisit/Http/Controllers/Admin/LeaderboardController.php#L46-L67)
+- [index.blade.php:109-151](file://Modules/PlacesToVisit/Resources/views/admin/leaderboard/index.blade.php#L109-L151)
+- [votes.blade.php:1-142](file://Modules/PlacesToVisit/Resources/views/admin/leaderboard/votes.blade.php#L1-L142)
 
 **Section sources**
 - [LeaderboardController.php:19-44](file://Modules/PlacesToVisit/Http/Controllers/Admin/LeaderboardController.php#L19-L44)
+- [LeaderboardController.php:46-67](file://Modules/PlacesToVisit/Http/Controllers/Admin/LeaderboardController.php#L46-L67)
 - [PlaceController.php:181-200](file://Modules/PlacesToVisit/Http/Controllers/Api/PlaceController.php#L181-L200)
 
 ### Caching Strategies and Performance Optimization
 - Query-level caching: Cache::remember with composite keys.
-- Aggregation optimization: Eloquent withCount and withAvg reduce N+1 queries.
+- Aggregation optimization: Eloquent withCount and withAvg reduce N+1 queries and provide database-level optimization.
 - Indexing: Unique constraint on (place_id, user_id, period) ensures single vote per user per period.
-- Pagination: API endpoints support pagination for reviews and admin vote listings.
+- Pagination: Reviews endpoint supports pagination for reviews and admin vote listings.
 - Windowed trending: Separate trending algorithm uses recency weighting.
+- Enhanced vote counting: withCount('votes') method provides optimized vote aggregation.
 
 **Section sources**
 - [LeaderboardService.php:33-58](file://Modules/PlacesToVisit/Services/LeaderboardService.php#L33-L58)
+- [Place.php:188-195](file://Modules/PlacesToVisit/Entities/Place.php#L188-L195)
 - [create_place_votes_table.php:21-22](file://Modules/PlacesToVisit/Database/Migrations/2026_01_04_000004_create_place_votes_table.php#L21-L22)
 - [VoteController.php:123-146](file://Modules/PlacesToVisit/Http/Controllers/Api/VoteController.php#L123-L146)
 - [TrendingService.php:28-73](file://Modules/PlacesToVisit/Services/TrendingService.php#L28-L73)
 
 ### Display Formats, Pagination, and Filtering
-- Admin leaderboard view: Rank badges, place name, category, votes, and rating.
+- Admin leaderboard view: Enhanced with statistics cards (total votes, participating places, average rating, total places) and quick access to votes management.
 - API leaderboard: Includes current period and requested period for context.
 - Pagination: Reviews endpoint supports per_page and returns meta.
 - Filtering: Category and zone filters supported in leaderboard queries.
+- Comprehensive votes management: Advanced filtering by flagged status and place selection with pagination and moderation controls.
 
 **Section sources**
-- [index.blade.php:119-135](file://Modules/PlacesToVisit/Resources/views/admin/leaderboard/index.blade.php#L119-L135)
+- [index.blade.php:27-61](file://Modules/PlacesToVisit/Resources/views/admin/leaderboard/index.blade.php#L27-L61)
+- [index.blade.php:119-151](file://Modules/PlacesToVisit/Resources/views/admin/leaderboard/index.blade.php#L119-L151)
 - [PlaceController.php:181-200](file://Modules/PlacesToVisit/Http/Controllers/Api/PlaceController.php#L181-L200)
 - [VoteController.php:123-146](file://Modules/PlacesToVisit/Http/Controllers/Api/VoteController.php#L123-L146)
 - [LeaderboardService.php:37-44](file://Modules/PlacesToVisit/Services/LeaderboardService.php#L37-L44)
+- [votes.blade.php:27-56](file://Modules/PlacesToVisit/Resources/views/admin/leaderboard/votes.blade.php#L27-L56)
 
 ### Administrative Controls and Maintenance
-- Toggle flagged votes and delete votes via admin controller.
+- Toggle flagged votes and delete votes via admin controller with immediate cache invalidation.
 - Clear leaderboard cache from admin UI.
-- Manage available periods and view all votes with filtering.
+- Manage available periods and view all votes with advanced filtering capabilities.
+- Comprehensive moderation interface with flagging and deletion controls.
+- Enhanced dashboard with statistics cards for quick monitoring.
 
 **Section sources**
 - [LeaderboardController.php:69-92](file://Modules/PlacesToVisit/Http/Controllers/Admin/LeaderboardController.php#L69-L92)
+- [LeaderboardController.php:46-67](file://Modules/PlacesToVisit/Http/Controllers/Admin/LeaderboardController.php#L46-L67)
 - [index.blade.php:16-25](file://Modules/PlacesToVisit/Resources/views/admin/leaderboard/index.blade.php#L16-L25)
+- [votes.blade.php:107-123](file://Modules/PlacesToVisit/Resources/views/admin/leaderboard/votes.blade.php#L107-123)
 
 ### Integration with Voting System and Place Management
 - VotingService persists votes, validates uniqueness per period, and triggers cache invalidation.
-- Place entity exposes localized titles/descriptions, images, and voting statistics.
-- PlaceVote entity stores monthly period, rating, review, and moderation flags.
+- Place entity exposes localized titles/descriptions, images, and voting statistics with optimized vote counting.
+- PlaceVote entity stores monthly period, rating, review, and moderation flags for administrative oversight.
+- Enhanced routes support comprehensive votes management functionality.
 
 **Section sources**
 - [VotingService.php:16-86](file://Modules/PlacesToVisit/Services/VotingService.php#L16-L86)
 - [Place.php:93-108](file://Modules/PlacesToVisit/Entities/Place.php#L93-L108)
 - [PlaceVote.php:16-36](file://Modules/PlacesToVisit/Entities/PlaceVote.php#L16-L36)
+- [web.php:51-58](file://Modules/PlacesToVisit/Routes/web.php#L51-L58)
 
 ## Dependency Analysis
 ```mermaid
 graph LR
-LS["LeaderboardService"] --> P["Place"]
-LS --> PV["PlaceVote"]
+LS["LeaderboardService"] --> P["Place<br/>with withCount('votes')"]
+LS --> PV["PlaceVote<br/>with moderation"]
 LS --> PZ["PlaceZone"]
 VS["VotingService"] --> PV
 VS --> LS
 TS["TrendingService"] --> P
-AC["Admin LeaderboardController"] --> LS
+AC["Admin LeaderboardController<br/>Enhanced"] --> LS
 PC["API PlaceController"] --> LS
 VC["API VoteController"] --> VS
 CFG["Config: placestovisit"] --> LS
@@ -369,22 +406,26 @@ CFG --> TS
 - Use composite cache keys to avoid cross-period contamination.
 - Keep leaderboard_limit and trending limit reasonable to bound query results.
 - Ensure proper indexing on place_votes (place_id, user_id, period) and places (is_active, category_id, zone_id).
-- Prefer Eloquent aggregations (withCount, withAvg) to minimize round trips.
+- Prefer Eloquent aggregations (withCount, withAvg) to minimize round trips and leverage database optimization.
 - Consider precomputing monthly aggregates if real-time aggregation becomes a bottleneck.
+- Enhanced vote counting with withCount('votes') reduces memory usage and improves query performance.
 
 ## Troubleshooting Guide
 - Votes not appearing on leaderboard: verify minimum votes threshold and that votes belong to the current period.
 - Incorrect rankings: confirm sort order and presence of ratings; ensure cache is cleared after administrative changes.
 - Cache misses frequently: adjust cache_ttl and monitor cache backend health.
 - Admin actions not reflected: ensure cache invalidation is invoked on vote deletion and admin toggles.
+- Votes management interface issues: verify proper filtering parameters and pagination settings.
+- Moderation controls not working: check route definitions and controller method implementations.
 
 **Section sources**
 - [LeaderboardService.php:42-44](file://Modules/PlacesToVisit/Services/LeaderboardService.php#L42-L44)
 - [LeaderboardService.php:113-139](file://Modules/PlacesToVisit/Services/LeaderboardService.php#L113-L139)
 - [LeaderboardController.php:77-84](file://Modules/PlacesToVisit/Http/Controllers/Admin/LeaderboardController.php#L77-L84)
+- [LeaderboardController.php:46-67](file://Modules/PlacesToVisit/Http/Controllers/Admin/LeaderboardController.php#L46-L67)
 
 ## Conclusion
-The leaderboard system combines monthly period-based voting with configurable thresholds, robust caching, and flexible filtering to deliver responsive and accurate rankings. Its modular design enables easy maintenance, extension, and integration with broader place management and XP systems.
+The leaderboard system combines monthly period-based voting with configurable thresholds, robust caching, and flexible filtering to deliver responsive and accurate rankings. The enhanced administrative interface provides comprehensive oversight capabilities through advanced filtering, pagination, and moderation features. Its modular design enables easy maintenance, extension, and integration with broader place management and XP systems.
 
 ## Appendices
 
@@ -406,7 +447,30 @@ The leaderboard system combines monthly period-based voting with configurable th
 ### Database Schema Notes
 - place_votes: unique constraint (place_id, user_id, period), monthly period string, optional rating, review, and moderation flag.
 - place_zones: internal and display names with activation flag.
+- Enhanced vote management: supports moderation flags and comprehensive administrative oversight.
 
 **Section sources**
 - [create_place_votes_table.php:11-23](file://Modules/PlacesToVisit/Database/Migrations/2026_01_04_000004_create_place_votes_table.php#L11-L23)
 - [create_place_zones_table.php:11-19](file://Modules/PlacesToVisit/Database/Migrations/2026_04_02_000002_create_place_zones_table.php#L11-L19)
+
+### Administrative Routes
+- GET /admin/places/leaderboard - Main leaderboard dashboard
+- GET /admin/places/leaderboard/votes - Comprehensive votes management interface
+- POST /admin/places/leaderboard/votes/{vote}/toggle-flag - Toggle vote moderation status
+- DELETE /admin/places/leaderboard/votes/{vote} - Delete specific vote
+- POST /admin/places/leaderboard/clear-cache - Clear leaderboard cache
+
+**Section sources**
+- [web.php:51-58](file://Modules/PlacesToVisit/Routes/web.php#L51-L58)
+
+### Enhanced Dashboard Features
+- Statistics cards: total votes, participating places, average rating, total places
+- Quick access to votes management interface
+- Period selection dropdown for historical analysis
+- Real-time vote moderation controls
+- Comprehensive filtering and pagination for administrative oversight
+
+**Section sources**
+- [index.blade.php:27-61](file://Modules/PlacesToVisit/Resources/views/admin/leaderboard/index.blade.php#L27-L61)
+- [index.blade.php:63-75](file://Modules/PlacesToVisit/Resources/views/admin/leaderboard/index.blade.php#L63-L75)
+- [votes.blade.php:27-56](file://Modules/PlacesToVisit/Resources/views/admin/leaderboard/votes.blade.php#L27-L56)
