@@ -3,7 +3,7 @@
 namespace Modules\PlacesToVisit\Entities;
 
 use App\Models\User;
-use App\Models\Zone;
+use Modules\PlacesToVisit\Entities\PlaceZone;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -55,7 +55,7 @@ class Place extends Model
 
     public function zone(): BelongsTo
     {
-        return $this->belongsTo(Zone::class);
+        return $this->belongsTo(PlaceZone::class);
     }
 
     public function translations(): HasMany

@@ -3,27 +3,25 @@
 namespace Modules\PlacesToVisit\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Translation;
-use App\Models\Zone;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Modules\PlacesToVisit\Entities\PlaceZone;
 
 class PlaceZoneController extends Controller
 {
     /**
-     * List all zones with option to create new ones.
+     * List all zones.
      */
     public function index(): View
     {
-        $zones = Zone::withoutGlobalScopes()
-            ->with(['translations'])
-            ->orderBy('name')
-            ->get();
+        $zones = PlaceZone::query()
+            ->withCount('places')
+            ->when(request('search'), fn($q, $s) => $q->where('name', 'like', "%{$s}%"))
+            ->latest()
+            ->paginate(config('default_pagination', 15));
 
-        $language = getWebConfig('language');
-
-        return view('placestovisit::admin.zones.index', compact('zones', 'language'));
+        return view('placestovisit::admin.zones.index', compact('zones'));
     }
 
     /**
@@ -31,8 +29,7 @@ class PlaceZoneController extends Controller
      */
     public function create(): View
     {
-        $language = getWebConfig('language');
-        return view('placestovisit::admin.zones.create', compact('language'));
+        return view('placestovisit::admin.zones.create');
     }
 
     /**
@@ -42,17 +39,17 @@ class PlaceZoneController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:200',
+            'name_ar' => 'nullable|string|max:200',
             'display_name' => 'required|string|max:200',
+            'display_name_ar' => 'nullable|string|max:200',
         ]);
 
-        $zone = Zone::withoutGlobalScopes()->create([
+        PlaceZone::create([
             'name' => $request->name,
+            'name_ar' => $request->name_ar ?: null,
             'display_name' => $request->display_name,
-            'status' => 1,
+            'display_name_ar' => $request->display_name_ar ?: null,
         ]);
-
-        // Store translations for each language
-        $this->saveTranslations($request, $zone);
 
         \Toastr::success(translate('messages.zone_created_successfully'));
         return redirect()->route('admin.places.zones.index');
@@ -61,56 +58,43 @@ class PlaceZoneController extends Controller
     /**
      * Show zone edit form.
      */
-    public function edit(int $id): View
+    public function edit(PlaceZone $zone): View
     {
-        $zone = Zone::withoutGlobalScopes()->with('translations')->findOrFail($id);
-        $language = getWebConfig('language');
-        $defaultLang = str_replace('_', '-', app()->getLocale());
-
-        return view('placestovisit::admin.zones.edit', compact('zone', 'language', 'defaultLang'));
+        return view('placestovisit::admin.zones.edit', compact('zone'));
     }
 
     /**
      * Update a zone.
      */
-    public function update(Request $request, int $id): RedirectResponse
+    public function update(Request $request, PlaceZone $zone): RedirectResponse
     {
         $request->validate([
             'name' => 'required|string|max:200',
+            'name_ar' => 'nullable|string|max:200',
             'display_name' => 'required|string|max:200',
+            'display_name_ar' => 'nullable|string|max:200',
         ]);
-
-        $zone = Zone::withoutGlobalScopes()->findOrFail($id);
 
         $zone->update([
             'name' => $request->name,
+            'name_ar' => $request->name_ar ?: null,
             'display_name' => $request->display_name,
+            'display_name_ar' => $request->display_name_ar ?: null,
         ]);
-
-        // Update translations
-        $this->saveTranslations($request, $zone);
 
         \Toastr::success(translate('messages.zone_updated_successfully'));
         return redirect()->route('admin.places.zones.index');
     }
 
     /**
-     * Delete a zone (only if no places reference it).
+     * Delete a zone.
      */
-    public function destroy(int $id): RedirectResponse
+    public function destroy(PlaceZone $zone): RedirectResponse
     {
-        $zone = Zone::withoutGlobalScopes()->findOrFail($id);
-
-        $placesCount = \Modules\PlacesToVisit\Entities\Place::where('zone_id', $id)->count();
-        if ($placesCount > 0) {
+        if ($zone->places()->exists()) {
             \Toastr::error(translate('messages.cannot_delete_zone_with_places'));
             return back();
         }
-
-        // Delete translations
-        Translation::where('translationable_type', 'App\Models\Zone')
-            ->where('translationable_id', $zone->id)
-            ->delete();
 
         $zone->delete();
 
@@ -119,35 +103,13 @@ class PlaceZoneController extends Controller
     }
 
     /**
-     * Save translations for name and display_name.
+     * Toggle zone active status.
      */
-    private function saveTranslations(Request $request, Zone $zone): void
+    public function toggleStatus(PlaceZone $zone): RedirectResponse
     {
-        $languages = getWebConfig('language') ?? [];
+        $zone->update(['is_active' => !$zone->is_active]);
 
-        foreach ($languages as $lang) {
-            $locale = $lang['code'] ?? $lang;
-            $defaultLang = str_replace('_', '-', app()->getLocale());
-
-            if ($locale === $defaultLang) {
-                continue;
-            }
-
-            foreach (['name', 'display_name'] as $attribute) {
-                $value = $request->input("{$attribute}_{$locale}");
-
-                if ($value) {
-                    Translation::updateOrCreate(
-                        [
-                            'translationable_type' => 'App\Models\Zone',
-                            'translationable_id' => $zone->id,
-                            'locale' => $locale,
-                            'key' => $attribute,
-                        ],
-                        ['value' => $value]
-                    );
-                }
-            }
-        }
+        \Toastr::success(translate('messages.status_updated'));
+        return back();
     }
 }

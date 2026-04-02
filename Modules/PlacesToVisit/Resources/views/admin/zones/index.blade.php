@@ -20,6 +20,22 @@
         </div>
     </div>
 
+    <!-- Filters -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <form class="row gx-2" action="{{ route('admin.places.zones.index') }}" method="get">
+                <div class="col-md-4">
+                    <input type="text" name="search" class="form-control" 
+                           placeholder="{{ translate('messages.search_by_name') }}" 
+                           value="{{ request('search') }}">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">{{ translate('messages.filter') }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Card -->
     <div class="card">
         <div class="card-body p-0">
@@ -31,19 +47,26 @@
                             <th>{{ translate('messages.name') }}</th>
                             <th>{{ translate('messages.display_name') }}</th>
                             <th>{{ translate('messages.places_count') }}</th>
+                            <th>{{ translate('messages.status') }}</th>
                             <th class="text-center">{{ translate('messages.action') }}</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($zones as $key => $zone)
                         <tr>
-                            <td>{{ $key + 1 }}</td>
-                            <td>{{ $zone->name }}</td>
-                            <td>{{ $zone->display_name }}</td>
+                            <td>{{ $zones->firstItem() + $key }}</td>
+                            <td>{{ $zone->localized_name }}</td>
+                            <td>{{ $zone->localized_display_name }}</td>
                             <td>
                                 <span class="badge badge-soft-primary">
-                                    {{ \Modules\PlacesToVisit\Entities\Place::where('zone_id', $zone->id)->count() }}
+                                    {{ $zone->places_count }}
                                 </span>
+                            </td>
+                            <td>
+                                <a href="{{ route('admin.places.zones.toggle-status', $zone->id) }}"
+                                   class="badge badge-soft-{{ $zone->is_active ? 'success' : 'danger' }}">
+                                    {{ $zone->is_active ? translate('messages.active') : translate('messages.inactive') }}
+                                </a>
                             </td>
                             <td class="text-center">
                                 <a href="{{ route('admin.places.zones.edit', $zone->id) }}"
@@ -63,7 +86,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="5" class="text-center py-4">
+                            <td colspan="6" class="text-center py-4">
                                 {{ translate('messages.no_data_found') }}
                             </td>
                         </tr>
@@ -71,6 +94,9 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+        <div class="card-footer">
+            {{ $zones->links() }}
         </div>
     </div>
 </div>

@@ -49,6 +49,23 @@ return [
     'current' => 'الحالي',
     'period' => 'الفترة',
     
+    // Zones
+    'zones' => 'المناطق',
+    'add_zone' => 'إضافة منطقة',
+    'edit_zone' => 'تعديل المنطقة',
+    'zone_created_successfully' => 'تم إنشاء المنطقة بنجاح',
+    'zone_updated_successfully' => 'تم تحديث المنطقة بنجاح',
+    'zone_deleted_successfully' => 'تم حذف المنطقة بنجاح',
+    'cannot_delete_zone_with_places' => 'لا يمكن حذف المنطقة التي تحتوي على أماكن',
+    'enter_zone_name' => 'أدخل اسم المنطقة',
+    'enter_zone_name_arabic' => 'أدخل اسم المنطقة بالعربية',
+    'enter_display_name' => 'أدخل اسم العرض',
+    'enter_display_name_arabic' => 'أدخل اسم العرض بالعربية',
+    'internal_name_for_reference' => 'اسم داخلي للمرجع',
+    'shown_to_users_in_app' => 'يُعرض للمستخدمين في التطبيق',
+    'select_zone' => 'اختر المنطقة',
+    'display_name' => 'اسم العرض',
+    
     // Form fields
     'enter_category_name' => 'أدخل اسم الفئة',
     'enter_title_english' => 'أدخل العنوان بالإنجليزية',

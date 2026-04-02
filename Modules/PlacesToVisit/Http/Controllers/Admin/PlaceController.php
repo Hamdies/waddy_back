@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use App\Models\Zone;
+use Modules\PlacesToVisit\Entities\PlaceZone;
 use Modules\PlacesToVisit\Entities\Place;
 use Modules\PlacesToVisit\Entities\PlaceCategory;
 use Modules\PlacesToVisit\Entities\PlaceTag;
@@ -41,7 +41,7 @@ class PlaceController extends Controller
     {
         $categories = PlaceCategory::active()->ordered()->get();
         $tags = PlaceTag::active()->get();
-        $zones = Zone::withoutGlobalScopes()->orderBy('name')->get();
+                $zones = PlaceZone::active()->ordered()->get();
         return view('placestovisit::admin.places.create', compact('categories', 'tags', 'zones'));
     }
 
@@ -135,7 +135,7 @@ class PlaceController extends Controller
         $place->load(['translations', 'images', 'tags']);
         $categories = PlaceCategory::active()->ordered()->get();
         $tags = PlaceTag::active()->get();
-        $zones = Zone::withoutGlobalScopes()->orderBy('name')->get();
+                $zones = PlaceZone::active()->ordered()->get();
         
         $translations = $place->translations->keyBy('locale');
         $selectedTags = $place->tags->pluck('id')->toArray();

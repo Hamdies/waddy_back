@@ -107,7 +107,7 @@
                                 <option value="">{{ translate('messages.select_zone') }}</option>
                                 @foreach($zones as $zone)
                                 <option value="{{ $zone->id }}" {{ $place->zone_id == $zone->id ? 'selected' : '' }}>
-                                    {{ $zone->display_name ?? $zone->name }}
+                                    {{ $zone->localized_display_name }}
                                 </option>
                                 @endforeach
                             </select>

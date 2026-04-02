@@ -34,6 +34,7 @@ Route::group([
         Route::get('{zone}/edit', 'PlaceZoneController@edit')->name('edit');
         Route::put('{zone}', 'PlaceZoneController@update')->name('update');
         Route::delete('{zone}', 'PlaceZoneController@destroy')->name('destroy');
+        Route::get('{zone}/toggle-status', 'PlaceZoneController@toggleStatus')->name('toggle-status');
     });
 
     // Places

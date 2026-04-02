@@ -104,7 +104,7 @@
                             <select name="zone_id" class="form-control">
                                 <option value="">{{ translate('messages.select_zone') }}</option>
                                 @foreach($zones as $zone)
-                                <option value="{{ $zone->id }}">{{ $zone->display_name ?? $zone->name }}</option>
+                                <option value="{{ $zone->id }}">{{ $zone->localized_display_name }}</option>
                                 @endforeach
                             </select>
                         </div>

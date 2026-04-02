@@ -119,7 +119,7 @@ class LeaderboardService
         
         // Clear category-specific and zone-specific caches
         $categories = \Modules\PlacesToVisit\Entities\PlaceCategory::pluck('id');
-        $zones = \App\Models\Zone::withoutGlobalScopes()->pluck('id');
+        $zones = \Modules\PlacesToVisit\Entities\PlaceZone::pluck('id');
         
         foreach ($categories as $categoryId) {
             Cache::forget("leaderboard:{$period}:{$categoryId}:all");

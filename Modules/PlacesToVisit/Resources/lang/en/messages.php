@@ -49,6 +49,23 @@ return [
     'current' => 'Current',
     'period' => 'Period',
     
+    // Zones
+    'zones' => 'Zones',
+    'add_zone' => 'Add Zone',
+    'edit_zone' => 'Edit Zone',
+    'zone_created_successfully' => 'Zone created successfully',
+    'zone_updated_successfully' => 'Zone updated successfully',
+    'zone_deleted_successfully' => 'Zone deleted successfully',
+    'cannot_delete_zone_with_places' => 'Cannot delete zone that has places',
+    'enter_zone_name' => 'Enter zone name',
+    'enter_zone_name_arabic' => 'Enter zone name in Arabic',
+    'enter_display_name' => 'Enter display name',
+    'enter_display_name_arabic' => 'Enter display name in Arabic',
+    'internal_name_for_reference' => 'Internal name for reference',
+    'shown_to_users_in_app' => 'Shown to users in the app',
+    'select_zone' => 'Select zone',
+    'display_name' => 'Display Name',
+    
     // Form fields
     'enter_category_name' => 'Enter category name',
     'enter_title_english' => 'Enter title in English',

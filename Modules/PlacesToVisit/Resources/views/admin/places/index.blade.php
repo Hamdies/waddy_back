@@ -80,7 +80,7 @@
                                 <br><small class="text-muted">{{ Str::limit($place->address, 30) }}</small>
                             </td>
                             <td>{{ $place->category?->localized_name ?? '-' }}</td>
-                            <td>{{ $place->zone?->display_name ?? '-' }}</td>
+                            <td>{{ $place->zone?->localized_display_name ?? '-' }}</td>
                             <td>
                                 <span class="badge badge-soft-primary">
                                     {{ $place->votes_count ?? 0 }} {{ translate('messages.votes') }}
