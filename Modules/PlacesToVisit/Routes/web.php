@@ -46,17 +46,6 @@ Route::group([
         Route::post('clear-cache', 'LeaderboardController@clearCache')->name('clear-cache');
     });
 
-    // Places
-    Route::get('/', 'PlaceController@index')->name('index');
-    Route::get('create', 'PlaceController@create')->name('create');
-    Route::post('/', 'PlaceController@store')->name('store');
-    Route::get('{place}/edit', 'PlaceController@edit')->name('edit');
-    Route::get('{place}', 'PlaceController@show')->name('show');
-    Route::put('{place}', 'PlaceController@update')->name('update');
-    Route::delete('{place}', 'PlaceController@destroy')->name('destroy');
-    Route::get('{place}/toggle-status', 'PlaceController@toggleStatus')->name('toggle-status');
-    Route::get('{place}/toggle-featured', 'PlaceController@toggleFeatured')->name('toggle-featured');
-
     // Banners
     Route::group(['prefix' => 'banners', 'as' => 'banners.'], function () {
         Route::get('/', 'PlaceBannerController@index')->name('index');
@@ -88,4 +77,15 @@ Route::group([
         Route::post('{submission}/reject', 'PlaceSubmissionController@reject')->name('reject');
         Route::delete('{submission}', 'PlaceSubmissionController@destroy')->name('destroy');
     });
+
+    // Places
+    Route::get('/', 'PlaceController@index')->name('index');
+    Route::get('create', 'PlaceController@create')->name('create');
+    Route::post('/', 'PlaceController@store')->name('store');
+    Route::get('{place}/edit', 'PlaceController@edit')->name('edit');
+    Route::get('{place}', 'PlaceController@show')->name('show');
+    Route::put('{place}', 'PlaceController@update')->name('update');
+    Route::delete('{place}', 'PlaceController@destroy')->name('destroy');
+    Route::get('{place}/toggle-status', 'PlaceController@toggleStatus')->name('toggle-status');
+    Route::get('{place}/toggle-featured', 'PlaceController@toggleFeatured')->name('toggle-featured');
 });
