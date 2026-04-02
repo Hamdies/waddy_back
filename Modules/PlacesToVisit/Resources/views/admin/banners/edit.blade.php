@@ -78,9 +78,12 @@
                         <div class="form-group">
                             <label class="input-label">{{ translate('messages.image') }}</label>
                             <div class="custom-file">
-                                <input type="file" name="image" class="custom-file-input" accept="image/*">
-                                <label class="custom-file-label">{{ translate('messages.choose_file') }}</label>
+                                <input type="file" name="image" id="bannerImageInput" class="custom-file-input @error('image') is-invalid @enderror" accept="image/*">
+                                <label class="custom-file-label" for="bannerImageInput">{{ translate('messages.choose_file') }}</label>
                             </div>
+                            @error('image')
+                                <span class="text-danger small">{{ $message }}</span>
+                            @enderror
                             <small class="text-muted">{{ translate('messages.leave_empty_to_keep_current') }}</small>
                         </div>
                     </div>
@@ -204,6 +207,11 @@
 @push('script')
 <script>
     $(document).ready(function() {
+        $('#bannerImageInput').on('change', function() {
+            var fileName = $(this).val().split('\\').pop();
+            $(this).next('.custom-file-label').text(fileName || '{{ translate('messages.choose_file') }}');
+        });
+
         function toggleDataFields() {
             var type = $('#banner_type').val();
             $('#category_select, #place_select, #external_link').hide();
