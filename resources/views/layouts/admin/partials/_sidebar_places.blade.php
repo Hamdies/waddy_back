@@ -80,6 +80,16 @@
                         </a>
                     </li>
 
+                    <!-- Zones -->
+                    <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/places/zones*') ? 'active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.places.zones.index') }}" title="{{ translate('messages.zones') }}">
+                            <i class="tio-map nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                                {{ translate('messages.zones') }}
+                            </span>
+                        </a>
+                    </li>
+
                     <!-- Banners -->
                     <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/places/banners*') ? 'active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.places.banners.index') }}" title="{{ translate('messages.banners') }}">
