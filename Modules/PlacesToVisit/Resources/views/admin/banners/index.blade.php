@@ -76,7 +76,7 @@
                         <tr>
                             <td>{{ $banners->firstItem() + $key }}</td>
                             <td>
-                                <img src="{{ asset('storage/app/public/place_banner/' . $banner->image) }}" 
+                                <img src="{{ $banner->image_full_url }}" 
                                      onerror="this.src='{{ asset('public/assets/admin/img/400x400/img2.jpg') }}'"
                                      class="rounded" width="80" height="45" style="object-fit: cover;">
                             </td>

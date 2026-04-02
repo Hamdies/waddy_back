@@ -207,7 +207,7 @@ class PlaceController extends Controller
     {
         $period = $request->period ?? now()->format('Y-m');
         $zoneId = $request->zone_id ? (int) $request->zone_id : null;
-        $limit = $request->limit ? (int) $request->limit : 3;
+        $limit = $request->limit ? (int) $request->limit : 10;
 
         $topVoters = $this->leaderboardService->getTopVoters($period, $zoneId, $limit);
 

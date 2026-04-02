@@ -27,7 +27,7 @@
                     <div class="col-md-12">
                         <label class="input-label">{{ translate('messages.current_image') }}</label>
                         <div>
-                            <img src="{{ asset('storage/app/public/place_banner/' . $banner->image) }}" 
+                            <img src="{{ $banner->image_full_url }}" 
                                  onerror="this.src='{{ asset('public/assets/admin/img/400x400/img2.jpg') }}'"
                                  class="rounded" height="100">
                         </div>

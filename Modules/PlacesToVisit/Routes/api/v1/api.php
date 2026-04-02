@@ -24,6 +24,10 @@ Route::group(['prefix' => 'places'], function () {
     Route::get('banners', 'PlaceBannerController@index');
     Route::get('banners/featured', 'PlaceBannerController@featured');
     
+    // Zones
+    Route::get('zones', 'PlaceZoneController@index');
+    Route::get('zones/{zoneId}/places', 'PlaceZoneController@places');
+    
     Route::get('{place}', 'PlaceController@show');
     Route::get('{place}/reviews', 'VoteController@reviews');
     

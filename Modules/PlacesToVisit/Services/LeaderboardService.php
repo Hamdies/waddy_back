@@ -61,29 +61,31 @@ class LeaderboardService
     /**
      * Get top voters (chillers) ranked by number of votes
      */
-    public function getTopVoters(?string $period = null, ?int $zoneId = null, int $limit = 3): Collection
+    public function getTopVoters(?string $period = null, ?int $zoneId = null, int $limit = 10): Collection
     {
         $period = $period ?? now()->format('Y-m');
         $cacheKey = "top_voters:{$period}:" . ($zoneId ?? 'all') . ":{$limit}";
 
         return Cache::remember($cacheKey, $this->cacheMinutes * 60, function () use ($period, $zoneId, $limit) {
-            return PlaceVote::query()
+            $topVoters = PlaceVote::query()
                 ->select('user_id', DB::raw('COUNT(*) as votes_count'))
                 ->where('period', $period)
                 ->when($zoneId, fn($q) => $q->whereHas('place', fn($pq) => $pq->where('zone_id', $zoneId)))
                 ->groupBy('user_id')
                 ->orderByDesc('votes_count')
                 ->limit($limit)
-                ->get()
-                ->map(function ($row) {
-                    $user = User::select('id', 'f_name', 'image')->find($row->user_id);
-                    return [
-                        'user_id' => $row->user_id,
-                        'username' => $user?->f_name,
-                        'image' => $user?->image,
-                        'votes_count' => $row->votes_count,
-                    ];
-                });
+                ->get();
+
+            return $topVoters->map(function ($row, $index) {
+                $user = User::select('id', 'f_name', 'l_name', 'image')->with('storage')->find($row->user_id);
+                return [
+                    'position' => $index + 1,
+                    'user_id' => $row->user_id,
+                    'username' => $user?->f_name,
+                    'image' => $user?->image_full_url,
+                    'votes_count' => (int) $row->votes_count,
+                ];
+            });
         });
     }
 
@@ -132,9 +134,9 @@ class LeaderboardService
         }
 
         // Clear top voters caches
-        Cache::forget("top_voters:{$period}:all:3");
+        Cache::forget("top_voters:{$period}:all:10");
         foreach ($zones as $zoneId) {
-            Cache::forget("top_voters:{$period}:{$zoneId}:3");
+            Cache::forget("top_voters:{$period}:{$zoneId}:10");
         }
     }
 }
