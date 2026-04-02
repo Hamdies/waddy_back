@@ -2,17 +2,19 @@
 
 namespace Modules\PlacesToVisit\Providers;
 
+use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Route;
 use Modules\PlacesToVisit\Services\LeaderboardService;
 use Modules\PlacesToVisit\Services\TrendingService;
 use Modules\PlacesToVisit\Services\VotingService;
-use Nwidart\Modules\Support\ServiceProvider as BaseServiceProvider;
 
-class PlacesToVisitServiceProvider extends BaseServiceProvider
+class PlacesToVisitServiceProvider extends ServiceProvider
 {
+    protected $moduleName = 'PlacesToVisit';
+    protected $moduleNameLower = 'placestovisit';
+
     public function register(): void
     {
-        // Register services as singletons
         $this->app->singleton(LeaderboardService::class);
         $this->app->singleton(VotingService::class);
         $this->app->singleton(TrendingService::class);
@@ -62,15 +64,15 @@ class PlacesToVisitServiceProvider extends BaseServiceProvider
         }
     }
 
-    public function registerRoutes(): void
+    protected function registerRoutes(): void
     {
         Route::middleware('web')
-            ->namespace('Modules\\PlacesToVisit\\Http\\Controllers')
+            ->namespace('Modules\PlacesToVisit\Http\Controllers')
             ->group(module_path('PlacesToVisit', '/Routes/web.php'));
 
         Route::prefix('api/v1')
             ->middleware('api')
-            ->namespace('Modules\\PlacesToVisit\\Http\\Controllers\\Api')
+            ->namespace('Modules\PlacesToVisit\Http\Controllers\Api')
             ->group(module_path('PlacesToVisit', '/Routes/api/v1/api.php'));
     }
 
