@@ -37,6 +37,15 @@ Route::group([
         Route::get('{zone}/toggle-status', 'PlaceZoneController@toggleStatus')->name('toggle-status');
     });
 
+    // Leaderboard & Votes
+    Route::group(['prefix' => 'leaderboard', 'as' => 'leaderboard.'], function () {
+        Route::get('/', 'LeaderboardController@index')->name('index');
+        Route::get('votes', 'LeaderboardController@votes')->name('votes');
+        Route::get('votes/{vote}/toggle-flag', 'LeaderboardController@toggleFlag')->name('toggle-flag');
+        Route::delete('votes/{vote}', 'LeaderboardController@deleteVote')->name('delete-vote');
+        Route::post('clear-cache', 'LeaderboardController@clearCache')->name('clear-cache');
+    });
+
     // Places
     Route::get('/', 'PlaceController@index')->name('index');
     Route::get('create', 'PlaceController@create')->name('create');
@@ -47,15 +56,6 @@ Route::group([
     Route::delete('{place}', 'PlaceController@destroy')->name('destroy');
     Route::get('{place}/toggle-status', 'PlaceController@toggleStatus')->name('toggle-status');
     Route::get('{place}/toggle-featured', 'PlaceController@toggleFeatured')->name('toggle-featured');
-
-    // Leaderboard & Votes
-    Route::group(['prefix' => 'leaderboard', 'as' => 'leaderboard.'], function () {
-        Route::get('/', 'LeaderboardController@index')->name('index');
-        Route::get('votes', 'LeaderboardController@votes')->name('votes');
-        Route::get('votes/{vote}/toggle-flag', 'LeaderboardController@toggleFlag')->name('toggle-flag');
-        Route::delete('votes/{vote}', 'LeaderboardController@deleteVote')->name('delete-vote');
-        Route::post('clear-cache', 'LeaderboardController@clearCache')->name('clear-cache');
-    });
 
     // Banners
     Route::group(['prefix' => 'banners', 'as' => 'banners.'], function () {
