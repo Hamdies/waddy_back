@@ -23,6 +23,7 @@ class PlaceController extends Controller
             ->with(['translations', 'category', 'zone'])
             ->withCurrentPeriodStats($period)
             ->withCount('favorites')
+            ->withCount('votes')
             ->when($request->search, function ($q, $search) {
                 $q->whereHas('translations', fn($tq) => 
                     $tq->where('title', 'like', "%{$search}%")
