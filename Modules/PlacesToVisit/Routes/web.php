@@ -26,6 +26,16 @@ Route::group([
         Route::get('{category}/toggle-status', 'PlaceCategoryController@toggleStatus')->name('toggle-status');
     });
 
+    // Zones
+    Route::group(['prefix' => 'zones', 'as' => 'zones.'], function () {
+        Route::get('/', 'PlaceZoneController@index')->name('index');
+        Route::get('create', 'PlaceZoneController@create')->name('create');
+        Route::post('/', 'PlaceZoneController@store')->name('store');
+        Route::get('{zone}/edit', 'PlaceZoneController@edit')->name('edit');
+        Route::put('{zone}', 'PlaceZoneController@update')->name('update');
+        Route::delete('{zone}', 'PlaceZoneController@destroy')->name('destroy');
+    });
+
     // Places
     Route::get('/', 'PlaceController@index')->name('index');
     Route::get('create', 'PlaceController@create')->name('create');

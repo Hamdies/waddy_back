@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use App\Models\Zone;
 use Modules\PlacesToVisit\Entities\Place;
 use Modules\PlacesToVisit\Entities\PlaceCategory;
 use Modules\PlacesToVisit\Entities\PlaceTag;
@@ -19,7 +20,7 @@ class PlaceController extends Controller
         $period = now()->format('Y-m');
         
         $places = Place::query()
-            ->with(['translations', 'category'])
+            ->with(['translations', 'category', 'zone'])
             ->withCurrentPeriodStats($period)
             ->withCount('favorites')
             ->when($request->search, function ($q, $search) {
@@ -40,7 +41,8 @@ class PlaceController extends Controller
     {
         $categories = PlaceCategory::active()->ordered()->get();
         $tags = PlaceTag::active()->get();
-        return view('placestovisit::admin.places.create', compact('categories', 'tags'));
+        $zones = Zone::withoutGlobalScopes()->orderBy('name')->get();
+        return view('placestovisit::admin.places.create', compact('categories', 'tags', 'zones'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -71,6 +73,7 @@ class PlaceController extends Controller
 
         $place = Place::create([
             'category_id' => $request->category_id,
+            'zone_id' => $request->zone_id ?: null,
             'latitude' => $request->latitude,
             'longitude' => $request->longitude,
             'address' => $request->address,
@@ -132,11 +135,12 @@ class PlaceController extends Controller
         $place->load(['translations', 'images', 'tags']);
         $categories = PlaceCategory::active()->ordered()->get();
         $tags = PlaceTag::active()->get();
+        $zones = Zone::withoutGlobalScopes()->orderBy('name')->get();
         
         $translations = $place->translations->keyBy('locale');
         $selectedTags = $place->tags->pluck('id')->toArray();
         
-        return view('placestovisit::admin.places.edit', compact('place', 'categories', 'tags', 'translations', 'selectedTags'));
+        return view('placestovisit::admin.places.edit', compact('place', 'categories', 'tags', 'zones', 'translations', 'selectedTags'));
     }
 
     public function update(Request $request, Place $place): RedirectResponse
@@ -170,6 +174,7 @@ class PlaceController extends Controller
 
         $place->update([
             'category_id' => $request->category_id,
+            'zone_id' => $request->zone_id ?: null,
             'latitude' => $request->latitude,
             'longitude' => $request->longitude,
             'address' => $request->address,

@@ -17,6 +17,7 @@ Route::group(['prefix' => 'places'], function () {
     Route::get('tags', 'PlaceCategoryController@tags');
     Route::get('/', 'PlaceController@index');
     Route::get('leaderboard', 'PlaceController@leaderboard');
+    Route::get('top-voters', 'PlaceController@topVoters');
     Route::get('trending', 'PlaceController@trending');
     
     // Banners (public)

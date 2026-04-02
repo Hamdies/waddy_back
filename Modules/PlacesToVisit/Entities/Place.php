@@ -3,6 +3,7 @@
 namespace Modules\PlacesToVisit\Entities;
 
 use App\Models\User;
+use App\Models\Zone;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -50,6 +51,11 @@ class Place extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(PlaceCategory::class, 'category_id');
+    }
+
+    public function zone(): BelongsTo
+    {
+        return $this->belongsTo(Zone::class);
     }
 
     public function translations(): HasMany
@@ -202,5 +208,10 @@ class Place extends Model
     public function scopeWithTags($query, array $tagIds)
     {
         return $query->whereHas('tags', fn($q) => $q->whereIn('place_tags.id', $tagIds));
+    }
+
+    public function scopeInZone($query, int $zoneId)
+    {
+        return $query->where('zone_id', $zoneId);
     }
 }

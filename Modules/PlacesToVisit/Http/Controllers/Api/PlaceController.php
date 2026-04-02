@@ -30,6 +30,7 @@ class PlaceController extends Controller
             ->with([
                 'translations',
                 'category',
+                'zone',
                 'offers' => fn($q) => $q->active()->current(),
                 'images',
                 'tags' => fn($q) => $q->active(),
@@ -37,6 +38,7 @@ class PlaceController extends Controller
             ->withCurrentPeriodStats($period)
             ->withCount('favorites')
             ->when($request->category_id, fn($q, $catId) => $q->where('category_id', $catId))
+            ->when($request->zone_id, fn($q, $zoneId) => $q->where('zone_id', $zoneId))
             ->when($request->featured, fn($q) => $q->featured())
             ->when($request->tag_ids, function ($q, $tagIds) {
                 $ids = is_array($tagIds) ? $tagIds : explode(',', $tagIds);
@@ -107,6 +109,7 @@ class PlaceController extends Controller
         $place->load([
             'translations',
             'category',
+            'zone',
             'offers' => fn($q) => $q->active()->current(),
             'images',
             'tags' => fn($q) => $q->active(),
@@ -161,6 +164,7 @@ class PlaceController extends Controller
                 'is_favorited' => $isFavorited,
                 'favorites_count' => $place->favorites_count,
                 'category' => $place->category,
+                'zone' => $place->zone?->display_name,
                 'tags' => $place->tags,
                 'offers' => $place->offers,
                 'stats' => [
@@ -182,14 +186,35 @@ class PlaceController extends Controller
     {
         $period = $request->period ?? now()->format('Y-m');
         $categoryId = $request->category_id;
+        $zoneId = $request->zone_id ? (int) $request->zone_id : null;
+        $limit = $request->limit ? (int) $request->limit : null;
 
-        $topPlaces = $this->leaderboardService->getTopPlaces($period, $categoryId);
+        $topPlaces = $this->leaderboardService->getTopPlaces($period, $categoryId, $zoneId, $limit);
 
         return response()->json([
             'success' => true,
             'period' => $period,
             'current_period' => $this->leaderboardService->getCurrentPeriod(),
             'data' => $topPlaces,
+        ]);
+    }
+
+    /**
+     * Get top voters (chillers)
+     * GET /api/v1/places/top-voters
+     */
+    public function topVoters(Request $request): JsonResponse
+    {
+        $period = $request->period ?? now()->format('Y-m');
+        $zoneId = $request->zone_id ? (int) $request->zone_id : null;
+        $limit = $request->limit ? (int) $request->limit : 3;
+
+        $topVoters = $this->leaderboardService->getTopVoters($period, $zoneId, $limit);
+
+        return response()->json([
+            'success' => true,
+            'period' => $period,
+            'data' => $topVoters,
         ]);
     }
 

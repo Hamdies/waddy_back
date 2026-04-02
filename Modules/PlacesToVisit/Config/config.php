@@ -33,7 +33,7 @@ return [
     // ==================== XP Rewards ====================
 
     'xp' => [
-        'vote' => 5,              // XP for voting on a place
+        'vote' => 1,              // XP for voting on a place
         'review' => 10,           // Additional XP for writing a text review
         'photo_review' => 15,     // Additional XP for adding a photo to review
         'submission_approved' => 25, // XP for an approved place submission

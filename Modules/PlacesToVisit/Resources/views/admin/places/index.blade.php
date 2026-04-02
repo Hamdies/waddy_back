@@ -57,6 +57,7 @@
                             <th>{{ translate('messages.image') }}</th>
                             <th>{{ translate('messages.title') }}</th>
                             <th>{{ translate('messages.category') }}</th>
+                            <th>{{ translate('messages.zone') }}</th>
                             <th>{{ translate('messages.votes') }}</th>
                             <th>{{ translate('messages.rating') }}</th>
                             <th>{{ translate('messages.featured') }}</th>
@@ -79,6 +80,7 @@
                                 <br><small class="text-muted">{{ Str::limit($place->address, 30) }}</small>
                             </td>
                             <td>{{ $place->category?->localized_name ?? '-' }}</td>
+                            <td>{{ $place->zone?->display_name ?? '-' }}</td>
                             <td>
                                 <span class="badge badge-soft-primary">
                                     {{ $place->votes_count ?? 0 }} {{ translate('messages.votes') }}
@@ -126,7 +128,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="10" class="text-center py-4">
+                            <td colspan="11" class="text-center py-4">
                                 {{ translate('messages.no_data_found') }}
                             </td>
                         </tr>

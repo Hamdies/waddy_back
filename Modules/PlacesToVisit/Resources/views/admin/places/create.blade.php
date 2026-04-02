@@ -85,9 +85,9 @@
             <form action="{{ route('admin.places.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 
-                <!-- Category & Image -->
+                <!-- Category, Zone & Image -->
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="form-group">
                             <label class="input-label">{{ translate('messages.category') }} <span class="text-danger">*</span></label>
                             <select name="category_id" class="form-control" required>
@@ -98,7 +98,18 @@
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="input-label">{{ translate('messages.zone') }}</label>
+                            <select name="zone_id" class="form-control">
+                                <option value="">{{ translate('messages.select_zone') }}</option>
+                                @foreach($zones as $zone)
+                                <option value="{{ $zone->id }}">{{ $zone->display_name ?? $zone->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
                         <div class="form-group">
                             <label class="input-label">{{ translate('messages.image') }}</label>
                             <div class="image-upload-wrapper">
