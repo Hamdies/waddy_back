@@ -25,10 +25,10 @@ class Place extends Model
 
     protected $appends = ['title', 'description'];
 
-    // ==================== Image Accessor ====================
+    // ==================== Image Accessors ====================
 
     /**
-     * Get full image URL (overrides the raw 'image' column)
+     * Get full image URL (logo/thumbnail - overrides the raw 'image' column)
      */
     public function getImageAttribute($value): ?string
     {
@@ -44,6 +44,25 @@ class Place extends Model
     public function getRawImageAttribute(): ?string
     {
         return $this->attributes['image'] ?? null;
+    }
+
+    /**
+     * Get full cover image URL
+     */
+    public function getCoverImageAttribute($value): ?string
+    {
+        if (!$value) {
+            return null;
+        }
+        return asset('storage/places/' . $value);
+    }
+
+    /**
+     * Get raw cover image filename (for admin/uploads)
+     */
+    public function getRawCoverImageAttribute(): ?string
+    {
+        return $this->attributes['cover_image'] ?? null;
     }
 
     // ==================== Relationships ====================

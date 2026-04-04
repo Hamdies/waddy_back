@@ -48,6 +48,7 @@ class LeaderboardService
                     'title' => $place->title,
                     'description' => $place->description,
                     'image' => $place->image,
+                    'cover_image' => $place->cover_image,
                     'category' => $place->category?->name,
                     'zone' => $place->zone?->display_name,
                     'latitude' => $place->latitude,

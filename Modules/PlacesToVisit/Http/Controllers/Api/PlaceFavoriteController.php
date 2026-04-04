@@ -38,6 +38,7 @@ class PlaceFavoriteController extends Controller
                     'title' => $fav->place->title,
                     'description' => $fav->place->description,
                     'image' => $fav->place->image,
+                    'cover_image' => $fav->place->cover_image,
                     'category' => $fav->place->category?->localized_name,
                     'votes_count' => $fav->place->votes_count,
                     'avg_rating' => round($fav->place->votes_avg_rating ?? 0, 1),

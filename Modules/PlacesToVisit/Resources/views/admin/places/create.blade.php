@@ -28,6 +28,42 @@
         position: relative;
         display: inline-block;
     }
+    .cover-upload-wrapper {
+        position: relative;
+        display: block;
+    }
+    .cover-upload-wrapper img {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 2px dashed #ddd;
+    }
+    .cover-upload-wrapper:hover img {
+        border-color: #4285f4;
+    }
+    .cover-upload-wrapper input[type="file"] {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+    }
+    .gallery-preview {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 10px;
+    }
+    .gallery-preview .preview-item {
+        width: 100px;
+        height: 80px;
+        border-radius: 6px;
+        object-fit: cover;
+        border: 2px solid #e0e0e0;
+    }
     .image-upload-wrapper img {
         width: 200px;
         height: 150px;
@@ -85,9 +121,9 @@
             <form action="{{ route('admin.places.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 
-                <!-- Category, Zone & Image -->
+                <!-- Category & Zone -->
                 <div class="row">
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <div class="form-group">
                             <label class="input-label">{{ translate('messages.category') }} <span class="text-danger">*</span></label>
                             <select name="category_id" class="form-control" required>
@@ -98,7 +134,7 @@
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <div class="form-group">
                             <label class="input-label">{{ translate('messages.zone') }}</label>
                             <select name="zone_id" class="form-control">
@@ -109,17 +145,34 @@
                             </select>
                         </div>
                     </div>
+                </div>
+
+                <!-- Logo & Cover Image -->
+                <div class="row">
                     <div class="col-md-4">
                         <div class="form-group">
-                            <label class="input-label">{{ translate('messages.image') }}</label>
+                            <label class="input-label">{{ translate('messages.logo') }} / {{ translate('messages.thumbnail') }}</label>
                             <div class="image-upload-wrapper">
-                                <img id="imagePreview" src="{{ asset('public/assets/admin/img/upload-img.png') }}" alt="Place Image">
+                                <img id="imagePreview" src="{{ asset('public/assets/admin/img/upload-img.png') }}" alt="Place Logo">
                                 <div class="image-upload-overlay">
                                     <i class="tio-add"></i> {{ translate('messages.upload') }}
                                 </div>
                                 <input type="file" name="image" id="imageInput" accept="image/*">
                             </div>
-                            <small class="text-muted d-block mt-2">{{ translate('messages.click_to_upload_image') }}</small>
+                            <small class="text-muted d-block mt-2">{{ translate('messages.logo_ratio_hint') }}</small>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="form-group">
+                            <label class="input-label">{{ translate('messages.cover_image') }}</label>
+                            <div class="cover-upload-wrapper">
+                                <img id="coverPreview" src="{{ asset('public/assets/admin/img/upload-img.png') }}" alt="Cover Image">
+                                <div class="image-upload-overlay">
+                                    <i class="tio-add"></i> {{ translate('messages.upload') }}
+                                </div>
+                                <input type="file" name="cover_image" id="coverInput" accept="image/*">
+                            </div>
+                            <small class="text-muted d-block mt-2">{{ translate('messages.cover_ratio_hint') }}</small>
                         </div>
                     </div>
                 </div>
@@ -252,9 +305,10 @@
                     <div class="card-body">
                         <div class="form-group">
                             <label class="input-label">{{ translate('messages.additional_images') }}</label>
-                            <input type="file" name="gallery[]" class="form-control" accept="image/*" multiple>
+                            <input type="file" name="gallery[]" id="galleryInput" class="form-control" accept="image/*" multiple>
                             <small class="text-muted">{{ translate('messages.select_multiple_images') }}</small>
                         </div>
+                        <div class="gallery-preview" id="galleryPreview"></div>
                     </div>
                 </div>
 
@@ -354,7 +408,7 @@
 <script>
     "use strict";
     
-    // Image preview
+    // Logo preview
     document.getElementById('imageInput').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file) {
@@ -364,6 +418,34 @@
             };
             reader.readAsDataURL(file);
         }
+    });
+
+    // Cover image preview
+    document.getElementById('coverInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('coverPreview').src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Gallery preview
+    document.getElementById('galleryInput').addEventListener('change', function(e) {
+        const preview = document.getElementById('galleryPreview');
+        preview.innerHTML = '';
+        Array.from(e.target.files).forEach(function(file) {
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                const img = document.createElement('img');
+                img.src = ev.target.result;
+                img.className = 'preview-item';
+                preview.appendChild(img);
+            };
+            reader.readAsDataURL(file);
+        });
     });
 
     // Google Maps

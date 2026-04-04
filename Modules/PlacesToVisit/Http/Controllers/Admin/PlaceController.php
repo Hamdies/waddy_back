@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Modules\PlacesToVisit\Entities\PlaceZone;
 use Modules\PlacesToVisit\Entities\Place;
 use Modules\PlacesToVisit\Entities\PlaceCategory;
+use Modules\PlacesToVisit\Entities\PlaceImage;
 use Modules\PlacesToVisit\Entities\PlaceTag;
 use Modules\PlacesToVisit\Entities\PlaceTranslation;
 use App\CentralLogics\Helpers;
@@ -62,6 +63,7 @@ class PlaceController extends Controller
             'instagram' => 'nullable|string|max:255',
             'opening_hours' => 'nullable|array',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'cover_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'gallery.*' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'tags' => 'nullable|array',
             'tags.*' => 'exists:place_tags,id',
@@ -70,6 +72,11 @@ class PlaceController extends Controller
         $imagePath = null;
         if ($request->hasFile('image')) {
             $imagePath = Helpers::upload('places/', 'png', $request->file('image'));
+        }
+
+        $coverImagePath = null;
+        if ($request->hasFile('cover_image')) {
+            $coverImagePath = Helpers::upload('places/', 'png', $request->file('cover_image'));
         }
 
         $place = Place::create([
@@ -83,6 +90,7 @@ class PlaceController extends Controller
             'instagram' => $request->instagram,
             'opening_hours' => $request->opening_hours,
             'image' => $imagePath,
+            'cover_image' => $coverImagePath,
             'is_active' => $request->has('is_active'),
             'is_featured' => $request->has('is_featured'),
         ]);
@@ -160,6 +168,7 @@ class PlaceController extends Controller
             'instagram' => 'nullable|string|max:255',
             'opening_hours' => 'nullable|array',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'cover_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'gallery.*' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'tags' => 'nullable|array',
             'tags.*' => 'exists:place_tags,id',
@@ -173,6 +182,14 @@ class PlaceController extends Controller
             $imagePath = Helpers::upload('places/', 'png', $request->file('image'));
         }
 
+        $coverImagePath = $place->raw_cover_image;
+        if ($request->hasFile('cover_image')) {
+            if ($coverImagePath) {
+                Helpers::check_and_delete('places/', $coverImagePath);
+            }
+            $coverImagePath = Helpers::upload('places/', 'png', $request->file('cover_image'));
+        }
+
         $place->update([
             'category_id' => $request->category_id,
             'zone_id' => $request->zone_id ?: null,
@@ -184,6 +201,7 @@ class PlaceController extends Controller
             'instagram' => $request->instagram,
             'opening_hours' => $request->opening_hours,
             'image' => $imagePath,
+            'cover_image' => $coverImagePath,
             'is_active' => $request->has('is_active'),
             'is_featured' => $request->has('is_featured'),
         ]);
@@ -227,6 +245,10 @@ class PlaceController extends Controller
         if ($place->raw_image) {
             Helpers::check_and_delete('places/', $place->raw_image);
         }
+
+        if ($place->raw_cover_image) {
+            Helpers::check_and_delete('places/', $place->raw_cover_image);
+        }
         
         // Delete gallery images
         foreach ($place->images as $img) {
@@ -237,6 +259,15 @@ class PlaceController extends Controller
         
         \Toastr::success(translate('messages.place_deleted_successfully'));
         return redirect()->route('admin.places.index');
+    }
+
+    public function deleteImage(PlaceImage $image): RedirectResponse
+    {
+        Helpers::check_and_delete('places/', $image->image);
+        $image->delete();
+
+        \Toastr::success(translate('messages.image_deleted_successfully'));
+        return back();
     }
 
     public function toggleStatus(Place $place): RedirectResponse

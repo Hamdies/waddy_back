@@ -77,6 +77,7 @@ class PlaceZoneController extends Controller
                 'title' => $place->title,
                 'description' => $place->description,
                 'image' => $place->main_image,
+                'cover_image' => $place->cover_image,
                 'category' => $place->category ? [
                     'id' => $place->category->id,
                     'name' => $place->category->localized_name,

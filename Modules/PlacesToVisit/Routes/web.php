@@ -88,4 +88,5 @@ Route::group([
     Route::delete('{place}', 'PlaceController@destroy')->name('destroy');
     Route::get('{place}/toggle-status', 'PlaceController@toggleStatus')->name('toggle-status');
     Route::get('{place}/toggle-featured', 'PlaceController@toggleFeatured')->name('toggle-featured');
+    Route::delete('images/{image}', 'PlaceController@deleteImage')->name('delete-image');
 });
