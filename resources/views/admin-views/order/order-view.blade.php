@@ -1205,11 +1205,11 @@
                     @endif
                 @endif
                 @if ( !in_array($order->order_status, ['refund_requested', 'refunded', 'refund_request_canceled', 'delivered','canceled']) )
-                    <div class="card">
+                    <div class="card" style="z-index: 2; overflow: visible;">
                         <div class="card-header justify-content-center">
                             <h5 class="card-title">{{ translate('order_setup') }}</h5>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body" style="overflow: visible;">
 
 
 
@@ -1246,7 +1246,7 @@
                                             <button
                                                 class="form-control h--45px dropdown-toggle d-flex justify-content-between align-items-center w-100"
                                                 type="button" id="dropdownMenuButton" data-toggle="dropdown"
-                                                aria-haspopup="true" aria-expanded="false" data-boundary="window">
+                                                aria-haspopup="true" aria-expanded="false">
                                                     <?php
                                                     $message= match($order['order_status']){
                                                         'pending' => translate('messages.pending'),
@@ -1263,7 +1263,7 @@
                                                 {{ $message }}
                                             </button>
                                             @php($order_delivery_verification = (bool) \App\Models\BusinessSetting::where(['key' => 'order_delivery_verification'])->first()->value)
-                                            <div class="dropdown-menu text-capitalize w-100 border-0 shadow" aria-labelledby="dropdownMenuButton" style="z-index: 1050;">
+                                            <div class="dropdown-menu text-capitalize" aria-labelledby="dropdownMenuButton">
                                                 <a class="dropdown-item {{ $order['order_status'] == 'pending' ? 'active' : '' }} route-alert"
                                                    data-url="{{ route('admin.order.status', ['id' => $order['id'], 'order_status' => 'pending']) }}" data-message="{{ translate('Change status to pending ?') }}"
                                                    href="javascript:">{{ translate('messages.pending') }}</a>
