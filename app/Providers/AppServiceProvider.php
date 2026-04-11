@@ -2,9 +2,12 @@
 
 namespace App\Providers;
 
+use App\Models\Item;
+use App\Models\ItemCampaign;
 use Illuminate\Support\ServiceProvider;
 use App\Traits\AddonHelper;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Config;
 use App\CentralLogics\Helpers;
 
@@ -31,6 +34,10 @@ class AppServiceProvider extends ServiceProvider
 
         try
         {
+            Relation::morphMap([
+                'Item' => Item::class,
+                'ItemCampaign' => ItemCampaign::class,
+            ]);
             Config::set('addon_admin_routes',$this->get_addon_admin_routes());
             Config::set('get_payment_publish_status',$this->get_payment_publish_status());
             Paginator::useBootstrap();
