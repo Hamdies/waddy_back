@@ -69,8 +69,9 @@ class ItemCampaign extends Model
     }
 
     public function getTitleAttribute($value){
-        if (count($this->translations) > 0) {
-            foreach ($this->translations as $translation) {
+        $translations = $this->translations ?? collect();
+        if ($translations->count() > 0) {
+            foreach ($translations as $translation) {
                 if ($translation['key'] == 'title') {
                     return $translation['value'];
                 }
@@ -81,8 +82,9 @@ class ItemCampaign extends Model
     }
 
     public function getDescriptionAttribute($value){
-        if (count($this->translations) > 0) {
-            foreach ($this->translations as $translation) {
+        $translations = $this->translations ?? collect();
+        if ($translations->count() > 0) {
+            foreach ($translations as $translation) {
                 if ($translation['key'] == 'description') {
                     return $translation['value'];
                 }
@@ -94,10 +96,11 @@ class ItemCampaign extends Model
 
     public function getImageFullUrlAttribute(){
         $value = $this->image;
-        if (count($this->storage) > 0) {
-            foreach ($this->storage as $storage) {
-                if ($storage['key'] == 'image') {
-                    return Helpers::get_full_url('campaign',$value,$storage['value']);
+        $storage = $this->storage ?? collect();
+        if ($storage->count() > 0) {
+            foreach ($storage as $storageItem) {
+                if ($storageItem['key'] == 'image') {
+                    return Helpers::get_full_url('campaign',$value,$storageItem['value']);
                 }
             }
         }

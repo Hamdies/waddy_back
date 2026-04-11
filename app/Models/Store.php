@@ -214,8 +214,9 @@ class Store extends Model
      * @return mixed
      */
     public function getNameAttribute($value){
-        if (count($this->translations) > 0) {
-            foreach ($this->translations as $translation) {
+        $translations = $this->translations ?? collect();
+        if ($translations->count() > 0) {
+            foreach ($translations as $translation) {
                 if ($translation['key'] == 'name') {
                     return $translation['value'];
                 }
@@ -231,8 +232,9 @@ class Store extends Model
      */
     public function getAddressAttribute($value): mixed
     {
-        if (count($this->translations) > 0) {
-            foreach ($this->translations as $translation) {
+        $translations = $this->translations ?? collect();
+        if ($translations->count() > 0) {
+            foreach ($translations as $translation) {
                 if ($translation['key'] == 'address') {
                     return $translation['value'];
                 }
@@ -297,10 +299,11 @@ class Store extends Model
 
     public function getLogoFullUrlAttribute(){
         $value = $this->logo;
-        if (count($this->storage) > 0) {
-            foreach ($this->storage as $storage) {
-                if ($storage['key'] == 'logo') {
-                    return Helpers::get_full_url('store',$value,$storage['value']);
+        $storage = $this->storage ?? collect();
+        if ($storage->count() > 0) {
+            foreach ($storage as $storageItem) {
+                if ($storageItem['key'] == 'logo') {
+                    return Helpers::get_full_url('store',$value,$storageItem['value']);
                 }
             }
         }
@@ -309,10 +312,11 @@ class Store extends Model
     }
     public function getTinCertificateImageFullUrlAttribute(){
         $value = $this->tin_certificate_image;
-        if (count($this->storage) > 0) {
-            foreach ($this->storage as $storage) {
-                if ($storage['key'] == 'tin_certificate_image') {
-                    return Helpers::get_full_url('store',$value,$storage['value']);
+        $storage = $this->storage ?? collect();
+        if ($storage->count() > 0) {
+            foreach ($storage as $storageItem) {
+                if ($storageItem['key'] == 'tin_certificate_image') {
+                    return Helpers::get_full_url('store',$value,$storageItem['value']);
                 }
             }
         }
@@ -321,10 +325,11 @@ class Store extends Model
     }
     public function getCoverPhotoFullUrlAttribute(){
         $value = $this->cover_photo;
-        if (count($this->storage) > 0) {
-            foreach ($this->storage as $storage) {
-                if ($storage['key'] == 'cover_photo') {
-                    return Helpers::get_full_url('store/cover',$value,$storage['value']);
+        $storage = $this->storage ?? collect();
+        if ($storage->count() > 0) {
+            foreach ($storage as $storageItem) {
+                if ($storageItem['key'] == 'cover_photo') {
+                    return Helpers::get_full_url('store/cover',$value,$storageItem['value']);
                 }
             }
         }
@@ -333,10 +338,11 @@ class Store extends Model
     }
     public function getMetaImageFullUrlAttribute(){
         $value = $this->meta_image;
-        if (count($this->storage) > 0) {
-            foreach ($this->storage as $storage) {
-                if ($storage['key'] == 'meta_image') {
-                    return Helpers::get_full_url('store',$value,$storage['value']);
+        $storage = $this->storage ?? collect();
+        if ($storage->count() > 0) {
+            foreach ($storage as $storageItem) {
+                if ($storageItem['key'] == 'meta_image') {
+                    return Helpers::get_full_url('store',$value,$storageItem['value']);
                 }
             }
         }

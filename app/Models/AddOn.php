@@ -62,8 +62,9 @@ class AddOn extends Model
      * @return mixed
      */
     public function getNameAttribute($value){
-        if (count($this->translations) > 0) {
-            foreach ($this->translations as $translation) {
+        $translations = $this->translations ?? collect();
+        if ($translations->count() > 0) {
+            foreach ($translations as $translation) {
                 if ($translation['key'] == 'name') {
                     return $translation['value'];
                 }
