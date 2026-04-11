@@ -14,15 +14,16 @@ class CartController extends Controller
 {
     public function get_carts(Request $request)
     {
+        $user = $request->user instanceof \App\Models\User ? $request->user : null;
         $validator = Validator::make($request->all(), [
-            'guest_id' => $request->user ? 'nullable' : 'required',
+            'guest_id' => $user ? 'nullable' : 'required',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
-        $user_id = $request->user ? $request->user->id : $request['guest_id'];
-        $is_guest = $request->user ? 0 : 1;
+        $user_id = $user ? $user->id : $request['guest_id'];
+        $is_guest = $user ? 0 : 1;
         $carts = Cart::where('user_id', $user_id)->where('is_guest',$is_guest)->get()
         ->filter(function ($data) {
             return $data->item !== null;
@@ -41,8 +42,9 @@ class CartController extends Controller
 
     public function add_to_cart(Request $request)
     {
+        $user = $request->user instanceof \App\Models\User ? $request->user : null;
         $validator = Validator::make($request->all(), [
-            'guest_id' => $request->user ? 'nullable' : 'required',
+            'guest_id' => $user ? 'nullable' : 'required',
             'item_id' => 'required|integer',
             'model' => 'required|string|in:Item,ItemCampaign',
             'price' => 'required|numeric',
@@ -53,15 +55,15 @@ class CartController extends Controller
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
 
-        $user_id = $request->user ? $request->user->id : $request['guest_id'];
-        $is_guest = $request->user ? 0 : 1;
+        $user_id = $user ? $user->id : $request['guest_id'];
+        $is_guest = $user ? 0 : 1;
         $model = $request->model === 'Item' ? 'App\Models\Item' : 'App\Models\ItemCampaign';
         $item = $request->model === 'Item' ? Item::find($request->item_id) : ItemCampaign::find($request->item_id);
 
 
         $cart = Cart::where('item_id',$request->item_id)->where('item_type',$model)->where('user_id', $user_id)->where('is_guest',$is_guest)->where('module_id',$request->header('moduleId'))->first();
 
-        if ($cart && json_decode($cart->variation, true) == $request->variation) {
+        if ($cart && json_decode($cart->variation ?? '""', true) == $request->variation) {
 
             return response()->json([
                 'errors' => [
@@ -111,9 +113,10 @@ class CartController extends Controller
 
     public function update_cart(Request $request)
     {
+        $user = $request->user instanceof \App\Models\User ? $request->user : null;
         $validator = Validator::make($request->all(), [
             'cart_id' => 'required',
-            'guest_id' => $request->user ? 'nullable' : 'required',
+            'guest_id' => $user ? 'nullable' : 'required',
             'price' => 'required|numeric',
             'quantity' => 'required|integer|min:1',
         ]);
@@ -122,8 +125,8 @@ class CartController extends Controller
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
 
-        $user_id = $request->user ? $request->user->id : $request['guest_id'];
-        $is_guest = $request->user ? 0 : 1;
+        $user_id = $user ? $user->id : $request['guest_id'];
+        $is_guest = $user ? 0 : 1;
         $cart = Cart::find($request->cart_id);
         $item = $cart->item_type === 'App\Models\Item' ? Item::find($cart->item_id) : ItemCampaign::find($cart->item_id);
         if($item->maximum_cart_quantity && ($request->quantity>$item->maximum_cart_quantity)){
@@ -162,17 +165,18 @@ class CartController extends Controller
 
     public function remove_cart_item(Request $request)
     {
+        $user = $request->user instanceof \App\Models\User ? $request->user : null;
         $validator = Validator::make($request->all(), [
             'cart_id' => 'required',
-            'guest_id' => $request->user ? 'nullable' : 'required',
+            'guest_id' => $user ? 'nullable' : 'required',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
 
-        $user_id = $request->user ? $request->user->id : $request['guest_id'];
-        $is_guest = $request->user ? 0 : 1;
+        $user_id = $user ? $user->id : $request['guest_id'];
+        $is_guest = $user ? 0 : 1;
 
         $cart = Cart::find($request->cart_id);
         $cart?->delete();
@@ -195,16 +199,17 @@ class CartController extends Controller
 
     public function remove_cart(Request $request)
     {
+        $user = $request->user instanceof \App\Models\User ? $request->user : null;
         $validator = Validator::make($request->all(), [
-            'guest_id' => $request->user ? 'nullable' : 'required',
+            'guest_id' => $user ? 'nullable' : 'required',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
 
-        $user_id = $request->user ? $request->user->id : $request['guest_id'];
-        $is_guest = $request->user ? 0 : 1;
+        $user_id = $user ? $user->id : $request['guest_id'];
+        $is_guest = $user ? 0 : 1;
 
         $carts = Cart::where('user_id', $user_id)->where('is_guest',$is_guest)->get();
 

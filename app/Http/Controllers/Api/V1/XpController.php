@@ -229,7 +229,7 @@ class XpController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'limit' => 'required|integer|min:1|max:50',
-            'offset' => 'required|integer|min:1',
+            'offset' => 'required|integer|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -457,7 +457,7 @@ class XpController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'limit' => 'required|integer|min:1|max:50',
-            'offset' => 'required|integer|min:1',
+            'offset' => 'required|integer|min:0',
         ]);
 
         if ($validator->fails()) {
