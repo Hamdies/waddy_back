@@ -134,25 +134,45 @@ class Helpers
         return $data;
     }
 
+    private static function normalizeJsonArray($value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if (is_string($value) && $value !== '') {
+            $decoded = json_decode($value, true);
+            return is_array($decoded) ? $decoded : [];
+        }
+
+        return [];
+    }
+
     public static function cart_product_data_formatting($data, $selected_variation, $selected_addons,
                                                         $selected_addon_quantity,$trans = false, $local = 'en')
     {
         $variations = [];
         $categories = [];
-        $category_ids = gettype($data['category_ids']) == 'array' ? $data['category_ids'] : json_decode($data['category_ids'],true);
+        $category_ids = self::normalizeJsonArray($data['category_ids'] ?? []);
         foreach ($category_ids as $value) {
             $category_name = Category::where('id',$value['id'])->pluck('name');
             $categories[] = ['id' => (string)$value['id'], 'position' => $value['position'], 'name'=>data_get($category_name,'0','NA')];
         }
         $data['category_ids'] = $categories;
-        $attributes = gettype($data['attributes']) == 'array' ? $data['attributes'] : json_decode($data['attributes'],true);
+        $attributes = self::normalizeJsonArray($data['attributes'] ?? []);
         $data['attributes'] = $attributes;
-        $choice_options = gettype($data['choice_options']) == 'array' ? $data['choice_options'] : json_decode($data['choice_options'],true);
+        $choice_options = self::normalizeJsonArray($data['choice_options'] ?? []);
         $data['choice_options'] = $choice_options;
-        $add_ons = gettype($data['add_ons']) == 'array' ? $data['add_ons'] : json_decode($data['add_ons'],true);
+        $add_ons = self::normalizeJsonArray($data['add_ons'] ?? []);
         $data_addons = self::addon_data_formatting(AddOn::whereIn('id', $add_ons)->active()->get(), true, $trans, $local);
-        $selected_data = array_combine($selected_addons, $selected_addon_quantity);
-        foreach ($data_addons as $addon) {
+        $selected_variation = self::normalizeJsonArray($selected_variation);
+        $selected_addons = self::normalizeJsonArray($selected_addons);
+        $selected_addon_quantity = self::normalizeJsonArray($selected_addon_quantity);
+        $selected_data = [];
+        foreach ($selected_addons as $index => $addon_id) {
+            $selected_data[$addon_id] = $selected_addon_quantity[$index] ?? 0;
+        }
+        foreach ($data_addons as &$addon) {
             $addon_id = $addon['id'];
             if (in_array($addon_id, $selected_addons)) {
                 $addon['isChecked'] = true;
@@ -162,8 +182,9 @@ class Helpers
                 $addon['quantity'] = 0;
             }
         }
+        unset($addon);
         $data['addons'] = $data_addons;
-        $data_variations = gettype($data['variations']) == 'array' ? $data['variations'] : json_decode($data['variations'],true);
+        $data_variations = self::normalizeJsonArray($data['variations'] ?? []);
         foreach ($data_variations as $var) {
             array_push($variations, [
                 'type' => $var['type'],
@@ -192,8 +213,9 @@ class Helpers
             unset($data['end_date']);
         }
         $data['variations'] = $variations;
-        $data_variation = $data['food_variations']?(gettype($data['food_variations']) == 'array' ? $data['food_variations'] : json_decode($data['food_variations'],true)):[];
-        if($data->module->module_type == 'food'){
+        $data_variation = self::normalizeJsonArray($data['food_variations'] ?? []);
+        $module_type = $data->module?->module_type;
+        if($module_type == 'food'){
             foreach ($selected_variation as $selected_item) {
                 foreach ($data_variation as &$all_item) {
                     if ($selected_item["name"] === $all_item["name"]) {
@@ -209,10 +231,11 @@ class Helpers
             }
         }
         $data['food_variations'] = $data_variation;
-        $data['store_name'] = $data->store ? $data->store->name : 'N/A';
-        $data['is_campaign'] = $data->store?->campaigns_count>0?1:0;
-        $data['module_type'] = $data->module ? $data->module->module_type : 'N/A';
-        $data['zone_id'] = $data->store ? $data->store->zone_id : null;
+        $store = $data->store;
+        $data['store_name'] = $store?->name ?? 'N/A';
+        $data['is_campaign'] = ($store?->campaigns_count ?? 0) > 0 ? 1 : 0;
+        $data['module_type'] = $module_type ?? 'N/A';
+        $data['zone_id'] = $store?->zone_id;
         $running_flash_sale = FlashSaleItem::Active()->whereHas('flashSale', function ($query) {
             $query->Active()->Running();
         })
@@ -220,23 +243,25 @@ class Helpers
         $data['flash_sale'] =(int) (($running_flash_sale) ? 1 :0);
         $data['stock'] = ($running_flash_sale && ($running_flash_sale->available_stock > 0)) ? $running_flash_sale->available_stock : $data['stock'];
 
-             $discount_data= self::product_discount_calculate($data, $data['price'], $data->store , true);
+             $discount_data= self::product_discount_calculate($data, $data['price'], $store , true);
 
                 $data['discount'] = $discount_data['discount_percentage'];
                 $data['discount_type'] = $discount_data['original_discount_type'];
 
 
-        $data['store_discount'] = ($running_flash_sale && ($running_flash_sale->available_stock > 0)) ? 0 : (self::get_store_discount($data->store) ? $data->store?->discount->discount : 0);
-        $data['schedule_order'] = $data->store->schedule_order;
+        $data['store_discount'] = ($running_flash_sale && ($running_flash_sale->available_stock > 0)) ? 0 : (self::get_store_discount($store) ? $store?->discount?->discount : 0);
+        $data['schedule_order'] = $store?->schedule_order;
         $data['rating_count'] = (int)($data->rating ? array_sum(json_decode($data->rating, true)) : 0);
         $data['avg_rating'] = (float)($data->avg_rating ? $data->avg_rating : 0);
-        $data['min_delivery_time'] =  (int) explode('-',$data->store->delivery_time)[0] ?? 0;
-        $data['max_delivery_time'] =  (int) explode('-',$data->store->delivery_time)[1] ?? 0;
+        $delivery_time = $store?->delivery_time;
+        $delivery_times = is_string($delivery_time) ? explode('-', $delivery_time) : [];
+        $data['min_delivery_time'] = (int) ($delivery_times[0] ?? 0);
+        $data['max_delivery_time'] = (int) ($delivery_times[1] ?? 0);
         $data['common_condition_id'] =  (int) $data->pharmacy_item_details?->common_condition_id ?? 0;
         $data['brand_id'] =  (int) $data->ecommerce_item_details?->brand_id ?? 0;
         $data['is_basic'] =  (int) $data->pharmacy_item_details?->is_basic ?? 0;
         $data['is_prescription_required'] =  (int) $data->pharmacy_item_details?->is_prescription_required ?? 0;
-        $data['halal_tag_status'] =  (int) $data->store->storeConfig?->halal_tag_status??0;
+        $data['halal_tag_status'] =  (int) ($store?->storeConfig?->halal_tag_status ?? 0);
 
         $data['nutritions_name']= $data?->nutritions ? Nutrition::whereIn('id',$data?->nutritions->pluck('id') )->pluck('nutrition') : null;
         $data['allergies_name']= $data?->allergies ?Allergy::whereIn('id',$data?->allergies->pluck('id') )->pluck('allergy') : null;
@@ -4871,5 +4896,4 @@ class Helpers
     }
 
 }
-
 
