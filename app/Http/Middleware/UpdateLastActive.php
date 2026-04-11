@@ -16,6 +16,13 @@ use Throwable;
  */
 class UpdateLastActive
 {
+    private function looksLikeJwt(?string $token): bool
+    {
+        $token = trim((string) $token);
+
+        return $token !== '' && $token !== 'null' && substr_count($token, '.') === 2;
+    }
+
     /**
      * Handle an incoming request.
      *
@@ -24,7 +31,7 @@ class UpdateLastActive
     public function handle(Request $request, Closure $next): Response
     {
         try {
-            if (Auth::guard('api')->check()) {
+            if ($this->looksLikeJwt($request->bearerToken()) && Auth::guard('api')->check()) {
                 $user = Auth::guard('api')->user();
 
                 // Only update if last activity was > 1 minute ago (prevents DB spam)

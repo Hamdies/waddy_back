@@ -8,6 +8,13 @@ use Throwable;
 
 class APIGuestMiddleware
 {
+    private function looksLikeJwt(?string $token): bool
+    {
+        $token = trim((string) $token);
+
+        return $token !== '' && $token !== 'null' && substr_count($token, '.') === 2;
+    }
+
     /**
      * Handle an incoming request.
      *
@@ -19,7 +26,7 @@ class APIGuestMiddleware
     {
         $token = $request->bearerToken();
 
-        if ($token && $token !== 'null' && strlen($token) > 1) {
+        if ($this->looksLikeJwt($token)) {
             try {
                 $user = auth('api')->user();
                 if ($user) {
