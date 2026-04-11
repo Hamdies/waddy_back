@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 /**
  * Middleware to track user's last activity time.
@@ -22,16 +23,20 @@ class UpdateLastActive
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (Auth::guard('api')->check()) {
-            $user = Auth::guard('api')->user();
-            
-            // Only update if last activity was > 1 minute ago (prevents DB spam)
-            if (!$user->last_active_at || $user->last_active_at->diffInMinutes(now()) >= 1) {
-                $user->last_active_at = now();
-                $user->saveQuietly(); // saveQuietly to avoid triggering events
+        try {
+            if (Auth::guard('api')->check()) {
+                $user = Auth::guard('api')->user();
+
+                // Only update if last activity was > 1 minute ago (prevents DB spam)
+                if (!$user->last_active_at || $user->last_active_at->diffInMinutes(now()) >= 1) {
+                    $user->last_active_at = now();
+                    $user->saveQuietly(); // saveQuietly to avoid triggering events
+                }
             }
+        } catch (Throwable $e) {
+            // Ignore malformed/expired bearer tokens here; route middleware will decide auth access.
         }
-        
+
         return $next($request);
     }
 }
