@@ -246,7 +246,7 @@ Route::get('/image-proxy', function () {
 |--------------------------------------------------------------------------
 */
 Route::group(['prefix' => 'api/v1/orders'], function () {
-    // SSE Streaming endpoint (no auth middleware - uses contact_number/guest_id for guest access)
+    // Lightweight tracking snapshot endpoint (kept for compatibility)
     Route::get('{id}/stream', [\App\Http\Controllers\Api\V1\OrderTrackingStreamController::class, 'stream'])
         ->middleware(['throttle:60,1'])
         ->name('api.orders.stream');
@@ -256,4 +256,3 @@ Route::group(['prefix' => 'api/v1/orders'], function () {
         ->middleware(['throttle:60,1'])
         ->name('api.orders.tracking-history');
 });
-
