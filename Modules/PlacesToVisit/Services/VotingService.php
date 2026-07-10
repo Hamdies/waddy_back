@@ -29,18 +29,35 @@ class VotingService
         ])->first();
 
         if ($existingVote) {
-            // Update existing vote
-            $updateData = [
-                'rating' => $rating,
-                'review' => $review,
-            ];
+            // Update existing vote — don't wipe fields the caller didn't send
+            $updateData = [];
+            if ($rating !== null) {
+                $updateData['rating'] = $rating;
+            }
+            if ($review !== null) {
+                $updateData['review'] = $review;
+            }
             if ($image !== null) {
                 $updateData['image'] = $image;
             }
-            $existingVote->update($updateData);
-            
+            if ($updateData !== []) {
+                $existingVote->update($updateData);
+            }
+
             $this->clearLeaderboardCache();
-            
+
+            // Review/photo added on update still earns its bonus XP once
+            // (XP is deduped per place + period, so this can't double-award)
+            $user = User::find($userId);
+            if ($user) {
+                if ($review && trim($review) !== '') {
+                    PlaceXpService::awardReviewXp($user, $placeId, $period);
+                }
+                if ($image) {
+                    PlaceXpService::awardPhotoReviewXp($user, $placeId, $period);
+                }
+            }
+
             return [
                 'success' => true,
                 'message' => translate('messages.vote_updated'),
@@ -61,19 +78,19 @@ class VotingService
 
         $this->clearLeaderboardCache();
 
-        // Award XP for vote
+        // Award XP for vote (deduped per place + period — see PlaceXpService)
         $user = User::find($userId);
         if ($user) {
-            PlaceXpService::awardVoteXp($user, $vote->id);
-            
+            PlaceXpService::awardVoteXp($user, $placeId, $period);
+
             // Bonus XP for writing a review
             if ($review && trim($review) !== '') {
-                PlaceXpService::awardReviewXp($user, $vote->id);
+                PlaceXpService::awardReviewXp($user, $placeId, $period);
             }
 
             // Bonus XP for photo review
             if ($image) {
-                PlaceXpService::awardPhotoReviewXp($user, $vote->id);
+                PlaceXpService::awardPhotoReviewXp($user, $placeId, $period);
             }
         }
 

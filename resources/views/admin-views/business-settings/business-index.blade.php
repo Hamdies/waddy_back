@@ -1,113 +1,93 @@
-@extends('layouts.admin.app')
+@extends(‘layouts.admin.app’)
 
-@section('title', translate('business_setup'))
+@section(‘title’, translate(‘business_setup’))
 
+@push(‘css_or_js’)
+    <link rel="stylesheet" href="{{ asset(‘public/assets/admin/css/business-setup-redesign.css’) }}">
+@endpush
 
-@section('content')
-    <div class="content container-fluid">
-        <!-- Page Header -->
-        <div class="page-header">
-            <h1 class="page-header-title mr-3">
-                <span class="page-header-icon">
-                    <img src="{{ asset('public/assets/admin/img/business.png') }}" class="w--26" alt="">
-                </span>
-                <span>
-                    {{ translate('messages.business_settings') }}
-                </span>
-            </h1>
-            @include('admin-views.business-settings.partials.nav-menu')
-        </div>
-        <!-- End Page Header -->
-
-        <div class="card mb-3">
-            <div class="card-body">
-                <div
-                    class="maintenance-mode-toggle-bar d-flex flex-wrap justify-content-between border border-info rounded align-items-center p-2">
-                    @php($config = \App\CentralLogics\Helpers::get_business_settings('maintenance_mode'))
-                    <h5 class="text-capitalize m-0 text--primary">
-                        <i class="tio-settings-outlined"></i>
-                        {{ translate('messages.maintenance_mode') }}
-                    </h5>
-                    <label class="toggle-switch toggle-switch-sm">
-                        <input type="checkbox" class="status toggle-switch-input maintenance-mode"
-                            {{ isset($config) && $config ? 'checked' : '' }}>
-                        <span class="toggle-switch-label text mb-0">
-                            <span class="toggle-switch-indicator"></span>
-                        </span>
-                    </label>
-                </div>
-                <div class="mt-2">
-                    {{ translate('messages.By_turning_the_‘Maintenance_Mode’_ON,_all_your_apps_and_customer_website_will_be_disabled_temporarily._Only_the_Admin_Panel,_Admin_Landing_Page_&_Store_Panel_will_be_functional.') }}
+@section(‘content’)
+    <div class="bsr-page">
+        {{-- ── Header ── --}}
+        <div class="bsr-header">
+            <div class="bsr-header__inner">
+                <div>
+                    <h1 class="bsr-header__title">{{ translate(‘Business’) }} <em>{{ translate(‘Setup’) }}</em></h1>
+                    <p class="bsr-header__sub">{{ translate(‘messages.business_settings’) }}</p>
                 </div>
             </div>
         </div>
-        <div class="card mb-3">
-            <div class="card-body">
-                <div
-                    class="maintenance-mode-toggle-bar d-flex flex-wrap justify-content-between border border-warning rounded align-items-center p-2">
-                    @php($ramadan_mode = \App\CentralLogics\Helpers::get_business_settings('ramadan_mode'))
-                    <h5 class="text-capitalize m-0 text--warning">
-                        <i class="tio-moon"></i>
-                        {{ translate('messages.ramadan_mode') }}
-                    </h5>
-                    <label class="toggle-switch toggle-switch-sm">
-                        <input type="checkbox" class="status toggle-switch-input ramadan-mode"
-                            {{ isset($ramadan_mode) && $ramadan_mode ? 'checked' : '' }}>
-                        <span class="toggle-switch-label text mb-0">
-                            <span class="toggle-switch-indicator"></span>
-                        </span>
-                    </label>
+
+        {{-- ── Tab nav ── --}}
+        <div class="bsr-tabs">
+            @include(‘admin-views.business-settings.partials.nav-menu’)
+        </div>
+
+        <div class="bsr-body px-3">
+
+        {{-- ── Maintenance Mode ── --}}
+        @php($config = \App\CentralLogics\Helpers::get_business_settings(‘maintenance_mode’))
+        <div class="bsr-card">
+            <div class="bsr-card__head">
+                <div>
+                    <h2 class="bsr-card__title">{{ translate(‘messages.maintenance_mode’) }}</h2>
+                    <p class="bsr-card__desc">{{ translate(‘messages.By_turning_the_’Maintenance_Mode’_ON,_all_your_apps_and_customer_website_will_be_disabled_temporarily._Only_the_Admin_Panel,_Admin_Landing_Page_&_Store_Panel_will_be_functional.’) }}</p>
                 </div>
-                <div class="mt-2">
-                    {{ translate('messages.Enable_Ramadan_Mode_to_show_special_Ramadan_themed_widgets_and_decorations_in_the_app.') }}
+                <label class="bsr-toggle">
+                    <input type="checkbox" class="status maintenance-mode" {{ isset($config) && $config ? ‘checked’ : ‘’ }}>
+                </label>
+            </div>
+        </div>
+
+        {{-- ── Ramadan Mode ── --}}
+        @php($ramadan_mode = \App\CentralLogics\Helpers::get_business_settings(‘ramadan_mode’))
+        <div class="bsr-card">
+            <div class="bsr-card__head">
+                <div>
+                    <h2 class="bsr-card__title">{{ translate(‘messages.ramadan_mode’) }}</h2>
+                    <p class="bsr-card__desc">{{ translate(‘messages.Enable_Ramadan_Mode_to_show_special_Ramadan_themed_widgets_and_decorations_in_the_app.’) }}</p>
                 </div>
+                <label class="bsr-toggle">
+                    <input type="checkbox" class="status ramadan-mode" {{ isset($ramadan_mode) && $ramadan_mode ? ‘checked’ : ‘’ }}>
+                </label>
             </div>
         </div>
         <form action="{{ route('admin.business-settings.update-setup') }}" method="post" enctype="multipart/form-data">
             @csrf
             @php($name = \App\Models\BusinessSetting::where('key', 'business_name')->first())
+            @php($email = \App\Models\BusinessSetting::where('key', 'email_address')->first())
+            @php($phone = \App\Models\BusinessSetting::where('key', 'phone')->first())
 
-            <div class="row g-3">
-                <div class="col-lg-12">
-                    <h4 class="card-title mb-3 mt-1">
-                        <span class="card-header-icon mr-2"><i class="tio-user"></i></span>
-                        <span>{{ translate('Company Information') }}</span>
-                    </h4>
-                    <div class="card">
-                        <div class="card-body">
-                            <div class="row g-3">
+            {{-- ── Basic Information Card ── --}}
+            <div class="bsr-card">
+                <div class="bsr-card__head">
+                    <div>
+                        <h2 class="bsr-card__title">{{ translate('Basic_Information') }}</h2>
+                        <p class="bsr-card__desc">{{ translate('here_you_setup_your_all_business_information') }}</p>
+                    </div>
+                </div>
+                <div class="bsr-card__body">
+                    <div class="bsr-grid bsr-grid--4">
+                        <div class="bsr-form-group">
+                            <label class="bsr-label" for="store_name">{{ translate('messages.company_name') }} <span class="req">*</span></label>
+                            <input id="store_name" type="text" name="store_name" value="{{ $name->value ?? '' }}"
+                                class="bsr-input" placeholder="{{ translate('messages.new_company') }}" required>
+                        </div>
+                        <div class="bsr-form-group">
+                            <label class="bsr-label" for="email">{{ translate('messages.email') }} <span class="req">*</span></label>
+                            <input id="email" type="email" value="{{ $email->value ?? '' }}" name="email"
+                                class="bsr-input" placeholder="{{ translate('messages.Ex_:_ex@example.com') }}" required>
+                        </div>
+                        <div class="bsr-form-group">
+                            <label class="bsr-label" for="phone">{{ translate('messages.phone') }} <span class="req">*</span></label>
+                            <input type="tel" value="{{ $phone->value ?? '' }}" id="phone" name="phone"
+                                class="bsr-input" placeholder="{{ translate('messages.Ex: +3264124565') }}" required>
+                        </div>
                                 <div class="col-sm-6 col-md-4 col-xl-3">
                                     <div class="form-group mb-0">
-                                        <label class="form-label"
-                                            for="store_name">{{ translate('messages.company_name') }}</label>
-                                        <input id="store_name" type="text" name="store_name" value="{{ $name->value ?? '' }}"
-                                            class="form-control" placeholder="{{ translate('messages.new_company') }}"
-                                            required>
-                                    </div>
-                                </div>
-                                <div class="col-sm-6 col-md-4 col-xl-3">
-                                @php($email = \App\Models\BusinessSetting::where('key', 'email_address')->first())
-                                    <div class="form-group mb-0">
-                                        <label class="form-label"
-                                            for="email">{{ translate('messages.email') }}</label>
-                                        <input id="email" type="email" value="{{ $email->value ?? '' }}" name="email"
-                                            class="form-control" placeholder="{{ translate('messages.Ex_:_ex@example.com') }}" required>
-                                    </div>
-                                </div>
-                                <div class="col-sm-6 col-md-4 col-xl-3">
-                                @php($phone = \App\Models\BusinessSetting::where('key', 'phone')->first())
-                                    <div class="form-group mb-0">
-                                        <label class="form-label"
-                                            for="phone">{{ translate('messages.phone') }}</label>
-                                        <input type="tel"  value="{{ $phone->value ?? '' }}"  id="phone"  name="phone"
-                                            class="form-control" placeholder="{{ translate('messages.Ex: +3264124565') }}" required>
-                                    </div>
-                                </div>
-                                <div class="col-sm-6 col-md-4 col-xl-3">
-                                    <div class="form-group mb-0">
-                                        <label class="form-label text-capitalize"
-                                            for="country">{{ translate('messages.country') }}</label>
-                                        <select id="country" name="country" class="form-control  js-select2-custom">
+                        <div class="bsr-form-group">
+                            <label class="bsr-label" for="country">{{ translate('messages.country') }} <span class="req">*</span></label>
+                            <select id="country" name="country" class="bsr-select js-select2-custom">
                                             <option value="AF">Afghanistan</option>
                                             <option value="AX">Åland Islands</option>
                                             <option value="AL">Albania</option>
@@ -358,133 +338,87 @@
                                             <option value="ZM">Zambia</option>
                                             <option value="ZW">Zimbabwe</option>
                                         </select>
-                                    </div>
-                                </div>
+                        </div>
+                    </div>{{-- end bsr-grid--4 --}}
+
+                    @php($address = \App\Models\BusinessSetting::where('key', 'address')->first())
+                    @php($default_location = \App\Models\BusinessSetting::where('key', 'default_location')->first())
+                    @php($default_location = $default_location?->value ? json_decode($default_location->value, true) : 0)
+
+                    <div class="bsr-form-group">
+                        <label class="bsr-label" for="address">{{ translate('messages.address') }} <span class="req">*</span></label>
+                        <textarea id="address" name="address" class="bsr-textarea" placeholder="{{ translate('messages.Ex: address') }}" rows="2" required>{{ $address->value ?? '' }}</textarea>
+                    </div>
+
+                    <div class="bsr-grid bsr-grid--2" style="margin-bottom:20px">
+                        <div class="bsr-form-group" style="margin-bottom:0">
+                            <label class="bsr-label" for="latitude">{{ translate('messages.latitude') }}</label>
+                            <input type="text" id="latitude" name="latitude" class="bsr-input"
+                                placeholder="-94.22213"
+                                value="{{ $default_location ? $default_location['lat'] : 0 }}" required readonly>
+                        </div>
+                        <div class="bsr-form-group" style="margin-bottom:0">
+                            <label class="bsr-label" for="longitude">{{ translate('messages.longitude') }}</label>
+                            <input type="text" name="longitude" id="longitude" class="bsr-input"
+                                placeholder="103.344322"
+                                value="{{ $default_location ? $default_location['lng'] : 0 }}" required readonly>
+                        </div>
+                    </div>
+
+                    <div class="bsr-hint">
+                        <i class="tio-info-outined"></i>
+                        <span>{{ translate('clicking_on_the_map_will_set_Latitude_and_Longitude_automatically') }}</span>
+                    </div>
+
+                    <div class="bsr-map-wrap mt-3">
+                        <input id="pac-input" class="bsr-map-search" type="text" placeholder="{{ translate('messages.search_here') }}" />
+                        <div id="location_map_canvas" class="bsr-map-canvas"></div>
+                    </div>
+
+                    {{-- Logo & Favicon uploads --}}
+                    @php($logo = \App\Models\BusinessSetting::where('key', 'logo')->first())
+                    @php($icon = \App\Models\BusinessSetting::where('key', 'icon')->first())
+                    <div class="bsr-upload mt-4">
+                        <div class="bsr-upload__item">
+                            <div class="bsr-upload__label">{{ translate('logo') }} <span>(3:1)</span></div>
+                            <div class="bsr-upload__preview">
+                                <img id="viewer"
+                                    src="{{ \App\CentralLogics\Helpers::get_full_url('business', $logo?->value ?? '', $logo?->storage[0]?->value ?? 'public', 'upload_image') }}"
+                                    onerror="this.src='{{ asset('public/assets/admin/img/upload-img.png') }}'"
+                                    alt="logo">
+                                <div class="bsr-upload__overlay"><i class="tio-edit"></i></div>
+                                <input type="file" name="logo" id="customFileEg1" accept=".webp,.jpg,.png,.jpeg,.gif,.bmp,.tif,.tiff|image/*">
                             </div>
-                            <div class="row g-3 mt-2">
-                                <div class="col-md-6">
-                                    <div class="row g-3">
-                                        <div class="col-sm-12">
-                                            @php($address = \App\Models\BusinessSetting::where('key', 'address')->first())
-                                            <div class="form-group mb-0">
-                                                <label class="form-label"
-                                                    for="address">{{ translate('messages.address') }}</label>
-                                                <textarea type="text" id="address" name="address" class="form-control h--90px" placeholder="{{ translate('messages.Ex: address') }}" rows="1" required>{{ $address->value ?? '' }}</textarea>
-                                            </div>
-                                        </div>
-                                        <div class="col-sm-6">
-                                            @php($default_location = \App\Models\BusinessSetting::where('key', 'default_location')->first())
-                                            @php($default_location = $default_location?->value ? json_decode($default_location->value, true) : 0)
-                                            <div class="form-group mb-0">
-                                                <label class="form-label text-capitalize"
-                                                    for="latitude">{{ translate('messages.latitude') }}<span
-                                                        class="form-label-secondary" data-toggle="tooltip" data-placement="right"
-                                                        data-original-title="{{ translate('messages.click_on_the_map_select_your_defaul_location') }}"><img
-                                                            src="{{ asset('/public/assets/admin/img/info-circle.svg') }}"
-                                                            alt="{{ translate('messages.click_on_the_map_select_your_defaul_location') }}"></span></label>
-                                                <input type="text" id="latitude" name="latitude" class="form-control"
-                                                    placeholder="{{ translate('messages.Ex:') }} -94.22213"
-                                                    value="{{ $default_location ? $default_location['lat'] : 0 }}" required
-                                                    readonly>
-                                            </div>
-                                        </div>
-                                        <div class="col-sm-6">
-                                            <div class="form-group mb-0">
-                                                <label class="form-label text-capitalize"
-                                                    for="longitude">{{ translate('messages.longitude') }}<span
-                                                        class="form-label-secondary" data-toggle="tooltip" data-placement="right"
-                                                        data-original-title="{{ translate('messages.click_on_the_map_select_your_defaul_location') }}"><img
-                                                            src="{{ asset('/public/assets/admin/img/info-circle.svg') }}"
-                                                            alt="{{ translate('messages.click_on_the_map_select_your_defaul_location') }}"></span></label>
-                                                <input type="text" name="longitude" class="form-control"
-                                                    placeholder="{{ translate('messages.Ex:') }} 103.344322" id="longitude"
-                                                    value="{{ $default_location ? $default_location['lng'] : 0 }}" required
-                                                    readonly>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="d-flex __gap-12px mt-4">
-                                        <div class="__custom-upload-img mr-lg-5">
-                                            @php($logo = \App\Models\BusinessSetting::where('key', 'logo')->first())
-                                            <label class="form-label">
-                                                {{ translate('logo') }} <span class="text--primary">( {{ translate('3:1') }} )</span>
-                                            </label>
-                                            <label class="text-center position-relative">
-                                                <img class="img--vertical onerror-image image--border" id="viewer"
-                                                    data-onerror-image="{{ asset('public/assets/admin/img/upload-img.png') }}"
-                                                    src="{{\App\CentralLogics\Helpers::get_full_url('business', $logo?->value?? '', $logo?->storage[0]?->value ?? 'public','upload_image')}}"
-                                                    alt="logo image" />
-                                                <div class="icon-file-group">
-                                                    <div class="icon-file">
-                                                        <input type="file" name="logo" id="customFileEg1"
-                                                            class="custom-file-input"
-                                                            accept=".webp, .jpg, .png, .jpeg, .gif, .bmp, .tif, .tiff|image/*">
-                                                            <i class="tio-edit"></i>
-                                                    </div>
-                                                </div>
-                                            </label>
-                                        </div>
-
-                                        <div class="__custom-upload-img">
-                                            @php($icon = \App\Models\BusinessSetting::where('key', 'icon')->first())
-                                            <label class="form-label">
-                                                {{ translate('Favicon') }}  <span class="text--primary">( {{ translate('1:1') }} )</span>
-                                            </label>
-                                            <label class="text-center position-relative">
-                                                <img class="img--133 onerror-image image--border" id="iconViewer"
-                                                    data-onerror-image="{{ asset('public/assets/admin/img/upload-img.png') }}"
-                                                    src="{{\App\CentralLogics\Helpers::get_full_url('business', $icon?->value?? '', $icon?->storage[0]?->value ?? 'public','upload_image')}}"
-                                                    alt="Fav icon" />
-                                                <div class="icon-file-group">
-                                                    <div class="icon-file">
-                                                        <input type="file" name="icon" id="favIconUpload"
-                                                            class="custom-file-input"
-                                                            accept=".webp, .jpg, .png, .jpeg, .gif, .bmp, .tif, .tiff|image/*">
-                                                            <i class="tio-edit"></i>
-                                                    </div>
-
-                                                </div>
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div>
-                                        <label class="form-label">&nbsp;</label>
-                                        <div class="p-3 rounded border border-success">
-                                            <div class="d-flex mb-3 fs-12">
-                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                    <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM13 17H11V11H13V17ZM13 9H11V7H13V9Z" fill="#039D55"/>
-                                                </svg>
-                                                <div class="w-0 flex-grow pl-2">
-                                                    {{ translate('clicking_on_the_map_will_set_Latitude_and_Longitude_automatically') }}
-                                                </div>
-                                            </div>
-                                            <input id="pac-input" class="controls rounded" data-toggle="tooltip" data-placement="right" data-original-title="{{ translate('messages.search_your_location_here') }}" type="text" placeholder="{{ translate('messages.search_here') }}" />
-                                            <div id="location_map_canvas" class="overflow-hidden rounded height-285px"></div>
-                                        </div>
-                                    </div>
-                                </div>
+                        </div>
+                        <div class="bsr-upload__item">
+                            <div class="bsr-upload__label">{{ translate('Favicon') }} <span>(1:1)</span></div>
+                            <div class="bsr-upload__preview">
+                                <img id="iconViewer"
+                                    src="{{ \App\CentralLogics\Helpers::get_full_url('business', $icon?->value ?? '', $icon?->storage[0]?->value ?? 'public', 'upload_image') }}"
+                                    onerror="this.src='{{ asset('public/assets/admin/img/upload-img.png') }}'"
+                                    alt="favicon">
+                                <div class="bsr-upload__overlay"><i class="tio-edit"></i></div>
+                                <input type="file" name="icon" id="favIconUpload" accept=".webp,.jpg,.png,.jpeg,.gif,.bmp,.tif,.tiff|image/*">
                             </div>
                         </div>
                     </div>
-                </div>
+                </div>{{-- end bsr-card__body --}}
+            </div>{{-- end bsr-card Basic Info --}}
                 <div class="col-lg-12">
-                    <h4 class="card-title mb-3">
-                        <span class="card-header-icon mr-2"><i class="tio-settings-outlined"></i></span>
-                        <span>{{ translate('General Settings') }}</span>
-                    </h4>
-                    <div class="card">
-                        <div class="card-body">
-                            <div class="row g-3">
-
-                                <div class="col-sm-6 col-md-4 col-xl-3">
+                    {{-- ── General Settings Card ── --}}
+                    <div class="bsr-card">
+                        <div class="bsr-card__head">
+                            <div>
+                                <h2 class="bsr-card__title">{{ translate('General Settings') }}</h2>
+                            </div>
+                        </div>
+                        <div class="bsr-card__body">
+                            <div class="bsr-grid bsr-grid--4">
+                                <div class="bsr-form-group">
                                     @php($tz = \App\Models\BusinessSetting::where('key', 'timezone')->first())
                                     @php($tz = $tz ? $tz->value : 0)
-                                    <div class="form-group mb-0">
-                                        <label for="timezone"
-                                            class="form-label text-capitalize">{{ translate('messages.time_zone') }}</label>
-                                        <select id="timezone" name="timezone" class="form-control js-select2-custom">
+                                    <label for="timezone" class="bsr-label">{{ translate('messages.time_zone') }}</label>
+                                    <select id="timezone" name="timezone" class="bsr-select js-select2-custom">
                                             <option value="UTC" {{ $tz ? ($tz == '' ? 'selected' : '') : '' }}>UTC </option>
                                             <option value="Etc/GMT+12"
                                                 {{ $tz ? ($tz == 'Etc/GMT+12' ? 'selected' : '') : '' }}>(GMT-12:00)International Date Line West</option>
@@ -716,103 +650,73 @@
                                                 {{ $tz ? ($tz == 'Pacific/Tongatapu' ? 'selected' : '') : '' }}>
                                                 (GMT+13:00) Nuku'alofa </option>
                                         </select>
-                                    </div>
-                                </div>
-                                <div class="col-sm-6 col-md-4 col-xl-3">
+                                </div>{{-- end timezone bsr-form-group --}}
+
+                                <div class="bsr-form-group">
                                     @php($tf = \App\Models\BusinessSetting::where('key', 'timeformat')->first())
                                     @php($tf = $tf ? $tf->value : '24')
-                                    <div class="form-group mb-0">
-                                        <label for="time_format"
-                                            class="form-label text-capitalize">{{ translate('messages.time_format') }}</label>
-                                        <select id="time_format" name="time_format" class="form-control">
-                                            <option value="12" {{ $tf == '12' ? 'selected' : '' }}>
-                                                {{ translate('messages.12_hour') }} </option>
-                                            <option value="24" {{ $tf == '24' ? 'selected' : '' }}>
-                                                {{ translate('messages.24_hour') }} </option>
-                                        </select>
-                                    </div>
+                                    <label for="time_format" class="bsr-label">{{ translate('messages.time_format') }}</label>
+                                    <select id="time_format" name="time_format" class="bsr-select">
+                                        <option value="12" {{ $tf == '12' ? 'selected' : '' }}>{{ translate('messages.12_hour') }}</option>
+                                        <option value="24" {{ $tf == '24' ? 'selected' : '' }}>{{ translate('messages.24_hour') }}</option>
+                                    </select>
                                 </div>
-                                <div class="col-sm-6 col-md-4 col-xl-3">
+
+                                <div class="bsr-form-group">
                                     @php($currency_code = \App\Models\BusinessSetting::where('key', 'currency')->first())
-                                    <div class="form-group mb-0">
-                                        <label class="form-label"
-                                            for="currency">{{ translate('Currency Symbol') }}</label>
-                                        <select id="change_currency" name="currency" class="form-control js-select2-custom">
-                                            @foreach (\App\Models\Currency::orderBy('currency_code')->get() as $currency)<option value="{{ $currency['currency_code'] }}"
-                                                    {{ $currency_code ? ($currency_code->value == $currency['currency_code'] ? 'selected' : '') : '' }}>
-                                                    {{ $currency['currency_code'] }} ({{ $currency['currency_symbol'] }})
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
+                                    <label class="bsr-label" for="currency">{{ translate('Currency Symbol') }}</label>
+                                    <select id="change_currency" name="currency" class="bsr-select js-select2-custom">
+                                        @foreach (\App\Models\Currency::orderBy('currency_code')->get() as $currency)
+                                            <option value="{{ $currency['currency_code'] }}"
+                                                {{ $currency_code ? ($currency_code->value == $currency['currency_code'] ? 'selected' : '') : '' }}>
+                                                {{ $currency['currency_code'] }} ({{ $currency['currency_symbol'] }})
+                                            </option>
+                                        @endforeach
+                                    </select>
                                 </div>
-                                <div class="col-sm-6 col-md-4 col-xl-3">
-                                    @php($currency_symbol_position = \App\Models\BusinessSetting::where('key', 'currency_symbol_position')->first())
-                                    <div class="form-group mb-0">
-                                        <label class="form-label text-capitalize"
-                                            for="currency_symbol_position">{{ translate('Currency Position') }}
+                                <div class="bsr-form-group">
+                                    @php($currency_symbol_position = \App\Models\BusinessSetting::where(‘key’, ‘currency_symbol_position’)->first())
+                                    <label class="bsr-label">{{ translate(‘Currency Position’) }}</label>
+                                    <div class="d-flex gap-3 mt-1">
+                                        <label class="d-flex align-items-center gap-2" style="cursor:pointer;font-size:13px">
+                                            <input type="radio" value="left" name="currency_symbol_position" {{ $currency_symbol_position ? ($currency_symbol_position->value == ‘left’ ? ‘checked’ : ‘’) : ‘’ }}>
+                                            ($) {{ translate(‘Left’) }}
                                         </label>
-                                        <div class="resturant-type-group border">
-                                            <label class="form-check form--check mr-2 mr-md-4">
-                                                <input class="form-check-input" type="radio" value="left" name="currency_symbol_position" {{ $currency_symbol_position ? ($currency_symbol_position->value == 'left' ? 'checked' : '') : '' }}>
-                                                <span class="form-check-label">
-                                                    ($) {{translate('Left')}}
-                                                </span>
-                                            </label>
-                                            <label class="form-check form--check mr-2 mr-md-4">
-                                                <input class="form-check-input" type="radio" value="right" name="currency_symbol_position" {{ $currency_symbol_position ? ($currency_symbol_position->value == 'right' ? 'checked' : '') : '' }}>
-                                                <span class="form-check-label">
-                                                    {{translate('Right')}} ($)
-                                                </span>
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-sm-6 col-md-4 col-xl-3">
-                                    @php($digit_after_decimal_point = \App\Models\BusinessSetting::where('key', 'digit_after_decimal_point')->first())
-                                    <div class="form-group mb-0">
-                                        <label class="form-label text-capitalize"
-                                            for="digit_after_decimal_point">{{ translate('messages.Digit after decimal point') }}
-                                            <span class="form-label-secondary" data-toggle="tooltip" data-placement="right" data-original-title="{{ translate('how_many_fractional_digit_to_show_after_decimal_value') }}">
-                                                <img src="{{asset('public/assets/admin/img/info-circle.svg')}}" alt="">
-                                            </span>
+                                        <label class="d-flex align-items-center gap-2" style="cursor:pointer;font-size:13px">
+                                            <input type="radio" value="right" name="currency_symbol_position" {{ $currency_symbol_position ? ($currency_symbol_position->value == ‘right’ ? ‘checked’ : ‘’) : ‘’ }}>
+                                            {{ translate(‘Right’) }} ($)
                                         </label>
-                                        <input type="number" name="digit_after_decimal_point" class="form-control"
-                                            id="digit_after_decimal_point" placeholder="{{ translate('messages.ex_:_2') }}"
-                                            value="{{ $digit_after_decimal_point ? $digit_after_decimal_point->value : 0 }}"
-                                            min="0" max="4" required>
                                     </div>
                                 </div>
-                                <div class="col-md-4 col-xl-5">
-                                    @php($footer_text = \App\Models\BusinessSetting::where('key', 'footer_text')->first())
-                                    <div class="form-group mb-0">
-                                        <label class="form-label"
-                                            for="footer_text">{{ translate('Copyright Text') }}
-                                            <span class="form-label-secondary" data-toggle="tooltip" data-placement="right" data-original-title="{{ translate('messages.make_visitors_aware_of_your_business‘s_rights_&_legal_information.') }}">
-                                                <img src="{{asset('public/assets/admin/img/info-circle.svg')}}" alt="">
-                                            </span>
-                                        </label>
-                                        <textarea type="text" id="footer_text" name="footer_text" class="form-control h--45"
-                                            placeholder="{{ translate('messages.Ex_:_Copyright_Text') }}" required>{{ $footer_text->value ?? '' }}</textarea>
-                                    </div>
+
+                                <div class="bsr-form-group">
+                                    @php($digit_after_decimal_point = \App\Models\BusinessSetting::where(‘key’, ‘digit_after_decimal_point’)->first())
+                                    <label class="bsr-label" for="digit_after_decimal_point">{{ translate(‘messages.Digit after decimal point’) }}</label>
+                                    <input type="number" name="digit_after_decimal_point" class="bsr-input"
+                                        id="digit_after_decimal_point" placeholder="2"
+                                        value="{{ $digit_after_decimal_point ? $digit_after_decimal_point->value : 0 }}"
+                                        min="0" max="4" required>
                                 </div>
-                                <div class="col-md-4 col-xl-4">
-                                    @php($cookies_text = \App\Models\BusinessSetting::where('key', 'cookies_text')->first())
-                                    <div class="form-group mb-0">
-                                        <label class="form-label"
-                                            for="cookies_text">{{ translate('Cookies Text') }}
-                                            <span class="form-label-secondary" data-toggle="tooltip" data-placement="right" data-original-title="{{ translate('messages.make_visitors_aware_of_your_business‘s_rights_&_legal_information.') }}">
-                                                <img src="{{asset('public/assets/admin/img/info-circle.svg')}}" alt="">
-                                            </span>
-                                        </label>
-                                        <textarea type="text"  id="cookies_text" name="cookies_text" class="form-control h--45"
-                                            placeholder="{{ translate('messages.Ex_:_Cookies_Text') }}" required>{{ $cookies_text->value ?? '' }}</textarea>
-                                    </div>
+
+                                <div class="bsr-form-group">
+                                    @php($footer_text = \App\Models\BusinessSetting::where(‘key’, ‘footer_text’)->first())
+                                    <label class="bsr-label" for="footer_text">{{ translate(‘Copyright Text’) }}</label>
+                                    <textarea id="footer_text" name="footer_text" class="bsr-textarea"
+                                        placeholder="{{ translate(‘messages.Ex_:_Copyright_Text’) }}" required>{{ $footer_text->value ?? ‘’ }}</textarea>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+
+                                <div class="bsr-form-group">
+                                    @php($cookies_text = \App\Models\BusinessSetting::where(‘key’, ‘cookies_text’)->first())
+                                    <label class="bsr-label" for="cookies_text">{{ translate(‘Cookies Text’) }}</label>
+                                    <textarea id="cookies_text" name="cookies_text" class="bsr-textarea"
+                                        placeholder="{{ translate(‘messages.Ex_:_Cookies_Text’) }}" required>{{ $cookies_text->value ?? ‘’ }}</textarea>
+                                </div>
+
+                            </div>{{-- end bsr-grid--4 --}}
+                        </div>{{-- end bsr-card__body General Settings --}}
+                    </div>{{-- end bsr-card General Settings --}}
+
+                <div class="row g-3">
                 <div class="col-lg-12">
                     <h4 class="card-title mb-3 d-flex align-items-center"> <span class="card-header-icon mr-2"><i
                                 class="tio-neighborhood"></i></span>
@@ -1410,17 +1314,20 @@
                                 </div>
                             </div>
 
-                            <div class="btn--container justify-content-end mt-3">
-                                <button type="reset" class="btn btn--reset">{{ translate('messages.reset') }}</button>
-                                <button type="{{ env('APP_MODE') != 'demo' ? 'submit' : 'button' }}"
-                                    class="btn btn--primary call-demo">{{ translate('save_information') }}</button>
-                            </div>
-                        </div>
-                    </div>
+                </div>{{-- end row --}}
+
+                <div class="bsr-actions">
+                    <button type="reset" class="bsr-btn bsr-btn--secondary">{{ translate('messages.reset') }}</button>
+                    <button type="{{ env('APP_MODE') != 'demo' ? 'submit' : 'button' }}"
+                        class="bsr-btn bsr-btn--primary call-demo">
+                        <i class="tio-save"></i>
+                        {{ translate('save_information') }}
+                    </button>
                 </div>
-            </div>
+
+                </div>{{-- end bsr-body --}}
         </form>
-    </div>
+    </div>{{-- end bsr-page --}}
 
 
 

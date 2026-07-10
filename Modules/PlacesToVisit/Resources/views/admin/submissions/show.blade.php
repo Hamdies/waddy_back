@@ -191,6 +191,18 @@
                                 @endforeach
                             </select>
                         </div>
+                        @if($submission->latitude === null || $submission->longitude === null)
+                        <div class="form-group">
+                            <label class="input-label">{{ translate('messages.latitude') }} <span class="text-danger">*</span></label>
+                            <input type="number" step="any" name="latitude" class="form-control" required
+                                   placeholder="30.0444">
+                        </div>
+                        <div class="form-group">
+                            <label class="input-label">{{ translate('messages.longitude') }} <span class="text-danger">*</span></label>
+                            <input type="number" step="any" name="longitude" class="form-control" required
+                                   placeholder="31.2357">
+                        </div>
+                        @endif
                         <div class="form-group">
                             <label class="input-label">{{ translate('messages.admin_note') }}</label>
                             <textarea name="admin_note" class="form-control" rows="2"

@@ -58,6 +58,7 @@ class PlaceZoneController extends Controller
                 'images',
                 'tags' => fn($q) => $q->active(),
             ])
+            ->withCurrentPeriodStats()
             ->withCount('favorites');
 
         if ($search) {
@@ -76,7 +77,7 @@ class PlaceZoneController extends Controller
                 'id' => $place->id,
                 'title' => $place->title,
                 'description' => $place->description,
-                'image' => $place->main_image,
+                'image' => $place->image,
                 'cover_image' => $place->cover_image,
                 'category' => $place->category ? [
                     'id' => $place->category->id,
@@ -86,7 +87,7 @@ class PlaceZoneController extends Controller
                     'id' => $place->zone->id,
                     'name' => $place->zone->localized_name,
                 ],
-                'rating' => $place->average_rating ?? 0,
+                'rating' => round($place->votes_avg_rating ?? 0, 1),
                 'review_count' => $place->votes_count ?? 0,
                 'favorites_count' => $place->favorites_count ?? 0,
             ]);

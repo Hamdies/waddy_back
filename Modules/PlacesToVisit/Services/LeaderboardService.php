@@ -30,7 +30,9 @@ class LeaderboardService
         $period = $period ?? now()->format('Y-m');
         $cacheKey = "leaderboard:{$period}:" . ($categoryId ?? 'all') . ':' . ($zoneId ?? 'all');
 
-        return Cache::remember($cacheKey, $this->cacheMinutes * 60, function () use ($period, $categoryId, $zoneId, $limit) {
+        // Cache the full top list once, then slice per request — a request
+        // with a small limit must never poison the cache for other callers.
+        $fullList = Cache::remember($cacheKey, $this->cacheMinutes * 60, function () use ($period, $categoryId, $zoneId) {
             return Place::query()
                 ->active()
                 ->with(['translations', 'category', 'zone'])
@@ -41,10 +43,12 @@ class LeaderboardService
                 ->having('votes_count', '>=', $this->minVotes)
                 ->orderByDesc('votes_count')      // PRIMARY: Total votes (popularity)
                 ->orderByDesc('votes_avg_rating') // SECONDARY: Quality
-                ->limit($limit ?? $this->limit)
+                ->limit($this->limit)
                 ->get()
-                ->map(fn($place) => [
+                ->values()
+                ->map(fn($place, $index) => [
                     'id' => $place->id,
+                    'rank' => $index + 1,
                     'title' => $place->title,
                     'description' => $place->description,
                     'image' => $place->image,
@@ -57,6 +61,8 @@ class LeaderboardService
                     'avg_rating' => round($place->votes_avg_rating ?? 0, 1),
                 ]);
         });
+
+        return $limit ? $fullList->take($limit)->values() : $fullList;
     }
 
     /**
@@ -65,16 +71,17 @@ class LeaderboardService
     public function getTopVoters(?string $period = null, ?int $zoneId = null, int $limit = 10): Collection
     {
         $period = $period ?? now()->format('Y-m');
-        $cacheKey = "top_voters:{$period}:" . ($zoneId ?? 'all') . ":{$limit}";
+        $maxLimit = max($limit, 10);
+        $cacheKey = "top_voters:{$period}:" . ($zoneId ?? 'all');
 
-        return Cache::remember($cacheKey, $this->cacheMinutes * 60, function () use ($period, $zoneId, $limit) {
+        $fullList = Cache::remember($cacheKey, $this->cacheMinutes * 60, function () use ($period, $zoneId, $maxLimit) {
             $topVoters = PlaceVote::query()
                 ->select('user_id', DB::raw('COUNT(*) as votes_count'))
                 ->where('period', $period)
                 ->when($zoneId, fn($q) => $q->whereHas('place', fn($pq) => $pq->where('zone_id', $zoneId)))
                 ->groupBy('user_id')
                 ->orderByDesc('votes_count')
-                ->limit($limit)
+                ->limit($maxLimit)
                 ->get();
 
             return $topVoters->map(function ($row, $index) {
@@ -88,6 +95,8 @@ class LeaderboardService
                 ];
             });
         });
+
+        return $fullList->take($limit)->values();
     }
 
     /**
@@ -135,9 +144,9 @@ class LeaderboardService
         }
 
         // Clear top voters caches
-        Cache::forget("top_voters:{$period}:all:10");
+        Cache::forget("top_voters:{$period}:all");
         foreach ($zones as $zoneId) {
-            Cache::forget("top_voters:{$period}:{$zoneId}:10");
+            Cache::forget("top_voters:{$period}:{$zoneId}");
         }
     }
 }

@@ -17,10 +17,11 @@ class PlaceSubmissionController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $page = (int) ($request->page ?? $request->offset ?? 1);
         $submissions = PlaceSubmission::byUser(auth()->id())
             ->with('category')
             ->latest()
-            ->paginate($request->per_page ?? 15);
+            ->paginate($request->per_page ?? 15, ['*'], 'page', $page);
 
         return response()->json([
             'success' => true,
@@ -52,14 +53,21 @@ class PlaceSubmissionController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        // Older app builds send the place name as `name`
+        if (!$request->filled('title') && $request->filled('name')) {
+            $request->merge(['title' => $request->name]);
+        }
+
         $request->validate([
             'title' => 'required|string|max:200',
             'description' => 'nullable|string|max:2000',
             'category_id' => 'nullable|exists:place_categories,id',
-            'latitude' => 'required|numeric|between:-90,90',
-            'longitude' => 'required|numeric|between:-180,180',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
             'address' => 'nullable|string|max:500',
             'phone' => 'nullable|string|max:30',
+            'website' => 'nullable|string|max:255',
+            'instagram' => 'nullable|string|max:255',
             'image' => 'nullable|image|mimes:jpeg,png,jpg|max:' . config('placestovisit.submissions.image_max_size', 2048),
         ]);
 
@@ -91,6 +99,8 @@ class PlaceSubmissionController extends Controller
             'longitude' => $request->longitude,
             'address' => $request->address,
             'phone' => $request->phone,
+            'website' => $request->website,
+            'instagram' => $request->instagram,
             'status' => 'pending',
         ]);
 
@@ -130,6 +140,8 @@ class PlaceSubmissionController extends Controller
                 'longitude' => $submission->longitude,
                 'address' => $submission->address,
                 'phone' => $submission->phone,
+                'website' => $submission->website,
+                'instagram' => $submission->instagram,
                 'status' => $submission->status,
                 'admin_note' => $submission->admin_note,
                 'approved_place_id' => $submission->approved_place_id,

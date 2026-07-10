@@ -53,6 +53,10 @@ class PlaceSubmissionController extends Controller
 
         $request->validate([
             'category_id' => 'required|exists:place_categories,id',
+            // App submissions may arrive without coordinates — the admin
+            // must pin the location before approval (places require lat/lng)
+            'latitude' => [$submission->latitude === null ? 'required' : 'nullable', 'numeric', 'between:-90,90'],
+            'longitude' => [$submission->longitude === null ? 'required' : 'nullable', 'numeric', 'between:-180,180'],
         ]);
 
         // Create the place
@@ -64,10 +68,12 @@ class PlaceSubmissionController extends Controller
 
         $place = Place::create([
             'category_id' => $request->category_id ?? $submission->category_id,
-            'latitude' => $submission->latitude,
-            'longitude' => $submission->longitude,
+            'latitude' => $request->latitude ?? $submission->latitude,
+            'longitude' => $request->longitude ?? $submission->longitude,
             'address' => $submission->address,
             'phone' => $submission->phone,
+            'website' => $submission->website,
+            'instagram' => $submission->instagram,
             'image' => $imagePath,
             'is_active' => true,
             'is_featured' => false,

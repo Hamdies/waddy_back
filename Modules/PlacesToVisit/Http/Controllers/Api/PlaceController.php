@@ -24,7 +24,16 @@ class PlaceController extends Controller
     {
         $period = now()->format('Y-m');
         $userId = auth('api')->id();
-        
+
+        // Param aliases used by the mobile app
+        if (!$request->filled('latitude') && $request->filled('lat')) {
+            $request->merge(['latitude' => $request->lat]);
+        }
+        if (!$request->filled('longitude') && $request->filled('lng')) {
+            $request->merge(['longitude' => $request->lng]);
+        }
+
+
         $query = Place::query()
             ->active()
             ->with([
@@ -68,7 +77,9 @@ class PlaceController extends Controller
             default => $query->latest(), // 'newest'
         };
 
-        $places = $query->paginate($request->per_page ?? 15);
+        // App sends `offset` as the page number; Laravel expects `page`
+        $page = (int) ($request->page ?? $request->offset ?? 1);
+        $places = $query->paginate($request->per_page ?? 15, ['*'], 'page', $page);
 
         // Append user-specific data
         $placesData = collect($places->items())->map(function ($place) use ($userId) {
@@ -81,6 +92,8 @@ class PlaceController extends Controller
         return response()->json([
             'success' => true,
             'data' => $placesData,
+            'total_size' => $places->total(),
+            'offset' => $places->currentPage(),
             'meta' => [
                 'current_page' => $places->currentPage(),
                 'last_page' => $places->lastPage(),

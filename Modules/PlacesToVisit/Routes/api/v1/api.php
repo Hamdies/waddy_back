@@ -34,21 +34,21 @@ Route::group(['prefix' => 'places'], function () {
     // ==================== Protected Routes ====================
     
     Route::group(['middleware' => ['auth:api']], function () {
-        // Voting & Reviews
-        Route::post('{place}/vote', 'VoteController@vote');
-        Route::delete('{place}/vote', 'VoteController@removeVote');
+        // Voting & Reviews (rate-limited to deter abuse)
+        Route::post('{place}/vote', 'VoteController@vote')->middleware('throttle:30,1');
+        Route::delete('{place}/vote', 'VoteController@removeVote')->middleware('throttle:30,1');
         Route::get('{place}/vote-status', 'VoteController@status');
-        Route::post('votes/{vote}/report', 'VoteController@report');
-        
+        Route::post('votes/{vote}/report', 'VoteController@report')->middleware('throttle:10,1');
+
         // Favorites
         Route::get('favorites/my', 'PlaceFavoriteController@index');
         Route::post('{place}/favorite', 'PlaceFavoriteController@store');
         Route::delete('{place}/favorite', 'PlaceFavoriteController@destroy');
         Route::post('{place}/toggle-favorite', 'PlaceFavoriteController@toggle');
-        
+
         // Submissions
         Route::get('submissions/my', 'PlaceSubmissionController@index');
-        Route::post('submissions', 'PlaceSubmissionController@store');
+        Route::post('submissions', 'PlaceSubmissionController@store')->middleware('throttle:10,1');
         Route::get('submissions/{submission}', 'PlaceSubmissionController@show');
     });
 });

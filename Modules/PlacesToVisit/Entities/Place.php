@@ -140,6 +140,17 @@ class Place extends Model
         $dayOfWeek = strtolower(now()->format('l')); // monday, tuesday, etc.
         $currentTime = now()->format('H:i');
 
+        // Yesterday's overnight range (e.g. 20:00–02:00) can spill into today
+        $yesterday = strtolower(now()->subDay()->format('l'));
+        $yesterdayHours = $this->opening_hours[$yesterday] ?? null;
+        if ($yesterdayHours && !($yesterdayHours['closed'] ?? false)) {
+            $yOpen = $yesterdayHours['open'] ?? null;
+            $yClose = $yesterdayHours['close'] ?? null;
+            if ($yOpen && $yClose && $yClose < $yOpen && $currentTime <= $yClose) {
+                return true;
+            }
+        }
+
         $todayHours = $this->opening_hours[$dayOfWeek] ?? null;
 
         if (!$todayHours || ($todayHours['closed'] ?? false)) {
@@ -151,6 +162,11 @@ class Place extends Model
 
         if (!$open || !$close) {
             return null;
+        }
+
+        // Overnight range: open if we're past opening (closing happens tomorrow)
+        if ($close < $open) {
+            return $currentTime >= $open;
         }
 
         return $currentTime >= $open && $currentTime <= $close;

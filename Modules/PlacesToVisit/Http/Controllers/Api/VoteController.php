@@ -22,9 +22,15 @@ class VoteController extends Controller
      */
     public function vote(Request $request, Place $place): JsonResponse
     {
+        // Older app builds send the review text as `comment`
+        if (!$request->filled('review') && $request->filled('comment')) {
+            $request->merge(['review' => $request->comment]);
+        }
+
         $request->validate([
             'rating' => 'nullable|integer|min:1|max:5',
             'review' => 'nullable|string|max:1000',
+            'comment' => 'nullable|string|max:1000',
             'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
@@ -124,18 +130,23 @@ class VoteController extends Controller
     {
         $period = $request->period ?? now()->format('Y-m');
 
+        // App sends `offset` as the page number; Laravel expects `page`
+        $page = (int) ($request->page ?? $request->offset ?? 1);
+
         $reviews = $place->votes()
             ->where('period', $period)
             ->notFlagged()
             ->withReview()
             ->with('user:id,f_name,l_name,image')
             ->latest()
-            ->paginate($request->per_page ?? 15, ['id', 'user_id', 'rating', 'review', 'image', 'created_at']);
+            ->paginate($request->per_page ?? 15, ['id', 'user_id', 'rating', 'review', 'image', 'created_at'], 'page', $page);
 
         return response()->json([
             'success' => true,
             'period' => $period,
             'data' => $reviews->items(),
+            'total_size' => $reviews->total(),
+            'offset' => $reviews->currentPage(),
             'meta' => [
                 'current_page' => $reviews->currentPage(),
                 'last_page' => $reviews->lastPage(),

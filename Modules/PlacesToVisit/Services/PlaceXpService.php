@@ -9,17 +9,22 @@ class PlaceXpService
 {
     /**
      * Award XP for voting on a place.
+     *
+     * XP is keyed to place + period (not the vote row id) so removing and
+     * re-casting a vote in the same month can never farm duplicate XP —
+     * XpService::addXp dedupes on (user, reference_type, reference_id, source).
      */
-    public static function awardVoteXp(User $user, int $voteId): void
+    public static function awardVoteXp(User $user, int $placeId, ?string $period = null): void
     {
+        $period = $period ?? now()->format('Y-m');
         $xp = config('placestovisit.xp.vote', 5);
         if ($xp > 0) {
             XpService::addXp(
                 $user,
-                'place_vote',
+                "place_vote:{$period}",
                 $xp,
-                'place_vote',
-                $voteId,
+                'place',
+                $placeId,
                 'Voted for a hidden gem'
             );
         }
@@ -28,16 +33,17 @@ class PlaceXpService
     /**
      * Award XP for writing a review.
      */
-    public static function awardReviewXp(User $user, int $voteId): void
+    public static function awardReviewXp(User $user, int $placeId, ?string $period = null): void
     {
+        $period = $period ?? now()->format('Y-m');
         $xp = config('placestovisit.xp.review', 10);
         if ($xp > 0) {
             XpService::addXp(
                 $user,
-                'place_review',
+                "place_review:{$period}",
                 $xp,
-                'place_vote',
-                $voteId,
+                'place',
+                $placeId,
                 'Reviewed a hidden gem'
             );
         }
@@ -64,16 +70,17 @@ class PlaceXpService
     /**
      * Award XP for uploading a photo with review.
      */
-    public static function awardPhotoReviewXp(User $user, int $voteId): void
+    public static function awardPhotoReviewXp(User $user, int $placeId, ?string $period = null): void
     {
+        $period = $period ?? now()->format('Y-m');
         $xp = config('placestovisit.xp.photo_review', 15);
         if ($xp > 0) {
             XpService::addXp(
                 $user,
-                'place_photo_review',
+                "place_photo_review:{$period}",
                 $xp,
-                'place_vote',
-                $voteId,
+                'place',
+                $placeId,
                 'Added photo to hidden gem review'
             );
         }
