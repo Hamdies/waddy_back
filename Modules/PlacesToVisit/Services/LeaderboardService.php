@@ -27,7 +27,7 @@ class LeaderboardService
      */
     public function getTopPlaces(?string $period = null, ?int $categoryId = null, ?int $zoneId = null, ?int $limit = null): Collection
     {
-        $period = $period ?? now()->format('o-\WW');
+        $period = $period ?? \Modules\PlacesToVisit\Services\RaceClock::period();
         $cacheKey = "leaderboard:{$period}:" . ($categoryId ?? 'all') . ':' . ($zoneId ?? 'all');
 
         // Cache the full top list once, then slice per request — a request
@@ -70,7 +70,7 @@ class LeaderboardService
      */
     public function getTopVoters(?string $period = null, ?int $zoneId = null, int $limit = 10): Collection
     {
-        $period = $period ?? now()->format('o-\WW');
+        $period = $period ?? \Modules\PlacesToVisit\Services\RaceClock::period();
         $maxLimit = max($limit, 10);
         $cacheKey = "top_voters:{$period}:" . ($zoneId ?? 'all');
 
@@ -104,7 +104,7 @@ class LeaderboardService
      */
     public function getCurrentPeriod(): string
     {
-        return now()->format('o-\WW');
+        return \Modules\PlacesToVisit\Services\RaceClock::period();
     }
 
     /**
@@ -114,7 +114,7 @@ class LeaderboardService
     {
         $periods = [];
         for ($i = 0; $i < 12; $i++) {
-            $periods[] = now()->subWeeks($i)->format('o-\WW');
+            $periods[] = RaceClock::now()->subWeeks($i)->format('o-\WW');
         }
         return $periods;
     }

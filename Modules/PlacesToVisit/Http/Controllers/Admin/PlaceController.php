@@ -18,7 +18,7 @@ class PlaceController extends Controller
 {
     public function index(Request $request): View
     {
-        $period = now()->format('o-\WW');
+        $period = \Modules\PlacesToVisit\Services\RaceClock::period();
         
         $places = Place::query()
             ->with(['translations', 'category', 'zone'])

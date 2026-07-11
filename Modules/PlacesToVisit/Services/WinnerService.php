@@ -20,7 +20,7 @@ class WinnerService
         $period = $period ?? $this->lastClosedPeriod();
 
         // Never close the running week, and never close twice
-        if ($period === now()->format('o-\WW') ||
+        if ($period === \Modules\PlacesToVisit\Services\RaceClock::period() ||
             PlaceWinner::where('period', $period)->exists()) {
             return collect();
         }
@@ -89,7 +89,7 @@ class WinnerService
      */
     public function lastClosedPeriod(): string
     {
-        return now()->subWeek()->format('o-\WW');
+        return RaceClock::lastClosedPeriod();
     }
 
     /**

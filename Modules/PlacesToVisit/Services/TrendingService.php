@@ -31,7 +31,7 @@ class TrendingService
 
         return Cache::remember($cacheKey, $this->cacheMinutes * 60, function () use ($categoryId) {
             $windowStart = now()->subDays($this->trendingWindowDays);
-            $period = now()->format('o-\WW');
+            $period = \Modules\PlacesToVisit\Services\RaceClock::period();
 
             return Place::query()
                 ->active()

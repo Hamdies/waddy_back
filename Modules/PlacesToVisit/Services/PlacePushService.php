@@ -44,7 +44,7 @@ class PlacePushService
 
     protected function checkScope(?int $zoneId): void
     {
-        $period = now()->format('o-\WW');
+        $period = \Modules\PlacesToVisit\Services\RaceClock::period();
         $scope = $zoneId ?? 'all';
 
         $leader = $this->topTwo($period, $zoneId)->first();
@@ -67,7 +67,7 @@ class PlacePushService
         }
         Cache::put($cooldownKey, 1, now()->addMinutes(self::COOLDOWN_MINUTES));
 
-        $hoursLeft = max(1, (int) now()->diffInHours(now()->startOfWeek()->addWeek()));
+        $hoursLeft = max(1, (int) RaceClock::now()->diffInHours(RaceClock::lockTime()));
         Helpers::send_push_notif_to_topic(
             data: [
                 'title' => '🚨 New leader in the race!',
@@ -85,7 +85,7 @@ class PlacePushService
      */
     public function sendFinalHoursPushes(int $maxGap = 3): int
     {
-        $period = now()->format('o-\WW');
+        $period = \Modules\PlacesToVisit\Services\RaceClock::period();
         $sent = 0;
 
         $scopes = [null, ...\Modules\PlacesToVisit\Entities\PlaceZone::pluck('id')->all()];

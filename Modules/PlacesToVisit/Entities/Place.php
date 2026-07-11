@@ -176,13 +176,13 @@ class Place extends Model
 
     public function getVotesCountForPeriod(?string $period = null): int
     {
-        $period = $period ?? now()->format('o-\WW');
+        $period = $period ?? \Modules\PlacesToVisit\Services\RaceClock::period();
         return $this->votes()->where('period', $period)->count();
     }
 
     public function getAverageRatingForPeriod(?string $period = null): ?float
     {
-        $period = $period ?? now()->format('o-\WW');
+        $period = $period ?? \Modules\PlacesToVisit\Services\RaceClock::period();
         return $this->votes()
             ->where('period', $period)
             ->whereNotNull('rating')
@@ -191,7 +191,7 @@ class Place extends Model
 
     public function hasUserVoted(int $userId, ?string $period = null): bool
     {
-        $period = $period ?? now()->format('o-\WW');
+        $period = $period ?? \Modules\PlacesToVisit\Services\RaceClock::period();
         return $this->votes()
             ->where('user_id', $userId)
             ->where('period', $period)
@@ -222,7 +222,7 @@ class Place extends Model
 
     public function scopeWithCurrentPeriodStats($query, ?string $period = null)
     {
-        $period = $period ?? now()->format('o-\WW');
+        $period = $period ?? \Modules\PlacesToVisit\Services\RaceClock::period();
         
         return $query
             ->withCount(['votes' => fn($q) => $q->where('period', $period)])

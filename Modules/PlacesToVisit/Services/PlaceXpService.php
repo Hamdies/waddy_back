@@ -25,7 +25,7 @@ class PlaceXpService
      */
     public static function awardVoteXp(User $user, int $placeId, ?string $period = null): void
     {
-        $period = $period ?? now()->format('o-\WW');
+        $period = $period ?? \Modules\PlacesToVisit\Services\RaceClock::period();
         $xp = config('placestovisit.xp.vote', 5);
         if ($xp > 0) {
             XpService::addXp(
@@ -45,7 +45,7 @@ class PlaceXpService
      */
     public static function awardReviewXp(User $user, int $placeId, ?string $period = null): void
     {
-        $period = $period ?? now()->format('o-\WW');
+        $period = $period ?? \Modules\PlacesToVisit\Services\RaceClock::period();
         $xp = config('placestovisit.xp.review', 10);
         if ($xp > 0) {
             XpService::addXp(
@@ -82,7 +82,7 @@ class PlaceXpService
      */
     public static function awardPhotoReviewXp(User $user, int $placeId, ?string $period = null): void
     {
-        $period = $period ?? now()->format('o-\WW');
+        $period = $period ?? \Modules\PlacesToVisit\Services\RaceClock::period();
         $xp = config('placestovisit.xp.photo_review', 15);
         if ($xp > 0) {
             XpService::addXp(

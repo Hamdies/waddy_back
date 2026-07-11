@@ -266,7 +266,7 @@ class VotingService
      */
     public function getCurrentPeriod(): string
     {
-        return now()->format('o-\WW');
+        return \Modules\PlacesToVisit\Services\RaceClock::period();
     }
 
     /**

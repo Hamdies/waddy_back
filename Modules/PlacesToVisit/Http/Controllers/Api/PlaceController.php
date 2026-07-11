@@ -22,7 +22,7 @@ class PlaceController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $period = now()->format('o-\WW');
+        $period = \Modules\PlacesToVisit\Services\RaceClock::period();
         $userId = auth('api')->id();
 
         // Param aliases used by the mobile app
@@ -134,7 +134,7 @@ class PlaceController extends Controller
             ], 404);
         }
 
-        $period = now()->format('o-\WW');
+        $period = \Modules\PlacesToVisit\Services\RaceClock::period();
         $userId = auth('api')->id();
 
         $place->load([
@@ -221,7 +221,7 @@ class PlaceController extends Controller
      */
     public function leaderboard(Request $request): JsonResponse
     {
-        $period = $request->period ?? now()->format('o-\WW');
+        $period = $request->period ?? \Modules\PlacesToVisit\Services\RaceClock::period();
         $categoryId = $request->category_id;
         $zoneId = $request->zone_id ? (int) $request->zone_id : null;
         $limit = $request->limit ? (int) $request->limit : null;
@@ -242,7 +242,7 @@ class PlaceController extends Controller
      */
     public function topVoters(Request $request): JsonResponse
     {
-        $period = $request->period ?? now()->format('o-\WW');
+        $period = $request->period ?? \Modules\PlacesToVisit\Services\RaceClock::period();
         $zoneId = $request->zone_id ? (int) $request->zone_id : null;
         $limit = $request->limit ? (int) $request->limit : 10;
 

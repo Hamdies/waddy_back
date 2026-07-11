@@ -143,7 +143,7 @@ class VoteController extends Controller
      */
     public function reviews(Request $request, Place $place): JsonResponse
     {
-        $period = $request->period ?? now()->format('o-\WW');
+        $period = $request->period ?? \Modules\PlacesToVisit\Services\RaceClock::period();
 
         // App sends `offset` as the page number; Laravel expects `page`
         $page = (int) ($request->page ?? $request->offset ?? 1);

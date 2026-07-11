@@ -38,7 +38,7 @@ class PlaceEvent extends Model
                 'user_id' => $userId,
                 'place_id' => $placeId,
                 'zone_id' => $zoneId,
-                'period' => now()->format('o-\WW'),
+                'period' => \Modules\PlacesToVisit\Services\RaceClock::period(),
                 'meta' => $meta,
             ]);
         } catch (\Throwable $e) {

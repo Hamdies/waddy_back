@@ -49,7 +49,7 @@ class PlaceVote extends Model
 
     public function scopeForPeriod($query, ?string $period = null)
     {
-        $period = $period ?? now()->format('o-\WW');
+        $period = $period ?? \Modules\PlacesToVisit\Services\RaceClock::period();
         return $query->where('period', $period);
     }
 
@@ -72,6 +72,6 @@ class PlaceVote extends Model
 
     public static function getCurrentPeriod(): string
     {
-        return now()->format('o-\WW');
+        return \Modules\PlacesToVisit\Services\RaceClock::period();
     }
 }

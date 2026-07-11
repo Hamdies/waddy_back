@@ -2,7 +2,10 @@
 
 return [
     'name' => 'PlacesToVisit',
-    
+
+    // The weekly race flips on neighborhood time, independent of app.timezone
+    'timezone' => 'Africa/Cairo',
+
     // ==================== Leaderboard ====================
     
     // Minimum votes required to appear on leaderboard
