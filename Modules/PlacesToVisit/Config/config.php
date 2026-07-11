@@ -6,7 +6,9 @@ return [
     // ==================== Leaderboard ====================
     
     // Minimum votes required to appear on leaderboard
-    'min_votes_for_leaderboard' => 5,
+    // 1 = podium ranks from the very first vote (fresh-app friendly);
+    // raise once traffic grows to keep "Best of the Month" meaningful
+    'min_votes_for_leaderboard' => 1,
     
     // Number of top places to show
     'leaderboard_limit' => 10,
@@ -33,7 +35,7 @@ return [
     // ==================== XP Rewards ====================
 
     'xp' => [
-        'vote' => 1,              // XP for voting on a place
+        'vote' => 5,              // XP for the weekly vote (1 felt insignificant; deduped weekly so it can't be farmed)
         'review' => 10,           // Additional XP for writing a text review
         'photo_review' => 15,     // Additional XP for adding a photo to review
         'submission_approved' => 25, // XP for an approved place submission

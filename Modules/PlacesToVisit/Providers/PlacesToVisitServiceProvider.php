@@ -3,9 +3,13 @@
 namespace Modules\PlacesToVisit\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Modules\PlacesToVisit\Console\CloseWeekCommand;
+use Modules\PlacesToVisit\Console\FinalHoursPushCommand;
+use Modules\PlacesToVisit\Services\PlacePushService;
 use Modules\PlacesToVisit\Services\LeaderboardService;
 use Modules\PlacesToVisit\Services\TrendingService;
 use Modules\PlacesToVisit\Services\VotingService;
+use Modules\PlacesToVisit\Services\WinnerService;
 
 class PlacesToVisitServiceProvider extends ServiceProvider
 {
@@ -18,6 +22,9 @@ class PlacesToVisitServiceProvider extends ServiceProvider
         $this->app->singleton(LeaderboardService::class);
         $this->app->singleton(VotingService::class);
         $this->app->singleton(TrendingService::class);
+        $this->app->singleton(WinnerService::class);
+        $this->app->singleton(PlacePushService::class);
+        $this->commands([CloseWeekCommand::class, FinalHoursPushCommand::class]);
     }
 
     public function boot(): void
@@ -70,6 +77,7 @@ class PlacesToVisitServiceProvider extends ServiceProvider
             LeaderboardService::class,
             VotingService::class,
             TrendingService::class,
+            WinnerService::class,
         ];
     }
 

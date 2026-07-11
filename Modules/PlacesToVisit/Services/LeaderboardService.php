@@ -27,7 +27,7 @@ class LeaderboardService
      */
     public function getTopPlaces(?string $period = null, ?int $categoryId = null, ?int $zoneId = null, ?int $limit = null): Collection
     {
-        $period = $period ?? now()->format('Y-m');
+        $period = $period ?? now()->format('o-\WW');
         $cacheKey = "leaderboard:{$period}:" . ($categoryId ?? 'all') . ':' . ($zoneId ?? 'all');
 
         // Cache the full top list once, then slice per request — a request
@@ -70,7 +70,7 @@ class LeaderboardService
      */
     public function getTopVoters(?string $period = null, ?int $zoneId = null, int $limit = 10): Collection
     {
-        $period = $period ?? now()->format('Y-m');
+        $period = $period ?? now()->format('o-\WW');
         $maxLimit = max($limit, 10);
         $cacheKey = "top_voters:{$period}:" . ($zoneId ?? 'all');
 
@@ -104,17 +104,17 @@ class LeaderboardService
      */
     public function getCurrentPeriod(): string
     {
-        return now()->format('Y-m');
+        return now()->format('o-\WW');
     }
 
     /**
-     * Get available periods (last 12 months)
+     * Get available periods (last 12 weeks)
      */
     public function getAvailablePeriods(): array
     {
         $periods = [];
         for ($i = 0; $i < 12; $i++) {
-            $periods[] = now()->subMonths($i)->format('Y-m');
+            $periods[] = now()->subWeeks($i)->format('o-\WW');
         }
         return $periods;
     }

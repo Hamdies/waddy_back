@@ -27,6 +27,8 @@ return [
     // Voting
     'vote_recorded' => 'تم تسجيل تصويتك',
     'vote_updated' => 'تم تحديث تصويتك',
+    'vote_switched' => 'تم نقل تصويتك إلى هذا المكان',
+    'already_voted_this_week' => 'لقد استخدمت تصويت هذا الأسبوع بالفعل',
     'vote_removed' => 'تم إزالة تصويتك',
     'no_vote_found' => 'لم يتم العثور على تصويت',
     'review_reported' => 'تم الإبلاغ عن المراجعة',

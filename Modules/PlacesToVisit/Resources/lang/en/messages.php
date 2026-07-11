@@ -27,6 +27,8 @@ return [
     // Voting
     'vote_recorded' => 'Your vote has been recorded',
     'vote_updated' => 'Your vote has been updated',
+    'vote_switched' => 'Your vote has moved to this spot',
+    'already_voted_this_week' => 'You already used this week\'s vote',
     'vote_removed' => 'Your vote has been removed',
     'no_vote_found' => 'No vote found',
     'review_reported' => 'Review has been reported',

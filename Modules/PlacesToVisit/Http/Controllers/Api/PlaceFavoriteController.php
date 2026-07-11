@@ -17,7 +17,7 @@ class PlaceFavoriteController extends Controller
     public function index(Request $request): JsonResponse
     {
         $userId = auth()->id();
-        $period = now()->format('Y-m');
+        $period = now()->format('o-\WW');
 
         $favorites = PlaceFavorite::where('user_id', $userId)
             ->with([

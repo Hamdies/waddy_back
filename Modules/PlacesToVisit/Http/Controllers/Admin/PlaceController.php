@@ -18,7 +18,7 @@ class PlaceController extends Controller
 {
     public function index(Request $request): View
     {
-        $period = now()->format('Y-m');
+        $period = now()->format('o-\WW');
         
         $places = Place::query()
             ->with(['translations', 'category', 'zone'])

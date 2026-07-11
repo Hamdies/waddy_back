@@ -19,6 +19,13 @@ Route::group(['prefix' => 'places'], function () {
     Route::get('leaderboard', 'PlaceController@leaderboard');
     Route::get('top-voters', 'PlaceController@topVoters');
     Route::get('trending', 'PlaceController@trending');
+
+    // Weekly winners (hall of fame + latest champion)
+    Route::get('winners', 'WinnerController@index');
+    Route::get('winners/latest', 'WinnerController@latest');
+
+    // KPI events from the app (guests count too; auth attaches user when present)
+    Route::post('events', 'PlaceEventController@store')->middleware('throttle:60,1');
     
     // Banners (public)
     Route::get('banners', 'PlaceBannerController@index');

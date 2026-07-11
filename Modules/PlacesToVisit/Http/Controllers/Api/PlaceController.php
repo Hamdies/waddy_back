@@ -22,7 +22,7 @@ class PlaceController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $period = now()->format('Y-m');
+        $period = now()->format('o-\WW');
         $userId = auth('api')->id();
 
         // Param aliases used by the mobile app
@@ -81,11 +81,29 @@ class PlaceController extends Controller
         $page = (int) ($request->page ?? $request->offset ?? 1);
         $places = $query->paginate($request->per_page ?? 15, ['*'], 'page', $page);
 
+        // Champion badges: overall weekly titles + reigning champion flag
+        $placeIds = collect($places->items())->pluck('id');
+        $titleCounts = \Modules\PlacesToVisit\Entities\PlaceWinner::query()
+            ->whereIn('place_id', $placeIds)
+            ->whereNull('zone_id')
+            ->selectRaw('place_id, COUNT(*) as titles')
+            ->groupBy('place_id')
+            ->pluck('titles', 'place_id');
+        $lastPeriod = app(\Modules\PlacesToVisit\Services\WinnerService::class)->lastClosedPeriod();
+        $reigning = \Modules\PlacesToVisit\Entities\PlaceWinner::query()
+            ->whereIn('place_id', $placeIds)
+            ->where('period', $lastPeriod)
+            ->pluck('place_id')
+            ->unique()
+            ->flip();
+
         // Append user-specific data
-        $placesData = collect($places->items())->map(function ($place) use ($userId) {
+        $placesData = collect($places->items())->map(function ($place) use ($userId, $titleCounts, $reigning) {
             $data = $place->toArray();
             $data['is_favorited'] = $userId ? $place->isUserFavorite($userId) : false;
             $data['is_open_now'] = $place->isOpenNow();
+            $data['titles_count'] = (int) ($titleCounts[$place->id] ?? 0);
+            $data['is_current_champion'] = isset($reigning[$place->id]);
             return $data;
         });
 
@@ -116,7 +134,7 @@ class PlaceController extends Controller
             ], 404);
         }
 
-        $period = now()->format('Y-m');
+        $period = now()->format('o-\WW');
         $userId = auth('api')->id();
 
         $place->load([
@@ -181,6 +199,11 @@ class PlaceController extends Controller
                 'zone' => $place->zone?->display_name,
                 'tags' => $place->tags,
                 'offers' => $place->offers,
+                'titles_count' => \Modules\PlacesToVisit\Entities\PlaceWinner::titleCount($place->id),
+                'is_current_champion' => \Modules\PlacesToVisit\Entities\PlaceWinner::query()
+                    ->where('place_id', $place->id)
+                    ->where('period', app(\Modules\PlacesToVisit\Services\WinnerService::class)->lastClosedPeriod())
+                    ->exists(),
                 'stats' => [
                     'votes_count' => $place->votes_count,
                     'avg_rating' => round($avgRating ?? 0, 1),
@@ -198,7 +221,7 @@ class PlaceController extends Controller
      */
     public function leaderboard(Request $request): JsonResponse
     {
-        $period = $request->period ?? now()->format('Y-m');
+        $period = $request->period ?? now()->format('o-\WW');
         $categoryId = $request->category_id;
         $zoneId = $request->zone_id ? (int) $request->zone_id : null;
         $limit = $request->limit ? (int) $request->limit : null;
@@ -219,7 +242,7 @@ class PlaceController extends Controller
      */
     public function topVoters(Request $request): JsonResponse
     {
-        $period = $request->period ?? now()->format('Y-m');
+        $period = $request->period ?? now()->format('o-\WW');
         $zoneId = $request->zone_id ? (int) $request->zone_id : null;
         $limit = $request->limit ? (int) $request->limit : 10;
 

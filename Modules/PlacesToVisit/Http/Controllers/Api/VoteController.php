@@ -51,14 +51,23 @@ class VoteController extends Controller
             userId: auth()->id(),
             rating: $request->rating,
             review: $request->review,
-            image: $imagePath
+            image: $imagePath,
+            switch: $request->boolean('switch')
         );
+
+        // 409 = user already spent this week's vote elsewhere; the app
+        // shows a "switch your vote?" dialog and retries with switch=1
+        $status = $result['success']
+            ? 200
+            : (($result['code'] ?? null) === 'already_voted_this_week' ? 409 : 400);
 
         return response()->json([
             'success' => $result['success'],
             'message' => $result['message'],
             'action' => $result['action'] ?? null,
-        ]);
+            'code' => $result['code'] ?? null,
+            'current_vote' => $result['current_vote'] ?? null,
+        ], $status);
     }
 
     /**
@@ -86,6 +95,7 @@ class VoteController extends Controller
     {
         $userId = auth()->id();
         $vote = $this->votingService->getUserVote($place->id, $userId);
+        $weeklyVote = $this->votingService->getWeeklyVote($userId);
 
         return response()->json([
             'success' => true,
@@ -95,6 +105,11 @@ class VoteController extends Controller
                 'review' => $vote->review,
                 'image' => $vote->image_url,
                 'created_at' => $vote->created_at,
+            ] : null,
+            // Where this week's single vote currently sits (any place)
+            'weekly_vote' => $weeklyVote ? [
+                'place_id' => $weeklyVote->place_id,
+                'place_title' => $weeklyVote->place?->title,
             ] : null,
             'period' => $this->votingService->getCurrentPeriod(),
         ]);
@@ -128,7 +143,7 @@ class VoteController extends Controller
      */
     public function reviews(Request $request, Place $place): JsonResponse
     {
-        $period = $request->period ?? now()->format('Y-m');
+        $period = $request->period ?? now()->format('o-\WW');
 
         // App sends `offset` as the page number; Laravel expects `page`
         $page = (int) ($request->page ?? $request->offset ?? 1);

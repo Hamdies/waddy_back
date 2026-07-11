@@ -18,7 +18,7 @@ class LeaderboardController extends Controller
 
     public function index(Request $request): View
     {
-        $period = $request->period ?? now()->format('Y-m');
+        $period = $request->period ?? now()->format('o-\WW');
         $availablePeriods = $this->leaderboardService->getAvailablePeriods();
         
         $topPlaces = $this->leaderboardService->getTopPlaces($period);
@@ -45,7 +45,7 @@ class LeaderboardController extends Controller
 
     public function votes(Request $request): View
     {
-        $period = $request->period ?? now()->format('Y-m');
+        $period = $request->period ?? now()->format('o-\WW');
         
         $votes = PlaceVote::query()
             ->with(['place.translations', 'user'])

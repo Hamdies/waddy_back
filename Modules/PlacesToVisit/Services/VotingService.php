@@ -5,28 +5,57 @@ namespace Modules\PlacesToVisit\Services;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Modules\PlacesToVisit\Entities\Place;
+use Modules\PlacesToVisit\Entities\PlaceEvent;
 use Modules\PlacesToVisit\Entities\PlaceVote;
 use Modules\PlacesToVisit\Entities\PlaceVoteReport;
 
 class VotingService
 {
     /**
-     * Submit or update a vote for a place
+     * Submit or update a vote for a place.
+     *
+     * ONE vote per user per week: voting for a different place while a
+     * weekly vote exists requires $switch=true, which moves the vote
+     * (allegiance can change until the week locks).
      */
     public function vote(
         int $placeId,
         int $userId,
         ?int $rating = null,
         ?string $review = null,
-        ?string $image = null
+        ?string $image = null,
+        bool $switch = false
     ): array {
         $period = $this->getCurrentPeriod();
-        
-        $existingVote = PlaceVote::where([
-            'place_id' => $placeId,
-            'user_id' => $userId,
-            'period' => $period,
-        ])->first();
+
+        // Any vote this week, regardless of place
+        $weeklyVote = PlaceVote::with('place')
+            ->where('user_id', $userId)
+            ->where('period', $period)
+            ->orderByDesc('id')
+            ->first();
+
+        if ($weeklyVote && $weeklyVote->place_id !== $placeId) {
+            if (!$switch) {
+                return [
+                    'success' => false,
+                    'code' => 'already_voted_this_week',
+                    'message' => translate('messages.already_voted_this_week'),
+                    'current_vote' => [
+                        'place_id' => $weeklyVote->place_id,
+                        'place_title' => $weeklyVote->place?->title,
+                    ],
+                ];
+            }
+            // Switch allegiance — the weekly vote moves to the new spot.
+            // Stray extra votes from the pre-weekly-rule era go with it.
+            PlaceVote::where('user_id', $userId)
+                ->where('period', $period)
+                ->delete();
+            $weeklyVote = null;
+        }
+
+        $existingVote = $weeklyVote; // non-null only when same place
 
         if ($existingVote) {
             // Update existing vote — don't wipe fields the caller didn't send
@@ -45,6 +74,7 @@ class VotingService
             }
 
             $this->clearLeaderboardCache();
+            PlaceEvent::log('vote_updated', $userId, $placeId, $existingVote->place?->zone_id);
 
             // Review/photo added on update still earns its bonus XP once
             // (XP is deduped per place + period, so this can't double-award)
@@ -77,6 +107,8 @@ class VotingService
         ]);
 
         $this->clearLeaderboardCache();
+        PlaceEvent::log($switch ? 'vote_switched' : 'vote_created', $userId, $placeId);
+        app(PlacePushService::class)->checkLeadChange($placeId);
 
         // Award XP for vote (deduped per place + period — see PlaceXpService)
         $user = User::find($userId);
@@ -96,10 +128,24 @@ class VotingService
 
         return [
             'success' => true,
-            'message' => translate('messages.vote_recorded'),
-            'action' => 'created',
+            'message' => $switch
+                ? translate('messages.vote_switched')
+                : translate('messages.vote_recorded'),
+            'action' => $switch ? 'switched' : 'created',
             'vote' => $vote,
         ];
+    }
+
+    /**
+     * The user's single weekly vote (any place), with place loaded
+     */
+    public function getWeeklyVote(int $userId): ?PlaceVote
+    {
+        return PlaceVote::with('place')
+            ->where('user_id', $userId)
+            ->where('period', $this->getCurrentPeriod())
+            ->orderByDesc('id')
+            ->first();
     }
 
     /**
@@ -117,7 +163,9 @@ class VotingService
 
         if ($deleted) {
             $this->clearLeaderboardCache();
-            
+            PlaceEvent::log('vote_removed', $userId, $placeId);
+            app(PlacePushService::class)->checkLeadChange($placeId);
+
             return [
                 'success' => true,
                 'message' => translate('messages.vote_removed'),
@@ -218,7 +266,7 @@ class VotingService
      */
     public function getCurrentPeriod(): string
     {
-        return now()->format('Y-m');
+        return now()->format('o-\WW');
     }
 
     /**
