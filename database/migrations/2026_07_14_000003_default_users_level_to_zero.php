@@ -1,8 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -14,12 +13,15 @@ return new class extends Migration
      * assigns Level 1 + unlocks its prizes only fires when level === 0 — which
      * never happened under the old default. Default to 0 so both agree:
      * "Starter" (level 0) until the first level threshold is crossed.
+     *
+     * Uses a raw ALTER to change only the column default. A Blueprint
+     * ->change() would force Doctrine DBAL to introspect the existing
+     * tinyint column, which fails ("Unknown column type tinyinteger") on
+     * this stack.
      */
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->unsignedTinyInteger('level')->default(0)->change();
-        });
+        DB::statement('ALTER TABLE `users` ALTER COLUMN `level` SET DEFAULT 0');
     }
 
     /**
@@ -27,8 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->unsignedTinyInteger('level')->default(1)->change();
-        });
+        DB::statement('ALTER TABLE `users` ALTER COLUMN `level` SET DEFAULT 1');
     }
 };
