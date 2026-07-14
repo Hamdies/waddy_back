@@ -224,6 +224,12 @@
                                 <span class="text-truncate text-capitalize">{{ translate('messages.customer_xp') }}</span>
                             </a>
                         </li>
+                        <li class="nav-item {{ Request::is('admin/users/customer/xp/monitoring*') ? 'active' : '' }}">
+                            <a class="nav-link " href="{{ route('admin.users.customer.xp.monitoring') }}" title="{{ translate('messages.xp_abuse_monitoring') }}">
+                                <span class="tio-circle nav-indicator-icon"></span>
+                                <span class="text-truncate text-capitalize">{{ translate('messages.monitoring') }}</span>
+                            </a>
+                        </li>
                         <li class="nav-item {{ Request::is('admin/users/customer/xp/settings*') ? 'active' : '' }}">
                             <a class="nav-link " href="{{ route('admin.users.customer.xp.settings') }}" title="{{ translate('messages.settings') }}">
                                 <span class="tio-circle nav-indicator-icon"></span>

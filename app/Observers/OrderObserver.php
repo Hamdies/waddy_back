@@ -27,9 +27,18 @@ class OrderObserver
      */
     public function updated(Order $order): void
     {
-        // Check if order status just changed to 'delivered'
-        if ($order->isDirty('order_status') && $order->order_status === 'delivered') {
+        if (!$order->isDirty('order_status')) {
+            return;
+        }
+
+        // Award XP when an order is delivered.
+        if ($order->order_status === 'delivered') {
             $this->handleOrderDelivered($order);
+        }
+
+        // Reverse XP when a previously-earning order is refunded.
+        if ($order->order_status === 'refunded') {
+            $this->handleOrderRefunded($order);
         }
     }
 
@@ -55,12 +64,43 @@ class OrderObserver
             // Award XP for order completion and amount spent
             XpService::addOrderXp($user, $order);
 
+            // Award referral bonus to the referrer on the referred user's
+            // first delivered order (guarded + deduped inside addReferralXp).
+            if ($user->ref_by) {
+                $referrer = User::find($user->ref_by);
+                if ($referrer) {
+                    XpService::addReferralXp($referrer, $user, $order);
+                }
+            }
+
             // Check and update challenge progress
             ChallengeService::checkProgress($user, $order);
 
             Log::info("XP processed successfully for order: {$order->id}");
         } catch (\Exception $e) {
             Log::error("Failed to process XP for order {$order->id}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Handle order refund - reverse any XP earned from it.
+     */
+    protected function handleOrderRefunded(Order $order): void
+    {
+        if ($order->is_guest) {
+            return;
+        }
+
+        $user = User::find($order->user_id);
+        if (!$user) {
+            return;
+        }
+
+        try {
+            Log::info("Reversing XP for refunded order: order_id={$order->id}, user_id={$user->id}");
+            XpService::reverseOrderXp($user, $order);
+        } catch (\Exception $e) {
+            Log::error("Failed to reverse XP for order {$order->id}: " . $e->getMessage());
         }
     }
 

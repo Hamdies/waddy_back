@@ -30,6 +30,9 @@ class XpController extends Controller
             'xp_per_order' => XpSetting::getInt('xp_per_order', 20),
             'xp_per_review' => XpSetting::getInt('xp_per_review', 30),
             'xp_signup_bonus' => XpSetting::getInt('xp_signup_bonus', 50),
+            // Per-currency-unit rate used by the item XP formula. Exposed so the
+            // client's estimate matches the server (was hardcoded to 0.1 client-side).
+            'xp_per_currency_unit' => XpSetting::getFloat('xp_per_currency_unit', 0.1),
             'max_level' => Level::active()->max('level_number') ?? 10,
             'multipliers' => [
                 'food' => XpSetting::getMultiplier('food'),
@@ -113,24 +116,13 @@ class XpController extends Controller
                     'xp_required' => $level->xp_required,
                     'description' => $level->description,
                     'badge_image' => $level->badge_image_url,
-                    'prizes' => $level->prizes->map(function ($prize) use ($userPrizes, $user, $userLevel, $level) {
+                    'prizes' => $level->prizes->map(function ($prize) use ($userPrizes) {
+                        // Read-only: prize instances are created at level-up
+                        // (XpService::handleLevelUp). Historical gaps are
+                        // repaired by `php artisan xp:backfill-prizes`, not on
+                        // this GET request.
                         $userPrize = $userPrizes->get($prize->id);
-                        
-                        // Auto-create missing UserLevelPrize for unlocked levels
-                        if ($userPrize === null && $user && $level->level_number <= $userLevel) {
-                            $validityDays = $prize->validity_days ?? XpSetting::getInt('prize_validity_days', 30);
-                            $status = $prize->isBadge() ? 'used' : 'unlocked';
-                            
-                            $userPrize = UserLevelPrize::create([
-                                'user_id' => $user->id,
-                                'level_prize_id' => $prize->id,
-                                'status' => $status,
-                                'unlocked_at' => now(),
-                                'expires_at' => $prize->isBadge() ? null : now()->addDays($validityDays),
-                                'used_at' => $prize->isBadge() ? now() : null,
-                            ]);
-                        }
-                        
+
                         return [
                             'id' => $prize->id,
                             'instance_id' => $userPrize?->id,
@@ -220,34 +212,6 @@ class XpController extends Controller
             });
 
         return response()->json(['prizes' => $prizes], 200);
-    }
-
-    /**
-     * Get user's XP transaction history.
-     */
-    public function getTransactions(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'limit' => 'required|integer|min:1|max:50',
-            'offset' => 'required|integer|min:0',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
-        }
-
-        $paginator = XpTransaction::where('user_id', $request->user()->id)
-            ->orderByDesc('created_at')
-            ->paginate($request->limit, ['*'], 'page', $request->offset);
-
-        $data = [
-            'total_size' => $paginator->total(),
-            'limit' => (int) $request->limit,
-            'offset' => (int) $request->offset,
-            'transactions' => $paginator->items(),
-        ];
-
-        return response()->json($data, 200);
     }
 
     /**
@@ -358,50 +322,78 @@ class XpController extends Controller
     {
         $user = $request->user();
 
-        $userPrize = UserLevelPrize::where('id', $id)
-            ->where('user_id', $user->id)
-            ->with('prize')
-            ->first();
+        // Status checks and the claim itself must happen under a row lock,
+        // otherwise two parallel requests can both pass the 'unlocked' check
+        // and credit the wallet twice.
+        try {
+            $result = DB::transaction(function () use ($id, $user) {
+                $userPrize = UserLevelPrize::lockForUpdate()
+                    ->where('id', $id)
+                    ->where('user_id', $user->id)
+                    ->first();
 
-        if (!$userPrize) {
+                if (!$userPrize) {
+                    return ['error' => 'not_found'];
+                }
+
+                $userPrize->load('prize');
+
+                if ($userPrize->status !== 'unlocked') {
+                    return ['error' => 'already_claimed'];
+                }
+
+                if ($userPrize->isExpired()) {
+                    $userPrize->expire();
+                    return ['error' => 'expired'];
+                }
+
+                $userPrize->update([
+                    'status' => 'claimed',
+                    'claimed_at' => now(),
+                ]);
+
+                // Handle wallet credit prizes — auto-use immediately
+                if ($userPrize->prize->prize_type === 'wallet_credit' && $userPrize->prize->value > 0) {
+                    $walletTransaction = \App\CentralLogics\CustomerLogic::create_wallet_transaction(
+                        $user->id,
+                        $userPrize->prize->value,
+                        'xp_prize',
+                        'Level Prize: ' . $userPrize->prize->title
+                    );
+
+                    // Roll the claim back if the credit could not be created
+                    // (e.g. wallet disabled) so the prize is not consumed for nothing.
+                    if (!$walletTransaction) {
+                        throw new \RuntimeException('Wallet credit failed for prize ' . $userPrize->id);
+                    }
+
+                    $userPrize->markUsed();
+                }
+
+                return ['prize' => $userPrize];
+            });
+        } catch (\RuntimeException $e) {
+            \Illuminate\Support\Facades\Log::error('Prize claim failed: ' . $e->getMessage());
             return response()->json([
-                'errors' => [['code' => 'prize', 'message' => translate('messages.prize_not_found')]]
-            ], 404);
+                'errors' => [['code' => 'prize', 'message' => translate('messages.failed_to_claim_reward')]]
+            ], 500);
         }
 
-        if (!in_array($userPrize->status, ['unlocked'])) {
-            return response()->json([
-                'errors' => [['code' => 'prize', 'message' => translate('messages.prize_already_claimed_or_used')]]
-            ], 403);
+        if (isset($result['error'])) {
+            return match ($result['error']) {
+                'not_found' => response()->json([
+                    'errors' => [['code' => 'prize', 'message' => translate('messages.prize_not_found')]]
+                ], 404),
+                'already_claimed' => response()->json([
+                    'errors' => [['code' => 'prize', 'message' => translate('messages.prize_already_claimed_or_used')]]
+                ], 403),
+                'expired' => response()->json([
+                    'errors' => [['code' => 'prize', 'message' => translate('messages.prize_expired')]]
+                ], 403),
+            };
         }
 
-        if ($userPrize->isExpired()) {
-            $userPrize->expire();
-            return response()->json([
-                'errors' => [['code' => 'prize', 'message' => translate('messages.prize_expired')]]
-            ], 403);
-        }
-
-        // Wrap claim + wallet credit in a single transaction
-        DB::transaction(function () use ($userPrize, $user) {
-            $userPrize->update([
-                'status' => 'claimed',
-                'claimed_at' => now(),
-            ]);
-
-            // Handle wallet credit prizes — auto-use immediately
-            if ($userPrize->prize->prize_type === 'wallet_credit' && $userPrize->prize->value > 0) {
-                \App\CentralLogics\CustomerLogic::create_wallet_transaction(
-                    $user->id,
-                    $userPrize->prize->value,
-                    'add_fund_by_admin',
-                    'Level Prize: ' . $userPrize->prize->title
-                );
-
-                $userPrize->markUsed();
-            }
-        });
-
+        $userPrize = $result['prize'];
         $userPrize->refresh();
 
         return response()->json([
@@ -470,14 +462,11 @@ class XpController extends Controller
             ->orderByDesc('created_at')
             ->paginate($request->limit, ['*'], 'page', $request->offset);
 
-        // Preload level thresholds for detecting level-up events
-        $levels = Level::active()->orderBy('level_number')->pluck('xp_required', 'level_number');
-        $levelNames = Level::active()->orderBy('level_number')->pluck('name', 'level_number');
-
-        $history = collect();
-
-        foreach ($paginator->items() as $tx) {
-            // Map xp_source to frontend-friendly type
+        // Level-up events are stored as real transaction rows (source
+        // 'level_up', 0 XP) since Phase 3, so the feed maps them directly
+        // instead of re-deriving thresholds per page (which duplicated rows
+        // across page boundaries).
+        $history = collect($paginator->items())->map(function ($tx) {
             $type = match(true) {
                 in_array($tx->xp_source, ['completion_bonus', 'spend_amount', 'item_purchase']) => 'order',
                 $tx->xp_source === 'review_bonus' => 'review',
@@ -485,32 +474,18 @@ class XpController extends Controller
                 $tx->xp_source === 'signup_bonus' => 'signup',
                 $tx->xp_source === 'streak_bonus' => 'streak',
                 $tx->xp_source === 'referral_bonus' => 'referral',
+                $tx->xp_source === 'refund_reversal' => 'refund',
+                $tx->xp_source === 'level_up' => 'level_up',
                 default => 'other',
             };
 
-            $history->push([
+            return [
                 'type' => $type,
                 'xp' => $tx->xp_amount,
                 'description' => $tx->description,
                 'created_at' => $tx->created_at->toIso8601String(),
-            ]);
-
-            // Check if this transaction crossed a level threshold
-            $previousBalance = $tx->balance_after - $tx->xp_amount;
-            foreach ($levels as $levelNum => $xpRequired) {
-                if ($previousBalance < $xpRequired && $tx->balance_after >= $xpRequired && $xpRequired > 0) {
-                    $history->push([
-                        'type' => 'level_up',
-                        'xp' => 0,
-                        'description' => 'Reached Level ' . $levelNum . ': ' . ($levelNames[$levelNum] ?? ''),
-                        'created_at' => $tx->created_at->toIso8601String(),
-                    ]);
-                }
-            }
-        }
-
-        // Sort by created_at desc (level_up events inserted in order)
-        $history = $history->sortByDesc('created_at')->values();
+            ];
+        })->values();
 
         $totalEarned = XpTransaction::where('user_id', $user->id)
             ->where('xp_amount', '>', 0)
@@ -532,33 +507,53 @@ class XpController extends Controller
     {
         $user = $request->user();
         $type = $request->query('type', 'global'); // 'global' or 'zone'
+        // 'alltime' (default) | 'weekly' | 'monthly'
+        $period = $request->query('period', 'alltime');
 
-        $query = User::where('total_xp', '>', 0)
-            ->where('status', 1)
-            ->orderByDesc('total_xp');
-
-        // Filter by zone if requested
-        if ($type === 'zone' && $user->zone_id) {
-            $query->where('zone_id', $user->zone_id);
+        if (in_array($period, ['weekly', 'monthly'], true)) {
+            return $this->seasonLeaderboard($user, $period);
         }
 
-        $topUsers = $query->limit(20)->get(['id', 'f_name', 'l_name', 'image', 'total_xp', 'level']);
+        return $this->allTimeLeaderboard($user, $type);
+    }
 
-        $leaderboard = $topUsers->map(function ($u, $index) {
+    /**
+     * All-time leaderboard from users.total_xp, optionally scoped to zone.
+     */
+    private function allTimeLeaderboard(User $user, string $type)
+    {
+        $zoneId = ($type === 'zone' && $user->zone_id) ? $user->zone_id : null;
+
+        // Top-20 is identical for everyone in a scope, so cache it briefly.
+        $cacheKey = 'xp_leaderboard_' . $type . '_' . ($zoneId ?? 'all');
+        $topUsers = \Illuminate\Support\Facades\Cache::remember($cacheKey, 300, function () use ($zoneId) {
+            $query = User::where('total_xp', '>', 0)
+                ->where('status', 1)
+                ->orderByDesc('total_xp');
+
+            if ($zoneId) {
+                $query->where('zone_id', $zoneId);
+            }
+
+            return $query->limit(20)->get(['id', 'f_name', 'l_name', 'image', 'total_xp', 'level']);
+        });
+
+        $leaderboard = $topUsers->map(function ($u, $index) use ($user) {
             return [
                 'rank' => $index + 1,
-                'name' => $u->f_name . ' ' . substr($u->l_name, 0, 1) . '.',
+                'name' => $this->displayName($u),
                 'total_xp' => $u->total_xp,
                 'level' => $u->level,
                 'image' => $u->image_full_url,
+                'is_me' => $u->id === $user->id,
             ];
         });
 
-        // Get requesting user's rank
+        // Requesting user's rank (live — cheap with the (status,total_xp) index).
         $userRankQuery = User::where('total_xp', '>', $user->total_xp)
             ->where('status', 1);
-        if ($type === 'zone' && $user->zone_id) {
-            $userRankQuery->where('zone_id', $user->zone_id);
+        if ($zoneId) {
+            $userRankQuery->where('zone_id', $zoneId);
         }
         $userRank = $userRankQuery->count() + 1;
 
@@ -567,7 +562,73 @@ class XpController extends Controller
             'my_rank' => $userRank,
             'my_xp' => $user->total_xp,
             'my_level' => $user->level,
+            'in_top' => $leaderboard->contains('is_me', true),
             'type' => $type,
+            'period' => 'alltime',
         ], 200);
+    }
+
+    /**
+     * Seasonal leaderboard from xp_season_scores for the current period.
+     */
+    private function seasonLeaderboard(User $user, string $periodType)
+    {
+        $period = \App\Support\AppClock::periodFor($periodType);
+
+        $cacheKey = "xp_leaderboard_{$periodType}_{$period}";
+        $rows = \Illuminate\Support\Facades\Cache::remember($cacheKey, 300, function () use ($periodType, $period) {
+            return \App\Models\XpSeasonScore::query()
+                ->where('period_type', $periodType)
+                ->where('period', $period)
+                ->where('xp_earned', '>', 0)
+                ->orderByDesc('xp_earned')
+                ->with(['user:id,f_name,l_name,image,level,status'])
+                ->limit(20)
+                ->get()
+                ->filter(fn ($row) => $row->user && $row->user->status == 1)
+                ->values();
+        });
+
+        $leaderboard = $rows->map(function ($row, $index) use ($user) {
+            return [
+                'rank' => $index + 1,
+                'name' => $this->displayName($row->user),
+                'total_xp' => $row->xp_earned,
+                'level' => $row->user->level,
+                'image' => $row->user->image_full_url,
+                'is_me' => $row->user_id === $user->id,
+            ];
+        });
+
+        // My score + rank this period.
+        $myScore = \App\Models\XpSeasonScore::where('user_id', $user->id)
+            ->where('period_type', $periodType)
+            ->where('period', $period)
+            ->value('xp_earned') ?? 0;
+
+        $myRank = \App\Models\XpSeasonScore::where('period_type', $periodType)
+            ->where('period', $period)
+            ->where('xp_earned', '>', $myScore)
+            ->count() + 1;
+
+        return response()->json([
+            'leaderboard' => $leaderboard,
+            'my_rank' => $myScore > 0 ? $myRank : null,
+            'my_xp' => $myScore,
+            'my_level' => $user->level,
+            'in_top' => $leaderboard->contains('is_me', true),
+            'type' => 'global',
+            'period' => $periodType,
+            'period_key' => $period,
+        ], 200);
+    }
+
+    /**
+     * Public display name: first name + last initial (null-safe).
+     */
+    private function displayName(User $u): string
+    {
+        $lastInitial = $u->l_name ? substr($u->l_name, 0, 1) . '.' : '';
+        return trim($u->f_name . ' ' . $lastInitial);
     }
 }

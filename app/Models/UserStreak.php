@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\AppClock;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
@@ -28,26 +29,33 @@ class UserStreak extends Model
     }
 
     /**
-     * Record an activity (order placed) for today.
-     * Updates current_streak, longest_streak accordingly.
+     * Record an activity for the given day.
+     *
+     * Day boundaries are app-local (see AppClock), so a late-night order that
+     * is delivered after midnight UTC still counts on the local day it was
+     * placed. Pass the order's placement time as $activityAt; defaults to now.
      */
-    public static function recordActivity(User $user): self
+    public static function recordActivity(User $user, $activityAt = null): self
     {
         $streak = static::firstOrCreate(
             ['user_id' => $user->id],
             ['current_streak' => 0, 'longest_streak' => 0]
         );
 
-        $today = Carbon::today();
-        $lastActivity = $streak->last_activity_date ? Carbon::parse($streak->last_activity_date) : null;
+        $tz = AppClock::timezone();
+        $activityDay = ($activityAt ? Carbon::parse($activityAt)->timezone($tz) : AppClock::now())
+            ->startOfDay();
+        $lastActivity = $streak->last_activity_date
+            ? Carbon::parse($streak->last_activity_date)->timezone($tz)->startOfDay()
+            : null;
 
-        // Already recorded today
-        if ($lastActivity && $lastActivity->isSameDay($today)) {
+        // Already recorded for this day
+        if ($lastActivity && $lastActivity->isSameDay($activityDay)) {
             return $streak;
         }
 
-        // Check if last activity was yesterday (streak continues)
-        if ($lastActivity && $lastActivity->isSameDay($today->copy()->subDay())) {
+        // Check if last activity was the previous day (streak continues)
+        if ($lastActivity && $lastActivity->isSameDay($activityDay->copy()->subDay())) {
             $streak->current_streak++;
         } else {
             // Streak broken or first activity
@@ -59,7 +67,7 @@ class UserStreak extends Model
             $streak->longest_streak = $streak->current_streak;
         }
 
-        $streak->last_activity_date = $today;
+        $streak->last_activity_date = $activityDay;
         $streak->save();
 
         return $streak;

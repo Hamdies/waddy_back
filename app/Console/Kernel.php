@@ -27,6 +27,9 @@ class Kernel extends ConsoleKernel
         // Send push notifications for prizes expiring within 24 hours
         $schedule->command('xp:prize-expiry-reminders')->dailyAt('10:00');
 
+        // Nudge users about in-progress challenges expiring within a few hours
+        $schedule->command('xp:challenge-expiry-reminders')->hourly();
+
         // Expire stale active challenges
         $schedule->call(fn () => \App\Services\ChallengeService::expireOldChallenges())->hourly();
 

@@ -62,6 +62,12 @@ class XpService
                     'description' => $description,
                 ]);
 
+                // Roll positive earnings into the current weekly/monthly season
+                // buckets (single choke point — all awards pass through here).
+                if ($amount > 0) {
+                    \App\Models\XpSeasonScore::recordEarning($user->id, $amount);
+                }
+
                 // Check for level up (handle new users going from 0 to 1, and existing users leveling up)
                 if ($newLevel > $previousLevel) {
                     self::handleLevelUp($user, $previousLevel, $newLevel);
@@ -94,9 +100,11 @@ class XpService
         // XP for each item based on price
         self::addItemXp($user, $order);
 
-        // Update streak and award streak bonus XP
+        // Update streak and award streak bonus XP. Anchor the streak day to
+        // when the order was placed (app-local), not when it was delivered —
+        // a late-night order delivered after midnight still counts on its day.
         try {
-            $streak = UserStreak::recordActivity($user);
+            $streak = UserStreak::recordActivity($user, $order->created_at);
             if ($streak->current_streak > 1) {
                 $streakBonusXp = XpSetting::getInt('streak_bonus_xp', 10);
                 if ($streakBonusXp > 0) {
@@ -171,12 +179,20 @@ class XpService
     public static function addReviewXp(User $user, $review): void
     {
         $xp = XpSetting::getInt('xp_per_review', 30);
+
+        // Reviews are per-item in this codebase, so a multi-item order would
+        // otherwise award the review bonus once per line. Key the dedupe to
+        // the order (falling back to the review id for reviews with no order)
+        // so the bonus lands at most once per order.
+        $referenceType = $review->order_id ? 'order' : 'review';
+        $referenceId = $review->order_id ?? $review->id;
+
         self::addXp(
             $user,
             'review_bonus',
             $xp,
-            'review',
-            $review->id,
+            $referenceType,
+            $referenceId,
             'Rated and reviewed order'
         );
     }
@@ -197,15 +213,6 @@ class XpService
                 'Welcome bonus for signing up'
             );
         }
-    }
-
-    /**
-     * Calculate weighted XP based on vertical multiplier.
-     */
-    public static function calculateWeightedXp(float $amount, string $moduleType): int
-    {
-        $multiplier = XpSetting::getMultiplier($moduleType);
-        return (int) floor($amount * $multiplier);
     }
 
     /**
@@ -233,26 +240,21 @@ class XpService
             $levelModel = Level::where('level_number', $level)->first();
             if (!$levelModel) continue;
 
-            $prizes = LevelPrize::where('level_id', $levelModel->id)
-                ->where('status', true)
-                ->get();
+            self::unlockPrizesForLevel($user, $levelModel);
 
-            foreach ($prizes as $prize) {
-                $validityDays = $prize->validity_days ?? XpSetting::getInt('prize_validity_days', 30);
-                $status = $prize->isBadge() ? 'used' : 'unlocked';
-
-                UserLevelPrize::firstOrCreate(
-                    [
-                        'user_id' => $user->id,
-                        'level_prize_id' => $prize->id,
-                    ],
-                    [
-                        'status' => $status,
-                        'unlocked_at' => now(),
-                        'expires_at' => $prize->isBadge() ? null : now()->addDays($validityDays),
-                        'used_at' => $prize->isBadge() ? now() : null,
-                    ]
-                );
+            // Record a real level-up row (0 XP) so the history feed reads it
+            // directly instead of re-deriving thresholds per page. Deduped on
+            // the level number via the unique_xp_award constraint.
+            if (!XpTransaction::exists($user->id, 'level_up', $level, 'level_up')) {
+                XpTransaction::create([
+                    'user_id' => $user->id,
+                    'reference_type' => 'level_up',
+                    'reference_id' => $level,
+                    'xp_source' => 'level_up',
+                    'xp_amount' => 0,
+                    'balance_after' => $user->total_xp ?? 0,
+                    'description' => 'Reached Level ' . $level . ': ' . ($levelModel->name ?? ''),
+                ]);
             }
 
             if ($user->cm_firebase_token) {
@@ -283,6 +285,47 @@ class XpService
                 }
             }
         }
+    }
+
+    /**
+     * Create the UserLevelPrize instances for a level (idempotent).
+     *
+     * Shared by the level-up handler and the `xp:backfill-prizes` command.
+     * firstOrCreate + the unique (user_id, level_prize_id) constraint make it
+     * safe to call repeatedly and from concurrent paths. Returns how many new
+     * instances were created.
+     */
+    public static function unlockPrizesForLevel(User $user, Level $levelModel): int
+    {
+        $prizes = LevelPrize::where('level_id', $levelModel->id)
+            ->where('status', true)
+            ->get();
+
+        $created = 0;
+
+        foreach ($prizes as $prize) {
+            $validityDays = $prize->validity_days ?? XpSetting::getInt('prize_validity_days', 30);
+            $status = $prize->isBadge() ? 'used' : 'unlocked';
+
+            $instance = UserLevelPrize::firstOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'level_prize_id' => $prize->id,
+                ],
+                [
+                    'status' => $status,
+                    'unlocked_at' => now(),
+                    'expires_at' => $prize->isBadge() ? null : now()->addDays($validityDays),
+                    'used_at' => $prize->isBadge() ? now() : null,
+                ]
+            );
+
+            if ($instance->wasRecentlyCreated) {
+                $created++;
+            }
+        }
+
+        return $created;
     }
 
     /**
@@ -330,6 +373,117 @@ class XpService
                     'Referral bonus: ' . ($referredUser->f_name ?? 'User') . ' placed first order'
                 );
             }
+        }
+    }
+
+    /**
+     * Reverse all XP earned from an order when it is refunded.
+     *
+     * Writes negative compensating transactions (never deletes history),
+     * recalculates the user's total XP and level, and — if the level drops —
+     * revokes only never-claimed prizes from the levels the user fell below.
+     * Claimed/used prizes and already-granted wallet credit are left alone.
+     */
+    public static function reverseOrderXp(User $user, $order): void
+    {
+        if (!XpSetting::isEnabled()) {
+            return;
+        }
+
+        // Idempotency: if we've already reversed this order, do nothing.
+        if (XpTransaction::exists($user->id, 'order_refund', $order->id, 'refund_reversal')) {
+            Log::info("XP refund already reversed: user={$user->id}, order={$order->id}");
+            return;
+        }
+
+        // Collect every non-reversal transaction that was awarded for this
+        // order: the order-level rows (reference_type 'order') plus each
+        // per-item row (reference_type 'order_detail'). Streak bonus is an
+        // 'order' row but is intentionally kept — the streak day still counts.
+        $detailIds = $order->details->pluck('id')->all();
+
+        $earned = XpTransaction::where('user_id', $user->id)
+            ->where('xp_amount', '>', 0)
+            ->where(function ($q) use ($order, $detailIds) {
+                $q->where(function ($sub) use ($order) {
+                    $sub->where('reference_type', 'order')
+                        ->where('reference_id', $order->id)
+                        ->where('xp_source', '!=', 'streak_bonus');
+                });
+                if (!empty($detailIds)) {
+                    $q->orWhere(function ($sub) use ($detailIds) {
+                        $sub->where('reference_type', 'order_detail')
+                            ->whereIn('reference_id', $detailIds);
+                    });
+                }
+            })
+            ->get();
+
+        $totalToReverse = (int) $earned->sum('xp_amount');
+
+        if ($totalToReverse <= 0) {
+            Log::info("No XP to reverse for order: user={$user->id}, order={$order->id}");
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($user, $order, $earned, $totalToReverse) {
+                $previousLevel = $user->level ?? 0;
+                $previousXp = $user->total_xp ?? 0;
+
+                // Floor at 0 so a partially-consumed history can't go negative.
+                $newXp = max(0, $previousXp - $totalToReverse);
+                $actualReversed = $previousXp - $newXp;
+
+                $user->total_xp = $newXp;
+                $newLevel = self::calculateLevelFromXp($newXp);
+                $user->level = $newLevel;
+                $user->save();
+
+                // Single compensating transaction, keyed so a repeat refund
+                // event can't double-deduct (unique_xp_award constraint).
+                XpTransaction::create([
+                    'user_id' => $user->id,
+                    'reference_type' => 'order_refund',
+                    'reference_id' => $order->id,
+                    'xp_source' => 'refund_reversal',
+                    'xp_amount' => -$actualReversed,
+                    'balance_after' => $newXp,
+                    'description' => 'XP reversed — order #' . $order->id . ' refunded',
+                ]);
+
+                // Mark the originating transactions as reversed for auditing.
+                XpTransaction::whereIn('id', $earned->pluck('id'))->update(['is_reversed' => true]);
+
+                if ($newLevel < $previousLevel) {
+                    self::revokeUnclaimedPrizesAboveLevel($user, $newLevel);
+                }
+
+                Log::info("XP reversed: user={$user->id}, order={$order->id}, amount={$actualReversed}, level {$previousLevel}->{$newLevel}");
+            });
+        } catch (\Exception $e) {
+            Log::error("XP reversal failed for order {$order->id}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Revoke only never-claimed prizes from levels above the given level.
+     *
+     * Deletes 'unlocked' prize instances for levels the user has dropped
+     * below. Claimed, used, and expired prizes are untouched — we never claw
+     * back a reward the user has already acted on.
+     */
+    protected static function revokeUnclaimedPrizesAboveLevel(User $user, int $newLevel): void
+    {
+        $revoked = UserLevelPrize::where('user_id', $user->id)
+            ->where('status', 'unlocked')
+            ->whereHas('prize.level', function ($q) use ($newLevel) {
+                $q->where('level_number', '>', $newLevel);
+            })
+            ->delete();
+
+        if ($revoked > 0) {
+            Log::info("Revoked {$revoked} unclaimed prize(s) for user {$user->id} above level {$newLevel}");
         }
     }
 }

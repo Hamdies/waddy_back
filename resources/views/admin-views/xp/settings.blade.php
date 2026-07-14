@@ -118,6 +118,42 @@
                     </div>
                 </div>
 
+                <!-- XP Happy Hour (multiplier event) -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5>{{translate('messages.xp_happy_hour')}}</h5>
+                        <small class="text-muted">{{translate('messages.temporarily_boost_all_xp_earned_from_spending')}}</small>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <div class="d-flex align-items-center">
+                                <label class="toggle-switch mr-3">
+                                    <input type="checkbox" name="multiplier_event_active" value="1" {{($settings['multiplier_event_active'] ?? '0') == '1' ? 'checked' : ''}}>
+                                    <span class="toggle-switch-slider"></span>
+                                </label>
+                                <span>{{translate('messages.enable_happy_hour')}}</span>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="input-label">{{translate('messages.multiplier')}} (x)</label>
+                                    <input type="number" step="0.1" name="multiplier_event_multiplier" class="form-control" value="{{$settings['multiplier_event_multiplier'] ?? 2.0}}" min="1" max="5">
+                                    <small class="text-muted">{{translate('messages.eg_2x_doubles_xp_from_spending')}}</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="input-label">{{translate('messages.ends_at')}}</label>
+                                    <input type="datetime-local" name="multiplier_event_ends_at" class="form-control"
+                                        value="{{ !empty($settings['multiplier_event_ends_at']) ? \Carbon\Carbon::parse($settings['multiplier_event_ends_at'])->format('Y-m-d\TH:i') : '' }}">
+                                    <small class="text-muted">{{translate('messages.leave_empty_for_no_end_time')}}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Prize Settings -->
                 <div class="card mb-4">
                     <div class="card-header">

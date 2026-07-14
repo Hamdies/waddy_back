@@ -25,7 +25,7 @@ class ChallengesSeeder extends Seeder
             ],
             [
                 'title' => 'Treat Yourself',
-                'description' => 'Place an order of 150 EGP or more',
+                'description' => 'Spend 150 EGP or more today',
                 'challenge_type' => 'min_order_amount',
                 'frequency' => 'daily',
                 'conditions' => ['min_amount' => 150],
@@ -54,7 +54,7 @@ class ChallengesSeeder extends Seeder
             ],
             [
                 'title' => 'Big Spender',
-                'description' => 'Place an order of 250 EGP or more',
+                'description' => 'Spend 250 EGP or more this week',
                 'challenge_type' => 'min_order_amount',
                 'frequency' => 'weekly',
                 'conditions' => ['min_amount' => 250],

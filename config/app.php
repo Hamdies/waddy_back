@@ -73,6 +73,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Application Local Timezone
+    |--------------------------------------------------------------------------
+    |
+    | 'timezone' above stays UTC (order/wallet timestamps depend on it). This
+    | separate local timezone drives user-facing day/week boundaries — daily
+    | & weekly challenge resets, streaks, the Places race — via App\Support\
+    | AppClock, so they flip on neighborhood time rather than server time.
+    |
+    */
+
+    'local_timezone' => env('APP_LOCAL_TIMEZONE', 'Africa/Cairo'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |

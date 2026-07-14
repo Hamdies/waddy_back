@@ -11,6 +11,7 @@ use App\Models\XpSetting;
 use App\Models\User;
 use App\CentralLogics\Helpers;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Brian2694\Toastr\Facades\Toastr;
 
 class XpController extends Controller
@@ -266,6 +267,15 @@ class XpController extends Controller
         return view('admin-views.xp.challenges.index', compact('challenges'));
     }
 
+    /**
+     * Default time limit (hours) for a challenge frequency: a weekly with no
+     * explicit limit should last a week, not a day.
+     */
+    private function defaultTimeLimit(string $frequency): int
+    {
+        return $frequency === 'weekly' ? 168 : 24;
+    }
+
     public function challengeStore(Request $request)
     {
         $request->validate([
@@ -274,7 +284,7 @@ class XpController extends Controller
             'challenge_type' => 'required|in:complete_order,min_order_amount,new_store,multiple_orders,specific_category',
             'frequency' => 'required|in:daily,weekly',
             'xp_reward' => 'required|integer|min:1',
-            'time_limit_hours' => 'required|integer|min:1',
+            'time_limit_hours' => 'nullable|integer|min:1',
         ]);
 
         $conditions = [];
@@ -292,7 +302,7 @@ class XpController extends Controller
             'frequency' => $request->frequency,
             'conditions' => $conditions,
             'xp_reward' => $request->xp_reward,
-            'time_limit_hours' => $request->time_limit_hours,
+            'time_limit_hours' => $request->time_limit_hours ?: $this->defaultTimeLimit($request->frequency),
             'status' => $request->status ? 1 : 0,
         ]);
 
@@ -332,7 +342,7 @@ class XpController extends Controller
             'frequency' => $request->frequency,
             'conditions' => $conditions,
             'xp_reward' => $request->xp_reward,
-            'time_limit_hours' => $request->time_limit_hours ?? 24,
+            'time_limit_hours' => $request->time_limit_hours ?: $this->defaultTimeLimit($request->frequency),
             'status' => $request->status ? 1 : 0,
         ]);
 
@@ -391,6 +401,10 @@ class XpController extends Controller
                 );
             }
         }
+
+        // Model events already flush on each save; flush once more explicitly
+        // in case any driver batched, so the new values take effect immediately.
+        XpSetting::flushCache();
 
         Toastr::success(translate('messages.settings_updated_successfully'));
         return back();
@@ -470,5 +484,72 @@ class XpController extends Controller
             ->paginate(config('default_pagination'));
 
         return view('admin-views.xp.transactions.index', compact('transactions', 'filter'));
+    }
+
+    // ==================== ABUSE MONITORING ====================
+
+    /**
+     * Read-only anti-abuse dashboard: who's earning the most this week, users
+     * whose XP-per-order ratio is an outlier, and refund-after-delivery counts.
+     * Meant to be eyeballed before scaling the XP feature.
+     */
+    public function monitoring(Request $request)
+    {
+        $period = \App\Support\AppClock::weekPeriod();
+
+        // Top earners this week (from season scores).
+        $topEarners = \App\Models\XpSeasonScore::query()
+            ->where('period_type', 'weekly')
+            ->where('period', $period)
+            ->where('xp_earned', '>', 0)
+            ->orderByDesc('xp_earned')
+            ->with('user:id,f_name,l_name,phone')
+            ->limit(20)
+            ->get();
+
+        // XP-per-delivered-order ratio outliers. High ratio = lots of XP for
+        // few orders (challenge/streak farming, manual grants, or refunds after
+        // XP landed). Threshold is generous; this is a signal, not a verdict.
+        $ratioOutliers = User::query()
+            ->where('total_xp', '>', 200)
+            ->withCount(['orders as delivered_count' => function ($q) {
+                $q->where('order_status', 'delivered');
+            }])
+            ->having('delivered_count', '>=', 0)
+            ->orderByDesc('total_xp')
+            ->limit(200)
+            ->get(['id', 'f_name', 'l_name', 'phone', 'total_xp', 'level'])
+            ->map(function ($u) {
+                $orders = max(1, $u->delivered_count);
+                $u->xp_per_order = round($u->total_xp / $orders, 1);
+                return $u;
+            })
+            ->filter(fn ($u) => $u->xp_per_order > 100) // > ~5x a normal order
+            ->sortByDesc('xp_per_order')
+            ->take(20)
+            ->values();
+
+        // Users with the most refunded-after-delivered orders (refund farming).
+        $refundOffenders = DB::table('orders')
+            ->select('user_id', DB::raw('COUNT(*) as refund_count'))
+            ->where('order_status', 'refunded')
+            ->whereNotNull('user_id')
+            ->groupBy('user_id')
+            ->having('refund_count', '>=', 2)
+            ->orderByDesc('refund_count')
+            ->limit(20)
+            ->get();
+
+        $refundUsers = User::whereIn('id', $refundOffenders->pluck('user_id'))
+            ->get(['id', 'f_name', 'l_name', 'phone', 'total_xp'])
+            ->keyBy('id');
+
+        return view('admin-views.xp.monitoring', compact(
+            'topEarners',
+            'ratioOutliers',
+            'refundOffenders',
+            'refundUsers',
+            'period'
+        ));
     }
 }

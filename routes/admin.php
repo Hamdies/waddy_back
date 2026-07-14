@@ -682,6 +682,9 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                         Route::get('users/{id}', 'XpController@userDetail')->name('users.detail');
                         Route::post('users/{id}/add-xp', 'XpController@addUserXp')->name('users.add-xp');
                         Route::get('transactions', 'XpController@transactions')->name('transactions');
+
+                        // Abuse monitoring
+                        Route::get('monitoring', 'XpController@monitoring')->name('monitoring');
                     });
 
                     Route::get('settings', 'CustomerController@settings')->name('settings');

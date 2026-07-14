@@ -385,11 +385,12 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
 
             // XP Leveling System
             Route::group(['prefix'=>'xp'], function() {
+                // DEPRECATED: superseded by 'level-details' (merged endpoint).
+                // Kept for older app builds still in the wild; remove next release.
                 Route::get('level', 'XpController@getLevel');
                 Route::get('levels', 'XpController@getAllLevels');
                 Route::get('level-details', 'XpController@getLevelDetails');
                 Route::get('history', 'XpController@getHistory');
-                Route::get('transactions', 'XpController@getTransactions');
                 Route::get('challenges', 'XpController@getChallenges');
                 Route::post('challenges/{id}/claim', 'XpController@claimChallenge');
                 Route::get('prizes', 'XpController@getPrizes');

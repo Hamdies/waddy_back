@@ -87,7 +87,11 @@ XP configuration for client-side display/calculation. Cache on app startup.
 
 ---
 
-### 2. `GET /xp/level` — Auth Required
+### 2. `GET /xp/level` — Auth Required — ⚠️ DEPRECATED
+
+> **Deprecated.** Superseded by `GET /xp/level-details` (merged endpoint). No
+> longer called by the client; kept only for older app builds. Scheduled for
+> removal next release.
 
 Current user's level and XP progress.
 
@@ -115,7 +119,10 @@ Current user's level and XP progress.
 
 ---
 
-### 3. `GET /xp/levels` — Auth Required
+### 3. `GET /xp/levels` — Auth Required — ⚠️ DEPRECATED
+
+> **Deprecated.** Superseded by `GET /xp/level-details`. No longer called by the
+> client; scheduled for removal next release.
 
 All levels with prizes. Use for the "Levels" screen.
 
@@ -259,7 +266,10 @@ Unified XP activity feed with level-up events injected.
 
 ---
 
-### 6. `GET /xp/transactions` — Auth Required
+### 6. `GET /xp/transactions` — ❌ REMOVED
+
+> **Removed.** This endpoint (raw model rows) is gone. Use `GET /xp/history`,
+> which returns the same activity as a typed, frontend-friendly feed.
 
 Raw XP transaction log (for "detailed history" or debug view).
 

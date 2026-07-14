@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 
 class XpSetting extends Model
 {
@@ -11,13 +12,36 @@ class XpSetting extends Model
 
     protected $guarded = ['id'];
 
+    /** Cache key holding the whole key=>value settings map. */
+    public const CACHE_KEY = 'xp_settings_map';
+
+    /**
+     * All settings as a key=>value map, cached forever (busted on write).
+     * Collapses the previously per-key queries — the config endpoint and the
+     * per-item XP formula both read this table many times per request.
+     */
+    public static function all_settings(): array
+    {
+        return Cache::rememberForever(self::CACHE_KEY, function () {
+            return static::query()->pluck('value', 'key')->toArray();
+        });
+    }
+
+    /**
+     * Bust the settings cache. Call after any write to xp_settings.
+     */
+    public static function flushCache(): void
+    {
+        Cache::forget(self::CACHE_KEY);
+    }
+
     /**
      * Get setting value by key.
      */
     public static function getValue(string $key, $default = null)
     {
-        $setting = static::where('key', $key)->first();
-        return $setting ? $setting->value : $default;
+        $settings = self::all_settings();
+        return array_key_exists($key, $settings) ? $settings[$key] : $default;
     }
 
     /**
@@ -34,6 +58,17 @@ class XpSetting extends Model
     public static function getFloat(string $key, float $default = 0.0): float
     {
         return (float) static::getValue($key, $default);
+    }
+
+    /**
+     * Keep the cached map in sync on any write through Eloquent, so callers
+     * (admin settings update, seed migrations, setValue) don't each have to
+     * remember to bust it.
+     */
+    protected static function booted(): void
+    {
+        static::saved(fn () => self::flushCache());
+        static::deleted(fn () => self::flushCache());
     }
 
     /**
