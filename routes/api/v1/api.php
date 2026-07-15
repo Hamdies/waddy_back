@@ -390,6 +390,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
                 Route::get('level', 'XpController@getLevel');
                 Route::get('levels', 'XpController@getAllLevels');
                 Route::get('level-details', 'XpController@getLevelDetails');
+                Route::post('level-ups/acknowledge', 'XpController@acknowledgeLevelUps');
                 Route::get('history', 'XpController@getHistory');
                 Route::get('challenges', 'XpController@getChallenges');
                 Route::post('challenges/{id}/claim', 'XpController@claimChallenge');

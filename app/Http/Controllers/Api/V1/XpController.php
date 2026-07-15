@@ -7,7 +7,9 @@ use App\Models\User;
 use App\Models\UserChallenge;
 use App\Models\UserLevelPrize;
 use App\Models\XpTransaction;
+use App\Models\XpRankSnapshot;
 use App\Models\Level;
+use App\Models\LevelPrize;
 use App\Models\RewardItem;
 use App\Models\XpSetting;
 use App\Services\XpService;
@@ -48,6 +50,18 @@ class XpController extends Controller
                 'ends_at' => XpSetting::getValue('multiplier_event_ends_at'),
             ],
             'streak_bonus_xp' => XpSetting::getInt('streak_bonus_xp', 10),
+            // Real per-action XP values for the app's "Ways to earn" grid, so it
+            // never shows invented numbers. Order/review come from XP settings;
+            // place actions come from the PlacesToVisit module config.
+            'xp_sources' => [
+                'order' => XpSetting::getInt('xp_per_order', 20),
+                'review' => XpSetting::getInt('xp_per_review', 30),
+                'vote' => (int) config('placestovisit.xp.vote', 5),
+                'place_review' => (int) config('placestovisit.xp.review', 10),
+                'photo_review' => (int) config('placestovisit.xp.photo_review', 15),
+                'place_submission' => (int) config('placestovisit.xp.submission_approved', 25),
+                'streak_bonus' => XpSetting::getInt('streak_bonus_xp', 10),
+            ],
         ], 200);
     }
 
@@ -81,8 +95,103 @@ class XpController extends Controller
     public function getLevelDetails(Request $request)
     {
         $user = $request->user();
-        
-        return response()->json($this->buildLevelsData($user, true), 200);
+
+        $data = $this->buildLevelsData($user, true);
+
+        // Level-ups the client hasn't celebrated yet. Populated by
+        // XpService::handleLevelUp; cleared by acknowledgeLevelUps. Surfacing
+        // them here (rather than only diffing the level client-side) means a
+        // level earned by a background order still fires its celebration on the
+        // next app open, and each reward is shown exactly once.
+        if ($user) {
+            $data['pending_level_ups'] = $this->buildPendingLevelUps($user);
+        }
+
+        return response()->json($data, 200);
+    }
+
+    /**
+     * Build the celebration payload for each unacknowledged level-up: the level
+     * reached, its badge, the XP gained crossing into it, and the marquee reward
+     * unlocked at that level (with a derived rarity for the tag).
+     */
+    private function buildPendingLevelUps(User $user): array
+    {
+        $pending = XpTransaction::pendingLevelUps($user->id)->get();
+        if ($pending->isEmpty()) {
+            return [];
+        }
+
+        $levelNumbers = $pending->pluck('reference_id')->all();
+
+        $levels = Level::whereIn('level_number', $levelNumbers)
+            ->with(['prizes' => function ($q) {
+                $q->where('status', 1);
+            }])
+            ->get()
+            ->keyBy('level_number');
+
+        return $pending->map(function ($tx) use ($levels) {
+            $level = $levels->get($tx->reference_id);
+            $prize = $level?->prizes->first();
+
+            return [
+                'transaction_id' => $tx->id,
+                'level' => (int) $tx->reference_id,
+                'level_name' => $level?->name,
+                'level_badge' => $level?->badge_image_url,
+                // XP the user held after crossing into this level.
+                'total_xp' => (int) $tx->balance_after,
+                // XP required to reach this level (for a "+N XP this level" line).
+                'xp_gained' => $level ? (int) $level->xp_required : 0,
+                'reward_name' => $prize?->title,
+                'reward_type' => $prize?->prize_type,
+                'rarity' => $prize ? $this->prizeRarity($prize) : null,
+            ];
+        })->values()->all();
+    }
+
+    /**
+     * Map a prize type to a rarity label for the celebration's rarity tag.
+     */
+    private function prizeRarity(LevelPrize $prize): string
+    {
+        switch ($prize->prize_type) {
+            case 'badge':
+                return 'Legendary';
+            case 'free_delivery':
+            case 'free_item':
+                return 'Epic';
+            case 'discount':
+            case 'wallet_credit':
+                return 'Rare';
+            default:
+                return 'Common';
+        }
+    }
+
+    /**
+     * Mark the given level-up transactions (or all of the user's) as celebrated,
+     * so the "Level Up!" screen doesn't replay on the next level-details fetch.
+     */
+    public function acknowledgeLevelUps(Request $request)
+    {
+        $user = $request->user();
+
+        $query = XpTransaction::pendingLevelUps($user->id);
+
+        // Optional: acknowledge only specific transactions. Absent → all pending.
+        $ids = $request->input('transaction_ids');
+        if (is_array($ids) && count($ids) > 0) {
+            $query->whereIn('id', $ids);
+        }
+
+        $count = $query->update(['acknowledged_at' => now()]);
+
+        return response()->json([
+            'message' => 'Level-ups acknowledged',
+            'acknowledged' => $count,
+        ], 200);
     }
 
     /**
@@ -155,6 +264,29 @@ class XpController extends Controller
             $data['level_badge'] = $levelInfo['level_badge'];
             $data['is_max_level'] = $levelInfo['is_max_level'];
             $data['next_level'] = $levelInfo['next_level'];
+
+            // Real identity for the home hero: the user's global XP rank and
+            // their neighbourhood (zone) name — the "RANK #128 · MAADI" line.
+            $data['rank'] = User::where('total_xp', '>', $userXp)
+                ->where('status', 1)
+                ->count() + 1;
+            $data['zone_name'] = null;
+            if ($user->zone_id) {
+                $zone = \App\Models\Zone::find($user->zone_id);
+                $data['zone_name'] = $zone?->display_name ?: $zone?->name;
+            }
+
+            // Most recent positive XP award + how long ago (seconds), so the
+            // "+N XP JUST EARNED" toast only shows for a genuinely recent earn
+            // instead of surfacing a week-old transaction as "just earned".
+            $recent = XpTransaction::where('user_id', $user->id)
+                ->where('xp_amount', '>', 0)
+                ->orderByDesc('created_at')
+                ->first(['xp_amount', 'created_at']);
+            $data['recent_earned'] = $recent ? [
+                'xp' => (int) $recent->xp_amount,
+                'seconds_ago' => (int) $recent->created_at->diffInSeconds(now()),
+            ] : null;
 
             // Streak data
             $streak = $user->streak;
@@ -541,6 +673,7 @@ class XpController extends Controller
         $leaderboard = $topUsers->map(function ($u, $index) use ($user) {
             return [
                 'rank' => $index + 1,
+                'user_id' => $u->id,
                 'name' => $this->displayName($u),
                 'total_xp' => $u->total_xp,
                 'level' => $u->level,
@@ -557,11 +690,26 @@ class XpController extends Controller
         }
         $userRank = $userRankQuery->count() + 1;
 
+        // Real ▲/▼/HELD movement since the last time these ranks were shown.
+        // Snapshots are scoped per period type; all-time uses a fixed 'lifetime'
+        // bucket (movement never resets). Zone scope gets its own snapshot key
+        // so a zone board and the global board don't overwrite each other.
+        $snapshotPeriod = $zoneId ? 'lifetime-zone-' . $zoneId : 'lifetime';
+        $rowUserIds = $leaderboard->pluck('user_id')->all();
+        $myDelta = 0;
+        $myMovement = 'new';
+        $leaderboard = $this->applyRankDeltas(
+            $leaderboard, $rowUserIds, 'alltime', $snapshotPeriod,
+            $user, $userRank, $myDelta, $myMovement
+        );
+
         return response()->json([
             'leaderboard' => $leaderboard,
             'my_rank' => $userRank,
             'my_xp' => $user->total_xp,
             'my_level' => $user->level,
+            'my_delta' => $myDelta,
+            'my_movement' => $myMovement,
             'in_top' => $leaderboard->contains('is_me', true),
             'type' => $type,
             'period' => 'alltime',
@@ -592,6 +740,7 @@ class XpController extends Controller
         $leaderboard = $rows->map(function ($row, $index) use ($user) {
             return [
                 'rank' => $index + 1,
+                'user_id' => $row->user_id,
                 'name' => $this->displayName($row->user),
                 'total_xp' => $row->xp_earned,
                 'level' => $row->user->level,
@@ -611,16 +760,105 @@ class XpController extends Controller
             ->where('xp_earned', '>', $myScore)
             ->count() + 1;
 
+        // Real movement within this season. The snapshot's period key is the
+        // season itself, so a new week/month starts everyone fresh ("new").
+        $effectiveMyRank = $myScore > 0 ? $myRank : null;
+        $rowUserIds = $leaderboard->pluck('user_id')->all();
+        $myDelta = 0;
+        $myMovement = 'new';
+        $leaderboard = $this->applyRankDeltas(
+            $leaderboard, $rowUserIds, $periodType, $period,
+            $user, $effectiveMyRank, $myDelta, $myMovement
+        );
+
         return response()->json([
             'leaderboard' => $leaderboard,
-            'my_rank' => $myScore > 0 ? $myRank : null,
+            'my_rank' => $effectiveMyRank,
             'my_xp' => $myScore,
             'my_level' => $user->level,
+            'my_delta' => $myDelta,
+            'my_movement' => $myMovement,
             'in_top' => $leaderboard->contains('is_me', true),
             'type' => 'global',
             'period' => $periodType,
             'period_key' => $period,
         ], 200);
+    }
+
+    /**
+     * Attach a real rank-movement delta to each leaderboard row and to the
+     * requesting user, by comparing live ranks against the last snapshot for
+     * this period type — then refresh the snapshots so the next view measures
+     * movement since this one.
+     *
+     * $leaderboard: the mapped collection of rows (each with a 'rank' and a
+     *   'user_id' we pass in via $rowUserIds, index-aligned to the collection).
+     * Returns the leaderboard collection with 'delta' + 'movement' added, and
+     * writes the requesting user's own movement into $myMovement/$myDelta.
+     */
+    private function applyRankDeltas(
+        \Illuminate\Support\Collection $leaderboard,
+        array $rowUserIds,
+        string $periodType,
+        string $period,
+        User $user,
+        ?int $myRank,
+        &$myDelta,
+        &$myMovement
+    ): \Illuminate\Support\Collection {
+        // All users we need prior ranks for: everyone in the list + the viewer.
+        $ids = array_values(array_unique(array_filter(
+            array_merge($rowUserIds, [$user->id])
+        )));
+        $prior = XpRankSnapshot::priorRanks($ids, $periodType);
+
+        // Same period → compare; different/absent → the user is "new" here.
+        $movementFor = function (?int $currentRank, int $userId) use ($prior, $period, &$captureRanks) {
+            if ($currentRank === null || $currentRank < 1) {
+                return ['delta' => 0, 'movement' => 'none'];
+            }
+            $captureRanks[$userId] = $currentRank;
+
+            $snap = $prior->get($userId);
+            if (!$snap || $snap->period !== $period) {
+                return ['delta' => 0, 'movement' => 'new'];
+            }
+            // Lower rank number = better. Positive delta = climbed.
+            $delta = $snap->rank - $currentRank;
+            $movement = $delta > 0 ? 'up' : ($delta < 0 ? 'down' : 'held');
+            return ['delta' => $delta, 'movement' => $movement];
+        };
+
+        $captureRanks = [];
+
+        $withDeltas = $leaderboard->values()->map(function ($row, $i) use ($rowUserIds, $movementFor) {
+            $uid = $rowUserIds[$i] ?? null;
+            $m = $uid ? $movementFor($row['rank'] ?? null, $uid) : ['delta' => 0, 'movement' => 'none'];
+            $row['delta'] = $m['delta'];
+            $row['movement'] = $m['movement'];
+            return $row;
+        });
+
+        // Requesting user's own movement (their row may be off-list).
+        $myM = $movementFor($myRank, $user->id);
+        $myDelta = $myM['delta'];
+        $myMovement = $myM['movement'];
+
+        // Only advance the snapshot baseline periodically (once an hour), so a
+        // user re-opening the board keeps seeing the same "since last check"
+        // delta instead of it collapsing to HELD on the second view. The delta
+        // stays meaningful across a session; the baseline rolls forward hourly.
+        $baseline = $prior->first();
+        $stale = !$baseline
+            || $baseline->period !== $period
+            || !$baseline->captured_at
+            || $baseline->captured_at->lt(now()->subHour());
+
+        if ($stale) {
+            XpRankSnapshot::capture($captureRanks, $periodType, $period);
+        }
+
+        return $withDeltas;
     }
 
     /**

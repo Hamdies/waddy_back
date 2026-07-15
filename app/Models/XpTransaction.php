@@ -17,6 +17,7 @@ class XpTransaction extends Model
         'xp_amount' => 'integer',
         'balance_after' => 'integer',
         'is_reversed' => 'boolean',
+        'acknowledged_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -48,5 +49,16 @@ class XpTransaction extends Model
     {
         return $query->where('reference_type', $referenceType)
             ->where('reference_id', $referenceId);
+    }
+
+    /**
+     * Level-up transactions the client hasn't yet celebrated.
+     */
+    public function scopePendingLevelUps($query, int $userId)
+    {
+        return $query->where('user_id', $userId)
+            ->where('xp_source', 'level_up')
+            ->whereNull('acknowledged_at')
+            ->orderBy('reference_id'); // reference_id = the level number
     }
 }
