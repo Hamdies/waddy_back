@@ -1,54 +1,54 @@
-@extends(‘layouts.admin.app’)
+@extends('layouts.admin.app')
 
-@section(‘title’, translate(‘business_setup’))
+@section('title', translate('business_setup'))
 
-@push(‘css_or_js’)
-    <link rel="stylesheet" href="{{ asset(‘public/assets/admin/css/business-setup-redesign.css’) }}">
+@push('css_or_js')
+    <link rel="stylesheet" href="{{ asset('public/assets/admin/css/business-setup-redesign.css') }}">
 @endpush
 
-@section(‘content’)
+@section('content')
     <div class="bsr-page">
         {{-- ── Header ── --}}
         <div class="bsr-header">
             <div class="bsr-header__inner">
                 <div>
-                    <h1 class="bsr-header__title">{{ translate(‘Business’) }} <em>{{ translate(‘Setup’) }}</em></h1>
-                    <p class="bsr-header__sub">{{ translate(‘messages.business_settings’) }}</p>
+                    <h1 class="bsr-header__title">{{ translate('Business') }} <em>{{ translate('Setup') }}</em></h1>
+                    <p class="bsr-header__sub">{{ translate('messages.business_settings') }}</p>
                 </div>
             </div>
         </div>
 
         {{-- ── Tab nav ── --}}
         <div class="bsr-tabs">
-            @include(‘admin-views.business-settings.partials.nav-menu’)
+            @include('admin-views.business-settings.partials.nav-menu')
         </div>
 
         <div class="bsr-body px-3">
 
         {{-- ── Maintenance Mode ── --}}
-        @php($config = \App\CentralLogics\Helpers::get_business_settings(‘maintenance_mode’))
+        @php($config = \App\CentralLogics\Helpers::get_business_settings('maintenance_mode'))
         <div class="bsr-card">
             <div class="bsr-card__head">
                 <div>
-                    <h2 class="bsr-card__title">{{ translate(‘messages.maintenance_mode’) }}</h2>
-                    <p class="bsr-card__desc">{{ translate(‘messages.By_turning_the_’Maintenance_Mode’_ON,_all_your_apps_and_customer_website_will_be_disabled_temporarily._Only_the_Admin_Panel,_Admin_Landing_Page_&_Store_Panel_will_be_functional.’) }}</p>
+                    <h2 class="bsr-card__title">{{ translate('messages.maintenance_mode') }}</h2>
+                    <p class="bsr-card__desc">{{ translate('messages.By_turning_the_’Maintenance_Mode’_ON,_all_your_apps_and_customer_website_will_be_disabled_temporarily._Only_the_Admin_Panel,_Admin_Landing_Page_&_Store_Panel_will_be_functional.') }}</p>
                 </div>
                 <label class="bsr-toggle">
-                    <input type="checkbox" class="status maintenance-mode" {{ isset($config) && $config ? ‘checked’ : ‘’ }}>
+                    <input type="checkbox" class="status maintenance-mode" {{ isset($config) && $config ? 'checked' : '' }}>
                 </label>
             </div>
         </div>
 
         {{-- ── Ramadan Mode ── --}}
-        @php($ramadan_mode = \App\CentralLogics\Helpers::get_business_settings(‘ramadan_mode’))
+        @php($ramadan_mode = \App\CentralLogics\Helpers::get_business_settings('ramadan_mode'))
         <div class="bsr-card">
             <div class="bsr-card__head">
                 <div>
-                    <h2 class="bsr-card__title">{{ translate(‘messages.ramadan_mode’) }}</h2>
-                    <p class="bsr-card__desc">{{ translate(‘messages.Enable_Ramadan_Mode_to_show_special_Ramadan_themed_widgets_and_decorations_in_the_app.’) }}</p>
+                    <h2 class="bsr-card__title">{{ translate('messages.ramadan_mode') }}</h2>
+                    <p class="bsr-card__desc">{{ translate('messages.Enable_Ramadan_Mode_to_show_special_Ramadan_themed_widgets_and_decorations_in_the_app.') }}</p>
                 </div>
                 <label class="bsr-toggle">
-                    <input type="checkbox" class="status ramadan-mode" {{ isset($ramadan_mode) && $ramadan_mode ? ‘checked’ : ‘’ }}>
+                    <input type="checkbox" class="status ramadan-mode" {{ isset($ramadan_mode) && $ramadan_mode ? 'checked' : '' }}>
                 </label>
             </div>
         </div>
@@ -675,23 +675,23 @@
                                     </select>
                                 </div>
                                 <div class="bsr-form-group">
-                                    @php($currency_symbol_position = \App\Models\BusinessSetting::where(‘key’, ‘currency_symbol_position’)->first())
-                                    <label class="bsr-label">{{ translate(‘Currency Position’) }}</label>
+                                    @php($currency_symbol_position = \App\Models\BusinessSetting::where('key', 'currency_symbol_position')->first())
+                                    <label class="bsr-label">{{ translate('Currency Position') }}</label>
                                     <div class="d-flex gap-3 mt-1">
                                         <label class="d-flex align-items-center gap-2" style="cursor:pointer;font-size:13px">
-                                            <input type="radio" value="left" name="currency_symbol_position" {{ $currency_symbol_position ? ($currency_symbol_position->value == ‘left’ ? ‘checked’ : ‘’) : ‘’ }}>
-                                            ($) {{ translate(‘Left’) }}
+                                            <input type="radio" value="left" name="currency_symbol_position" {{ $currency_symbol_position ? ($currency_symbol_position->value == 'left' ? 'checked' : '') : '' }}>
+                                            ($) {{ translate('Left') }}
                                         </label>
                                         <label class="d-flex align-items-center gap-2" style="cursor:pointer;font-size:13px">
-                                            <input type="radio" value="right" name="currency_symbol_position" {{ $currency_symbol_position ? ($currency_symbol_position->value == ‘right’ ? ‘checked’ : ‘’) : ‘’ }}>
-                                            {{ translate(‘Right’) }} ($)
+                                            <input type="radio" value="right" name="currency_symbol_position" {{ $currency_symbol_position ? ($currency_symbol_position->value == 'right' ? 'checked' : '') : '' }}>
+                                            {{ translate('Right') }} ($)
                                         </label>
                                     </div>
                                 </div>
 
                                 <div class="bsr-form-group">
-                                    @php($digit_after_decimal_point = \App\Models\BusinessSetting::where(‘key’, ‘digit_after_decimal_point’)->first())
-                                    <label class="bsr-label" for="digit_after_decimal_point">{{ translate(‘messages.Digit after decimal point’) }}</label>
+                                    @php($digit_after_decimal_point = \App\Models\BusinessSetting::where('key', 'digit_after_decimal_point')->first())
+                                    <label class="bsr-label" for="digit_after_decimal_point">{{ translate('messages.Digit after decimal point') }}</label>
                                     <input type="number" name="digit_after_decimal_point" class="bsr-input"
                                         id="digit_after_decimal_point" placeholder="2"
                                         value="{{ $digit_after_decimal_point ? $digit_after_decimal_point->value : 0 }}"
@@ -699,17 +699,17 @@
                                 </div>
 
                                 <div class="bsr-form-group">
-                                    @php($footer_text = \App\Models\BusinessSetting::where(‘key’, ‘footer_text’)->first())
-                                    <label class="bsr-label" for="footer_text">{{ translate(‘Copyright Text’) }}</label>
+                                    @php($footer_text = \App\Models\BusinessSetting::where('key', 'footer_text')->first())
+                                    <label class="bsr-label" for="footer_text">{{ translate('Copyright Text') }}</label>
                                     <textarea id="footer_text" name="footer_text" class="bsr-textarea"
-                                        placeholder="{{ translate(‘messages.Ex_:_Copyright_Text’) }}" required>{{ $footer_text->value ?? ‘’ }}</textarea>
+                                        placeholder="{{ translate('messages.Ex_:_Copyright_Text') }}" required>{{ $footer_text->value ?? '' }}</textarea>
                                 </div>
 
                                 <div class="bsr-form-group">
-                                    @php($cookies_text = \App\Models\BusinessSetting::where(‘key’, ‘cookies_text’)->first())
-                                    <label class="bsr-label" for="cookies_text">{{ translate(‘Cookies Text’) }}</label>
+                                    @php($cookies_text = \App\Models\BusinessSetting::where('key', 'cookies_text')->first())
+                                    <label class="bsr-label" for="cookies_text">{{ translate('Cookies Text') }}</label>
                                     <textarea id="cookies_text" name="cookies_text" class="bsr-textarea"
-                                        placeholder="{{ translate(‘messages.Ex_:_Cookies_Text’) }}" required>{{ $cookies_text->value ?? ‘’ }}</textarea>
+                                        placeholder="{{ translate('messages.Ex_:_Cookies_Text') }}" required>{{ $cookies_text->value ?? '' }}</textarea>
                                 </div>
 
                             </div>{{-- end bsr-grid--4 --}}
