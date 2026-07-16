@@ -636,6 +636,14 @@ class BusinessSettingsController extends Controller
             'value' => $request['guest_checkout_status'] ? $request['guest_checkout_status'] : 0
         ]);
 
+        Helpers::businessUpdateOrInsert(['key' => 'guest_browse_status'], [
+            'value' => $request['guest_browse_status'] ? $request['guest_browse_status'] : 0
+        ]);
+
+        Helpers::businessUpdateOrInsert(['key' => 'checkout_auth_sheet_status'], [
+            'value' => $request['checkout_auth_sheet_status'] ? $request['checkout_auth_sheet_status'] : 0
+        ]);
+
         Helpers::businessUpdateOrInsert(['key' => 'timeformat'], [
             'value' => $request['time_format']
         ]);

@@ -923,8 +923,79 @@
                                     </div>
                                 </div>
 
+                                <div class="col-sm-6 col-lg-4">
+                                    @php($guest_browse_status = \App\Models\BusinessSetting::where('key', 'guest_browse_status')->first())
+                                    @php($guest_browse_status = $guest_browse_status ? $guest_browse_status->value : 0)
+                                    <div class="form-group mb-0">
+                                        <label
+                                            class="toggle-switch h--45px toggle-switch-sm d-flex justify-content-between border rounded px-3 py-0 form-control">
+                                            <span class="pr-1 d-flex align-items-center switch--label">
+                                                <span class="line--limit-1">
+                                                    {{translate('messages.guest_browse') }}
+                                                </span>
+                                                <span class="form-label-secondary text-danger d-flex"
+                                                    data-toggle="tooltip" data-placement="right"
+                                                    data-original-title="{{ translate('messages.If_enabled,_new_app_users_can_browse_as_guests_with_an_auto-detected_zone_without_logging_in.')}}"><img
+                                                        src="{{ asset('/public/assets/admin/img/info-circle.svg') }}"
+                                                        alt="{{ translate('messages.guest_browse') }}"> *
+                                                </span>
+                                            </span>
+                                            <input type="checkbox"
+                                                   data-id="guest_browse_status"
+                                                   data-type="toggle"
+                                                   data-image-on="{{ asset('/public/assets/admin/img/modal/dm-tips-on.png') }}"
+                                                   data-image-off="{{ asset('/public/assets/admin/img/modal/dm-tips-off.png') }}"
+                                                   data-title-on="<strong>{{ translate('messages.Want_to_enable_guest_browse?') }}</strong>"
+                                                   data-title-off="<strong>{{ translate('messages.Want_to_disable_guest_browse?') }}</strong>"
+                                                   data-text-on="<p>{{ translate('messages.If_you_enable_this,_new_app_users_will_browse_as_guests_and_log_in_at_checkout.') }}</p>"
+                                                   data-text-off="<p>{{ translate('messages.If_you_disable_this,_new_app_users_must_log_in_before_browsing.') }}</p>"
+                                                   class="status toggle-switch-input dynamic-checkbox-toggle"
+                                                   value="1"
+                                                name="guest_browse_status" id="guest_browse_status"
+                                                {{ $guest_browse_status == 1 ? 'checked' : '' }}>
+                                            <span class="toggle-switch-label text">
+                                                <span class="toggle-switch-indicator"></span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                </div>
 
-
+                                <div class="col-sm-6 col-lg-4">
+                                    @php($checkout_auth_sheet_status = \App\Models\BusinessSetting::where('key', 'checkout_auth_sheet_status')->first())
+                                    @php($checkout_auth_sheet_status = $checkout_auth_sheet_status ? $checkout_auth_sheet_status->value : 0)
+                                    <div class="form-group mb-0">
+                                        <label
+                                            class="toggle-switch h--45px toggle-switch-sm d-flex justify-content-between border rounded px-3 py-0 form-control">
+                                            <span class="pr-1 d-flex align-items-center switch--label">
+                                                <span class="line--limit-1">
+                                                    {{translate('messages.checkout_auth_sheet') }}
+                                                </span>
+                                                <span class="form-label-secondary text-danger d-flex"
+                                                    data-toggle="tooltip" data-placement="right"
+                                                    data-original-title="{{ translate('messages.If_enabled,_guests_at_checkout_see_a_quick_phone_login_sheet_instead_of_the_full_login_screen.')}}"><img
+                                                        src="{{ asset('/public/assets/admin/img/info-circle.svg') }}"
+                                                        alt="{{ translate('messages.checkout_auth_sheet') }}"> *
+                                                </span>
+                                            </span>
+                                            <input type="checkbox"
+                                                   data-id="checkout_auth_sheet_status"
+                                                   data-type="toggle"
+                                                   data-image-on="{{ asset('/public/assets/admin/img/modal/dm-tips-on.png') }}"
+                                                   data-image-off="{{ asset('/public/assets/admin/img/modal/dm-tips-off.png') }}"
+                                                   data-title-on="<strong>{{ translate('messages.Want_to_enable_the_checkout_login_sheet?') }}</strong>"
+                                                   data-title-off="<strong>{{ translate('messages.Want_to_disable_the_checkout_login_sheet?') }}</strong>"
+                                                   data-text-on="<p>{{ translate('messages.If_you_enable_this,_guests_will_log_in_via_a_quick_sheet_at_checkout.') }}</p>"
+                                                   data-text-off="<p>{{ translate('messages.If_you_disable_this,_the_app_falls_back_to_the_full_login_screen_at_checkout.') }}</p>"
+                                                   class="status toggle-switch-input dynamic-checkbox-toggle"
+                                                   value="1"
+                                                name="checkout_auth_sheet_status" id="checkout_auth_sheet_status"
+                                                {{ $checkout_auth_sheet_status == 1 ? 'checked' : '' }}>
+                                            <span class="toggle-switch-label text">
+                                                <span class="toggle-switch-indicator"></span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                </div>
 
 
 
