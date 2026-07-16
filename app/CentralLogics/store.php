@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
 
 class StoreLogic
 {
-    public static function get_stores( $zone_id, $filter_data, $type, $store_type, $limit = 10, $offset = 1, $featured=false,$longitude=0,$latitude=0,$filter=null,$rating_count=null)
+    public static function get_stores( $zone_id, $filter_data, $type, $store_type, $limit = 10, $offset = 1, $featured=false,$longitude=0,$latitude=0,$filter=null,$rating_count=null,$sort=null,$category_id=null,$max_delivery_time=null)
     {
 
         $all_stores_default_status = BusinessSetting::where('key', 'all_stores_default_status')->first()?->value ?? 1;
@@ -85,7 +85,7 @@ class StoreLogic
             $query = $query->when($filter && in_array('coupon', $filter), function ($query) {
                 return $query->has('activeCoupons');
             });
-            $query = $query->when($store_type == 'all' && $filter && !in_array('fast_delivery',$filter), function($q){
+            $query = $query->when($store_type == 'all' && $filter && !in_array('fast_delivery',$filter) && !$sort, function($q){
                 return $q->orderBy('open', 'desc')->orderBy('distance');
             });
             $query = $query->when($filter && in_array('currently_open', $filter), function ($query) {
@@ -135,6 +135,37 @@ class StoreLogic
             });
             $query = $query->when($filter && in_array('fast_delivery',$filter) , function($q) {
                 return $q->orderBy('open', 'desc')->orderBy('min_delivery_time');
+            });
+
+            $query = $query->when($category_id, function ($query) use ($category_id) {
+                return $query->whereHas('items.category', function ($q) use ($category_id) {
+                    return $q->whereId($category_id)->orWhere('parent_id', $category_id);
+                });
+            });
+
+            // min_delivery_time is a computed alias from WithOpenWithDeliveryTime,
+            // so it must be constrained via HAVING (same as the `open` alias).
+            $query = $query->when($max_delivery_time, function ($query) use ($max_delivery_time) {
+                return $query->having('min_delivery_time', '<=', $max_delivery_time);
+            });
+
+            // Explicit client-requested sort; open stores always rank first.
+            // sort=distance needs a real location and is ignored without one —
+            // never sort by distance-to-(0,0).
+            $query = $query->when($sort == 'a_z', function ($query) {
+                return $query->orderBy('open', 'desc')->orderBy('name');
+            });
+            $query = $query->when($sort == 'distance' && $longitude && $latitude, function ($query) {
+                return $query->orderBy('open', 'desc')->orderBy('distance');
+            });
+            $query = $query->when($sort == 'rating', function ($query) {
+                return $query->selectSub(function ($query) {
+                    $query->selectRaw('AVG(reviews.rating)')
+                        ->from('reviews')
+                        ->join('items', 'items.id', '=', 'reviews.item_id')
+                        ->whereColumn('items.store_id', 'stores.id')
+                        ->groupBy('items.store_id');
+                }, 'avg_r')->orderBy('open', 'desc')->orderByDesc('avg_r');
             });
 
             if($all_stores_default_status == '1') {

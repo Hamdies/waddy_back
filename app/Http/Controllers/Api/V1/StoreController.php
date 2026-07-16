@@ -32,7 +32,13 @@ class StoreController extends Controller
         $zone_id= $request->header('zoneId');
         $longitude= $request->header('longitude');
         $latitude= $request->header('latitude');
-        $stores = StoreLogic::get_stores( $zone_id, $filter_data, $type, $store_type, $request['limit'], $request['offset'], $request->query('featured'),$longitude,$latitude);
+        $filter = $request->query('filter', '');
+        $filter = $filter?(is_array($filter)?$filter:str_getcsv(trim($filter, "[]"), ',')):'';
+        $rating_count = $request->query('rating_count');
+        $sort = $request->query('sort');
+        $category_id = $request->query('category_id');
+        $max_delivery_time = $request->query('max_delivery_time');
+        $stores = StoreLogic::get_stores( $zone_id, $filter_data, $type, $store_type, $request['limit'], $request['offset'], $request->query('featured'),$longitude,$latitude, $filter, $rating_count, $sort, $category_id, $max_delivery_time);
         $stores['stores'] = Helpers::store_data_formatting($stores['stores'], true);
 
         return response()->json($stores, 200);
