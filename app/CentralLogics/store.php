@@ -3,6 +3,7 @@
 namespace App\CentralLogics;
 
 use Exception;
+use App\Models\Zone;
 use App\Models\Store;
 use App\Models\Review;
 use App\Models\DataSetting;
@@ -22,6 +23,18 @@ class StoreLogic
         $all_stores_sort_by_general = PriorityList::where('name', 'all_stores_sort_by_general')->where('type','general')->first()?->value ?? '';
         $all_stores_sort_by_unavailable = PriorityList::where('name', 'all_stores_sort_by_unavailable')->where('type','unavailable')->first()?->value ?? '';
         $all_stores_sort_by_temp_closed = PriorityList::where('name', 'all_stores_sort_by_temp_closed')->where('type','temp_closed')->first()?->value ?? '';
+
+        // An empty `stores` array has three very different causes that used to
+        // look identical to the client: the zoneId header never resolved, the
+        // zone is served but has no matching stores, or something upstream
+        // failed. `zone_served` separates the first from the rest — it is true
+        // only when the header parsed into at least one zone that actually
+        // exists. Additive: existing keys are untouched, so older builds that
+        // don't read it are unaffected.
+        $decoded_zone_ids = json_decode($zone_id, true);
+        $zone_served = is_array($decoded_zone_ids)
+            && count($decoded_zone_ids) > 0
+            && Zone::whereIn('id', $decoded_zone_ids)->exists();
 
         $query = Store::type($type)->
         WithOpenWithDeliveryTime($longitude??0,$latitude??0)
@@ -213,6 +226,7 @@ class StoreLogic
             'total_size' => $paginator->total(),
             'limit' => $limit,
             'offset' => $offset,
+            'zone_served' => $zone_served,
             'stores' => $paginator->items()
         ];
     }
