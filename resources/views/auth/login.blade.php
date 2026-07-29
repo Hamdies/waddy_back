@@ -122,39 +122,6 @@
                         <!-- End forget password -->
                     </div>
 
-                    @php($recaptcha = \App\CentralLogics\Helpers::get_business_settings('recaptcha'))
-                    @if(isset($recaptcha) && $recaptcha['status'] == 1)
-                        <input type="hidden" name="g-recaptcha-response" id="g-recaptcha-response">
-
-                        <input type="hidden" name="set_default_captcha" id="set_default_captcha_value" value="0" >
-                        <div class="row p-2 d-none" id="reload-captcha">
-                            <div class="col-6 pr-0">
-                                <input type="text" class="form-control form-control-lg border-0" name="custome_recaptcha"
-                                        id="custome_recaptcha" required placeholder="{{translate('Enter recaptcha value')}}" autocomplete="off" value="{{env('APP_MODE')=='dev'? session('six_captcha'):''}}">
-                            </div>
-                            <div class="col-6 bg-white rounded d-flex">
-                                <img src="<?php echo $custome_recaptcha->inline(); ?>" class="rounded w-100" />
-                                <div class="p-3 pr-0 capcha-spin reloadCaptcha">
-                                    <i class="tio-cached"></i>
-                                </div>
-                            </div>
-                        </div>
-
-                        @else
-                        <div class="row p-2" id="reload-captcha">
-                            <div class="col-6 pr-0">
-                                <input type="text" class="form-control form-control-lg border-0" name="custome_recaptcha"
-                                        id="custome_recaptcha" required placeholder="{{translate('Enter recaptcha value')}}" autocomplete="off" value="{{env('APP_MODE')=='dev'? session('six_captcha'):''}}">
-                            </div>
-                            <div class="col-6 bg-white rounded d-flex">
-                                <img src="<?php echo $custome_recaptcha->inline(); ?>" class="rounded w-100" />
-                                <div class="p-3 pr-0 capcha-spin reloadCaptcha">
-                                    <i class="tio-cached"></i>
-                                </div>
-                            </div>
-                        </div>
-                    @endif
-
                     <button type="submit" class="btn btn-lg btn-block btn--primary mt-xxl-3" id="signInBtn">{{translate('messages.login')}}</button>
                 </form>
                 <!-- End Form -->
@@ -334,26 +301,6 @@
     });
 
 
-$(document).on('click','.reloadCaptcha', function(){
-    $.ajax({
-        url: "{{ route('reload-captcha') }}",
-        type: "GET",
-        dataType: 'json',
-        beforeSend: function () {
-            $('#loading').show()
-            $('.capcha-spin').addClass('active')
-        },
-        success: function(data) {
-            $('#reload-captcha').html(data.view);
-        },
-        complete: function () {
-            $('#loading').hide()
-            $('.capcha-spin').removeClass('active')
-        }
-    });
-});
-
-
     $(document).ready(function() {
         $('.onerror-image').on('error', function() {
             let img = $(this).data('onerror-image')
@@ -361,51 +308,6 @@ $(document).on('click','.reloadCaptcha', function(){
         });
     });
 </script>
-@if(isset($recaptcha) && $recaptcha['status'] == 1)
-    <script src="https://www.google.com/recaptcha/api.js?render={{$recaptcha['site_key']}}"></script>
-@endif
-@if(isset($recaptcha) && $recaptcha['status'] == 1)
-    <script>
-        $(document).ready(function() {
-            $('#signInBtn').click(function (e) {
-                if( $('#set_default_captcha_value').val() == 1){
-                    $('#form-id').submit();
-                    return true;
-                }
-                e.preventDefault();
-                if (typeof grecaptcha === 'undefined') {
-                    toastr.error('Invalid recaptcha key provided. Please check the recaptcha configuration.');
-                    $('#reload-captcha').removeClass('d-none');
-                    $('#set_default_captcha_value').val('1');
-
-                    return;
-                }
-                grecaptcha.ready(function () {
-                    grecaptcha.execute('{{$recaptcha['site_key']}}', {action: 'submit'}).then(function (token) {
-                        $('#g-recaptcha-response').value = token;
-                        $('#form-id').submit();
-                    });
-                });
-                window.onerror = function (message) {
-                    var errorMessage = 'An unexpected error occurred. Please check the recaptcha configuration';
-                    if (message.includes('Invalid site key')) {
-                        errorMessage = 'Invalid site key provided. Please check the recaptcha configuration.';
-                    } else if (message.includes('not loaded in api.js')) {
-                        errorMessage = 'reCAPTCHA API could not be loaded. Please check the recaptcha API configuration.';
-                    }
-                    $('#reload-captcha').removeClass('d-none');
-                    $('#set_default_captcha_value').val('1');
-                    toastr.error(errorMessage)
-                    return true;
-                };
-            });
-        });
-    </script>
-@endif
-{{-- recaptcha scripts end --}}
-
-
-
 @if(env('APP_MODE')=='demo')
     <script>
         "use strict";
