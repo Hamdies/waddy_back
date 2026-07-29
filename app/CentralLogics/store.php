@@ -46,15 +46,22 @@ class StoreLogic
                 return  $query->active();
             })
             ->Active();
+        // Out-of-zone users browse the full catalogue instead of an empty screen:
+        // they can see what Waddi offers before we reach them. Ordering is still
+        // blocked client-side (add-to-cart gate + checkout guard), so this only
+        // widens what is VISIBLE, never what is purchasable. In-zone users are
+        // unaffected — a resolved zone still filters normally.
         if(config('module.current_module_data')) {
             $query = $query->whereHas('zone.modules', function($query){
                 return  $query->where('modules.id', config('module.current_module_data')['id']);
             })->module(config('module.current_module_data')['id'])
-                ->when(!config('module.current_module_data')['all_zone_service'], function($query)use($zone_id){
+                ->when(!config('module.current_module_data')['all_zone_service'] && $zone_served, function($query)use($zone_id){
                     return  $query->whereIn('zone_id', json_decode($zone_id,true));
                 });
         } else {
-            $query = $query->whereIn('zone_id', json_decode($zone_id,true));
+            $query = $query->when($zone_served, function($query)use($zone_id){
+                return $query->whereIn('zone_id', json_decode($zone_id,true));
+            });
         }
 
             if($all_stores_default_status != '1') {
