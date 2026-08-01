@@ -21,6 +21,7 @@ use App\Enums\ViewPaths\Admin\CommonCondition;
 use App\Http\Controllers\Admin\VendorController;
 use App\Http\Controllers\Admin\Item\UnitController;
 use App\Http\Controllers\Admin\Zone\ZoneController;
+use App\Http\Controllers\Admin\Zone\ZoneRequestAdminController;
 use App\Http\Controllers\Admin\Item\AddonController;
 use App\Http\Controllers\Admin\Item\BrandController;
 use App\Http\Controllers\Admin\Banner\BannerController;
@@ -240,6 +241,8 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                 Route::get(Zone::MODULE_SETUP[URI].'/{id?}', [ZoneController::class, 'getModuleSetupView'])->name('module-setup');
                 Route::post(Zone::MODULE_UPDATE[URI].'/{id}', [ZoneController::class, 'updateModuleSetup'])->name('module-update');
                 Route::get(Zone::INSTRUCTION[URI], [ZoneController::class, 'getInstruction'])->name('instruction');
+                // Demand capture: where people asked us to launch next.
+                Route::get('requests', [ZoneRequestAdminController::class, 'index'])->name('requests');
                 Route::get(Zone::DIGITAL_PAYMENT[URI].'/{id}/{digital_payment}', [ZoneController::class, 'updateDigitalPayment'])->name('digital-payment');
                 Route::get(Zone::CASH_ON_DELIVERY[URI].'/{id}/{cash_on_delivery}', [ZoneController::class, 'updateCashOnDelivery'])->name('cash-on-delivery');
                 Route::get(Zone::OFFLINE_PAYMENT[URI].'/{id}/{offline_payment}', [ZoneController::class, 'updateOfflinePayment'])->name('offline-payment');

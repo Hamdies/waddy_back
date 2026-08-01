@@ -8231,4 +8231,10 @@ Smartly or Earn. ',
   'order_cancellation_reason_added_successfully' => 'Order cancellation reason added successfully',
   'order_cancellation_reason_updated_successfully' => 'Order cancellation reason updated successfully',
   'order_cancellation_reason_deleted_successfully' => 'Order cancellation reason deleted successfully',
+
+  'zone_request_recorded' => 'Thanks — you are on the list',
+  'guest_id_required' => 'A guest id is required',
+  'we_have_launched_in_your_area' => 'Waddy is now delivering in your area!',
+  'we_have_launched_in_your_area_body' => 'Good news — we now deliver where you are. Open the app and place your first order.',
+  'zone_launch_notifications_sent' => 'Launch notifications sent',
 );

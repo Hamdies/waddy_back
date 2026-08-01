@@ -88,6 +88,21 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
     // Module
     Route::get('module', 'ModuleController@index');
     Route::post('newsletter/subscribe','NewsletterController@index');
+
+    // Demand capture for un-served areas. Guest-capable (apiGuestCheck fills
+    // $request->user when a token is present) because guests are the bulk of
+    // out-of-zone traffic.
+    //
+    // throttle:30,1 — deliberately loose. Egyptian carriers run heavy CGNAT, so
+    // a large number of genuinely distinct users share very few public IPs; a
+    // tight per-IP cap would start rejecting real people exactly during a
+    // launch-post traffic spike, which is the moment this data matters most.
+    // Identity-level abuse is already neutralised by the unique index on
+    // (user_id, is_guest): repeat taps collapse into one row for free.
+    Route::group(['middleware' => ['apiGuestCheck', 'throttle:30,1']], function () {
+        Route::post('zone-request', 'ZoneRequestController@store');
+        Route::get('zone-request/status', 'ZoneRequestController@status');
+    });
     Route::get('landing-page', 'ConfigController@landing_page');
     Route::get('react-landing-page', 'ConfigController@react_landing_page')->middleware('actch:react_web');
     Route::get('flutter-landing-page', 'ConfigController@flutter_landing_page');

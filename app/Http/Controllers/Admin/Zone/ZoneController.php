@@ -24,6 +24,7 @@ use App\Contracts\Repositories\ZoneRepositoryInterface;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use App\Contracts\Repositories\TranslationRepositoryInterface;
 use App\Models\Module;
+use App\Services\ZoneLaunchNotifier;
 
 class ZoneController extends BaseController
 {
@@ -250,6 +251,17 @@ class ZoneController extends BaseController
             return back();
         }
         $this->zoneRepo->update(id: $request['id'], data: ['status' => $request['status']]);
+
+        // Activating a zone is the moment the "notify me" promise comes due.
+        // Fire-and-forget by design: the notifier swallows its own errors, so a
+        // push outage can never fail or roll back the activation itself.
+        if ($request['status'] == 1) {
+            $notified = ZoneLaunchNotifier::notifyForZone((int) $request['id']);
+            if ($notified > 0) {
+                Toastr::info(translate('messages.zone_launch_notifications_sent') . ": {$notified}");
+            }
+        }
+
         Toastr::success(translate('messages.zone_status_updated'));
         return back();
     }

@@ -5553,4 +5553,10 @@
   'vendor_registration' => 'Vendor registration',
   'Your Name' => 'Your Name',
   'Terms_And' => 'Terms And',
+
+  'zone_request_recorded' => 'شكرًا — أنت الآن في القائمة',
+  'guest_id_required' => 'معرّف الضيف مطلوب',
+  'we_have_launched_in_your_area' => 'ودي يوصل الآن في منطقتك!',
+  'we_have_launched_in_your_area_body' => 'أخبار سارة — أصبحنا نوصل إلى منطقتك. افتح التطبيق واطلب الآن.',
+  'zone_launch_notifications_sent' => 'تم إرسال إشعارات الإطلاق',
 );
