@@ -44,6 +44,24 @@ return [
         'hmac_secret' => env('ORDER_HMAC_SECRET', 'waddi_order_sec_2026'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Meta Conversions API — server-side Purchase events for ad attribution
+    |--------------------------------------------------------------------------
+    |
+    | dataset_id is the Meta App ID (the app dataset in Events Manager).
+    | Generate the access token in Events Manager → dataset → Settings →
+    | Conversions API → Generate access token, then set META_CAPI_ENABLED=true.
+    |
+    */
+    'meta_capi' => [
+        'enabled'       => env('META_CAPI_ENABLED', false),
+        'dataset_id'    => env('META_CAPI_DATASET_ID', '380903914182154'),
+        'access_token'  => env('META_CAPI_ACCESS_TOKEN'),
+        'graph_version' => env('META_CAPI_GRAPH_VERSION', 'v21.0'),
+        'currency'      => env('META_CAPI_CURRENCY', 'EGP'),
+    ],
+
     'apns' => [
         'team_id'     => env('APNS_TEAM_ID'),
         'key_id'      => env('APNS_KEY_ID'),

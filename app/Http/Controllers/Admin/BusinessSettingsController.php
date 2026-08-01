@@ -2820,6 +2820,28 @@ class BusinessSettingsController extends Controller
 
     //recaptcha
 
+    public function meta_capi_index(Request $request)
+    {
+        return view('admin-views.business-settings.meta-capi-index');
+    }
+
+    public function meta_capi_update(Request $request)
+    {
+        Helpers::businessUpdateOrInsert(['key' => 'meta_capi'], [
+            'key' => 'meta_capi',
+            'value' => json_encode([
+                'status' => $request['status'] ?? 0,
+                'dataset_id' => $request['dataset_id'],
+                'access_token' => $request['access_token'],
+            ]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Toastr::success(translate('messages.updated_successfully'));
+        return back();
+    }
+
     public function firebase_otp_index(Request $request)
     {
         $is_sms_active= Setting::whereJsonContains('live_values->status','1')->where('settings_type', 'sms_config')

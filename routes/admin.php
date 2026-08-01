@@ -441,6 +441,9 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                 //firebase-otp
                 Route::get('firebase-otp', 'BusinessSettingsController@firebase_otp_index')->name('firebase_otp_index');
                 Route::post('firebase-otp-update', 'BusinessSettingsController@firebase_otp_update')->name('firebase_otp_update');
+                //meta conversions api
+                Route::get('meta-capi', 'BusinessSettingsController@meta_capi_index')->name('meta_capi_index');
+                Route::post('meta-capi-update', 'BusinessSettingsController@meta_capi_update')->name('meta_capi_update');
                 //file_system
                 Route::get('storage-connection', 'BusinessSettingsController@storage_connection_index')->name('storage_connection_index');
                 Route::post('storage-connection-update/{name}', 'BusinessSettingsController@storage_connection_update')->name('storage_connection_update');

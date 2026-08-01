@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "3Y68H7C8SC.com.hamdiesolutions.waddi",
+        "paths": ["/store*", "/item*", "/category*"]
+      }
+    ]
+  }
+}

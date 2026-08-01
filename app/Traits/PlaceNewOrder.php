@@ -31,6 +31,7 @@ use App\Mail\PlaceOrder;
 use App\Models\AddOn;
 use App\Models\SurgePrice;
 use Carbon\Carbon;
+use App\Jobs\SendMetaPurchaseEvent;
 use App\Services\EstimatedDeliveryService;
 
 trait PlaceNewOrder
@@ -619,6 +620,12 @@ trait PlaceNewOrder
             }
 
             DB::commit();
+
+            SendMetaPurchaseEvent::dispatchAfterResponse(
+                $order->id,
+                $request->header('X-Client-Platform', 'android'),
+                $request->header('X-ATT') === '1',
+            );
 
             $this->sentOrderPlaceNotification($request, $order, $store);
 
