@@ -31,6 +31,7 @@ class User extends Authenticatable
         'l_name', 
         'email',
         'phone',
+        'birth_date',
         'password',
         'image',
         'zone_id',
@@ -64,6 +65,7 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'birth_date' => 'date:Y-m-d',
         'is_phone_verified' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',

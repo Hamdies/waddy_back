@@ -380,6 +380,7 @@ class CustomerController extends Controller
             'email' => 'nullable|unique:users,email,' . $request?->user()?->id,
             'phone' => 'required|unique:users,phone,' . $request?->user()?->id,
             'image' => 'nullable|max:2048',
+            'birth_date' => 'nullable|date_format:Y-m-d|before:today',
             'password' => ['nullable', Password::min(8)],
         ]);
 
@@ -567,6 +568,12 @@ class CustomerController extends Controller
         $user->password = $pass;
         $user->phone = $request->phone;
         $user->email = $request->email;
+        // Only touch the birthday when the client actually sends it, so
+        // requests that omit the field (change_password, verification
+        // round-trips) don't wipe a stored value.
+        if ($request->filled('birth_date')) {
+            $user->birth_date = $request->birth_date;
+        }
         $user->save();
 
         if ($user->userinfo) {
