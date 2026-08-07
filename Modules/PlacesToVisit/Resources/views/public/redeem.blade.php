@@ -51,7 +51,6 @@
         @keyframes rise { from { transform:translateY(14px); opacity:0 } to { transform:translateY(0); opacity:1 } }
         @keyframes shake { 0%,100% { transform:translateX(0) } 20% { transform:translateX(-7px) } 40% { transform:translateX(7px) } 60% { transform:translateX(-5px) } 80% { transform:translateX(5px) } }
         @keyframes tickerscroll { from { transform:translateX(0) } to { transform:translateX(-50%) } }
-        @keyframes wavedrift { from { transform:translateX(0) } to { transform:translateX(-1800px) } }
 
         /* ── HEADER ──────────────────────────────────────────────
            The mark is MINT artwork (#1EF2A0), so it may only ever sit on
@@ -74,12 +73,8 @@
                             letter-spacing:.06em; text-transform:uppercase; color:var(--mint); white-space:nowrap }
         .tickertrack span b { color:#fff; opacity:.5 }
 
-          /* ── WAVE BANDS ──────────────────────────────────────────
-              Flush against their neighbours, full-bleed, NO mask. The band is
-              exactly as tall as the svg so no mint gap can open beneath it. */
-          .waveband { position:relative; z-index:3; overflow:hidden; line-height:0; height:150px; background:var(--mint) }
-          .waveband svg { display:block; height:150px; width:3600px; animation:wavedrift 34s linear infinite; will-change:transform }
-          .waveband.b svg { animation-duration:42s; animation-direction:reverse }
+          /* Waves removed (top and bottom) — kept layout intact */
+          .waveband { display:none }
 
         /* ── STAGE ── */
         .stage { position:relative; z-index:4; background:var(--mint); padding:30px 16px 34px;
@@ -209,22 +204,7 @@
     </div>
 </div>
 
-{{-- ── wave A: closes the header, opens the stage ── --}}
-<div class="waveband a">
-    <svg viewBox="0 0 3600 200" preserveAspectRatio="none" aria-hidden="true" style="width:3600px">
-        <defs>
-            <path id="wavea" d="{{ $wavePath }}" fill="none"></path>
-            <filter id="ribbondrop" x="-50%" y="-50%" width="200%" height="200%">
-                <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#0C3532" flood-opacity="0.18"/>
-            </filter>
-        </defs>
-        <path d="{{ $wavePath }}" fill="none" stroke="#ffffff" stroke-width="120" stroke-linecap="round" stroke-linejoin="round" filter="url(#ribbondrop)"></path>
-        <path d="{{ $wavePath }}" fill="none" stroke="#0C3532" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity="0.12"></path>
-        <text font-family="Thmanyah Sans, sans-serif" font-weight="900" font-size="18" letter-spacing="3" fill="#0C3532">
-            <textPath href="#wavea" startOffset="0">{{ str_repeat($phrase, 10) }}</textPath>
-        </text>
-    </svg>
-</div>
+{{-- Waves removed (top) --}}
 
 <div class="stage">
     <div class="head">
@@ -297,22 +277,7 @@
     </div>
 </div>
 
-{{-- ── wave B: closes the stage, flush against the footer ── --}}
-<div class="waveband b" style="background:var(--panel)">
-    <svg viewBox="0 0 3600 200" preserveAspectRatio="none" aria-hidden="true" style="width:3600px">
-        <defs>
-            <path id="waveb" d="{{ $wavePath }}" fill="none"></path>
-            <filter id="ribbondropb" x="-50%" y="-50%" width="200%" height="200%">
-                <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.18"/>
-            </filter>
-        </defs>
-        <path d="{{ $wavePath }}" fill="none" stroke="#ffffff" stroke-width="120" stroke-linecap="round" stroke-linejoin="round" filter="url(#ribbondropb)"></path>
-        <path d="{{ $wavePath }}" fill="none" stroke="#1EF2A0" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity="0.16"></path>
-        <text font-family="Thmanyah Sans, sans-serif" font-weight="900" font-size="18" letter-spacing="3" fill="#1EF2A0">
-            <textPath href="#waveb" startOffset="0">{{ str_repeat($phrase, 10) }}</textPath>
-        </text>
-    </svg>
-</div>
+{{-- Waves removed (bottom) --}}
 
 <div class="footer">
     <div class="strip">
