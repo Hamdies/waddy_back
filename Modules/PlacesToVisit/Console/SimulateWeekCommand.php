@@ -29,7 +29,7 @@ class SimulateWeekCommand extends Command
         {--place= : Place id to crown (defaults to the first active place)}
         {--voters=12 : How many test voters to put in the pool}
         {--period= : ISO week to play (defaults to last week)}
-        {--user= : Also cast a vote as this real user id, so the app shows the result}
+        {--user= : Also vote as a real user (id, phone or email) so the win shows in the app}
         {--cleanup : Delete everything a previous simulation created, then stop}';
 
     protected $description = '[dev] Simulate a full Spots week: votes → winner → prize draw → printable codes';
@@ -68,23 +68,32 @@ class SimulateWeekCommand extends Command
             return self::FAILURE;
         }
 
+        // Resolve the real account BEFORE anything is written — a bad --user
+        // must not leave seeded voters and votes behind.
+        $realUser = null;
+        if ($this->option('user')) {
+            $realUser = $this->resolveUser($this->option('user'));
+            if (!$realUser) {
+                $this->error("No user matched \"{$this->option('user')}\".");
+                $this->newLine();
+                $this->line('  Pass an id, phone or email. To find yours:');
+                $this->line('    php artisan tinker --execute="echo App\Models\User::where(\'phone\',\'like\',\'%1234%\')->get([\'id\',\'f_name\',\'phone\',\'email\'])"');
+                return self::FAILURE;
+            }
+        }
+
         $voters = $this->seedVoters((int) $this->option('voters'));
         $this->castVotes($place, $voters, $period);
 
-        // Optionally put a real account in the pool so the win is visible in
-        // the app. Forced to win by clearing the competition for that period.
-        $realUserId = $this->option('user') ? (int) $this->option('user') : null;
-        if ($realUserId) {
-            if (!User::find($realUserId)) {
-                $this->error("User #{$realUserId} not found.");
-                return self::FAILURE;
-            }
+        if ($realUser) {
             PlaceVote::updateOrCreate(
-                ['place_id' => $place->id, 'user_id' => $realUserId, 'period' => $period],
+                ['place_id' => $place->id, 'user_id' => $realUser->id, 'period' => $period],
                 ['rating' => 5, 'is_flagged' => false]
             );
-            $this->line("  Added real user #{$realUserId} to the pool");
+            $name = trim("{$realUser->f_name} {$realUser->l_name}") ?: "#{$realUser->id}";
+            $this->line("  Added real user {$name} (#{$realUser->id}) to the pool");
         }
+        $realUserId = $realUser?->id;
 
         $winners = $winnerService->closePeriod($period);
 
@@ -128,6 +137,34 @@ class SimulateWeekCommand extends Command
         $this->comment('  Undo everything:  php artisan placestovisit:simulate-week --cleanup');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Accept whatever the operator actually has to hand — the numeric id is
+     * the least memorable of the three.
+     */
+    protected function resolveUser(string $needle): ?User
+    {
+        $needle = trim($needle);
+
+        if (ctype_digit($needle)) {
+            if ($user = User::find((int) $needle)) {
+                return $user;
+            }
+        }
+
+        if (str_contains($needle, '@')) {
+            return User::where('email', $needle)->first();
+        }
+
+        // Phones are stored inconsistently (+20…, 0020…, 01…), so match on
+        // the trailing digits rather than demanding an exact format.
+        $digits = preg_replace('/\D/', '', $needle);
+        if ($digits === '') {
+            return null;
+        }
+
+        return User::where('phone', 'like', '%' . substr($digits, -9))->first();
     }
 
     protected function resolvePlace(): ?Place
