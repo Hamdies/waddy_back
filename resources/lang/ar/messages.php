@@ -5588,4 +5588,13 @@
   'spots_prize_won_body' => 'جائزتك في :venue في انتظارك — اضغط لعرض الكود.',
   'spots_prize_expiring_title' => '⏳ جائزتك في وادي سبوتس تنتهي غدًا',
   'spots_prize_expiring_body' => 'استخدمها في :venue قبل أن تنتهي.',
+  'crack_the_code_html' => 'افتح <em>الكود</em>',
+  'redeem_head_sub' => 'كل كود جائزة حقيقية في مكان حقيقي. فرصة واحدة — لنرَ.',
+  'cash_it_in' => 'اصرف الجائزة',
+  'redeem_card_sub' => 'اكتبه كما يمليه عليك العميل — الحروف الكبيرة والشرطة تُضاف تلقائيًا.',
+  'single_use_codes' => 'الأكواد تُستخدم مرة واحدة وغير قابلة للتحويل',
+  'redeem_another_code' => 'استخدام كود آخر',
+  'prize_free_item' => 'صنف مجاني واحد',
+  'days_validity' => 'أيام الصلاحية',
+  'redeemed' => 'مستخدمة',
 );

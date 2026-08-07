@@ -153,24 +153,33 @@ class PrizeDrawService
     /**
      * "You won" push + the in-app notification row, mirroring the pattern in
      * App\Console\Commands\SendPrizeExpiryReminders.
+     *
+     * Public so a prize awarded outside the draw (admin action, the dev
+     * simulator's forced win) can still notify the winner.
+     *
+     * @return bool whether a device push actually went out
      */
-    protected function notifyWinner(PlacePrize $prize, ?Place $place): void
+    public function notifyWinner(PlacePrize $prize, ?Place $place = null): bool
     {
         try {
             $user = User::find($prize->user_id);
             if (!$user || !$user->cm_firebase_token) {
-                return;
+                return false;
             }
 
+            $place = $place ?? $prize->place;
             $venue = $place?->title ?? translate('messages.this_week_winner');
 
+            // NOTE: send_push_notif_to_device forwards only a fixed key list
+            // (order_id, trip_id, status, type, data_id, …). Anything else is
+            // dropped before it reaches the device, so the prize id has to
+            // travel as data_id — a `prize_id` key would never arrive.
             $data = [
                 'title' => translate('messages.spots_prize_won_title'),
                 'description' => translate('messages.spots_prize_won_body', ['venue' => $venue]),
                 'image' => '',
                 'type' => 'spots_prize_won',
-                'prize_id' => (string) $prize->id,
-                'place_id' => (string) $prize->place_id,
+                'data_id' => (string) $prize->id,
                 'order_id' => '',
                 'module_id' => '',
                 'order_type' => '',
@@ -184,8 +193,11 @@ class PrizeDrawService
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+
+            return true;
         } catch (\Throwable $e) {
             Log::error("Spots prize win push failed for prize {$prize->id}: " . $e->getMessage());
+            return false;
         }
     }
 
@@ -216,8 +228,8 @@ class PrizeDrawService
                         'description' => translate('messages.spots_prize_expiring_body', ['venue' => $venue]),
                         'image' => '',
                         'type' => 'spots_prize_won',
-                        'prize_id' => (string) $prize->id,
-                        'place_id' => (string) $prize->place_id,
+                        // data_id, not prize_id — see notifyWinner()
+                        'data_id' => (string) $prize->id,
                         'order_id' => '',
                         'module_id' => '',
                         'order_type' => '',
@@ -262,10 +274,24 @@ class PrizeDrawService
     {
         $place = $prize->place;
 
+        // Deep link the QR points at: scanning it opens the venue's counter
+        // page with the code already filled in, so staff only tap "Redeem".
+        //
+        // TRADE-OFF, deliberate: this puts the venue's redeem token inside the
+        // winner's own QR, so a winner can reach the counter page themselves
+        // and redeem without visiting. The alternative (code-only QR) can't be
+        // scanned into anything. Rotate a venue's token from admin if a link
+        // spreads. See docs — the safe version is an in-page camera scanner.
+        $redeemUrl = null;
+        if ($place && $place->getRawOriginal('redeem_token')) {
+            $redeemUrl = $place->redeem_url . '?code=' . rawurlencode($prize->code);
+        }
+
         return [
             'id' => $prize->id,
             'period' => $prize->period,
             'code' => $prize->code,
+            'redeem_url' => $redeemUrl,
             'status' => $prize->status,
             'value_cap' => $prize->value_cap,
             'currency' => $prize->currency,

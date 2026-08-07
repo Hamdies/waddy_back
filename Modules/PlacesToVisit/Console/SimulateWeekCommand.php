@@ -10,6 +10,7 @@ use Modules\PlacesToVisit\Entities\Place;
 use Modules\PlacesToVisit\Entities\PlacePrize;
 use Modules\PlacesToVisit\Entities\PlaceVote;
 use Modules\PlacesToVisit\Entities\PlaceWinner;
+use Modules\PlacesToVisit\Services\PrizeDrawService;
 use Modules\PlacesToVisit\Services\RaceClock;
 use Modules\PlacesToVisit\Services\WinnerService;
 
@@ -116,6 +117,14 @@ class SimulateWeekCommand extends Command
                 $donor->update(['user_id' => $realUserId]);
                 app(\Modules\PlacesToVisit\Services\LeaderboardService::class)->clearRecentWinnersCache();
                 $forcedWin = true;
+
+                // The draw already pushed to whoever originally held this
+                // slot, so the real tester has to be notified explicitly —
+                // otherwise --user produces a prize with no notification.
+                $pushed = app(PrizeDrawService::class)->notifyWinner($donor->fresh('place'));
+                $this->line($pushed
+                    ? '  Win push sent'
+                    : '  No win push — that account has no cm_firebase_token yet');
             }
         }
 

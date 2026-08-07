@@ -28,6 +28,8 @@ class PrizeRedemptionController extends Controller
             'venue' => $venue,
             'token' => $token,
             'stats' => $this->stats($venue),
+            // Arrives prefilled when staff scanned the winner's QR
+            'prefill' => $this->redemptionService->normalize((string) $request->query('code', '')),
         ]);
     }
 
@@ -52,7 +54,11 @@ class PrizeRedemptionController extends Controller
                 'value_cap' => $result['prize']->value_cap,
                 'currency' => $result['prize']->currency,
                 'redeemed_at' => $result['prize']->redeemed_at?->format('d M Y, H:i'),
+                'expires_at' => $result['prize']->expires_at?->format('D d M'),
             ] : null,
+            // Keep a failed code in the field so staff can correct a typo
+            // instead of retyping all eight characters.
+            'redeem_attempted' => $result['code'] === 'ok' ? null : $request->input('code'),
         ]);
     }
 
