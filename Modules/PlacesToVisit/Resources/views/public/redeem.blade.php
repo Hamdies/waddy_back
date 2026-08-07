@@ -12,6 +12,12 @@
     $currency = $prize['currency'] ?? config('placestovisit.prize.currency', 'EGP');
     $validity = config('placestovisit.prize.validity_days', 7);
     $logoUrl  = asset('assets/spots/waddi-logo.png');
+
+    // The wave marquee. One geometry, drawn edge-to-edge with no mask —
+    // masking is what produced the white rectangles at the viewport edges.
+    $wavePath = 'M0,75 Q300,15 600,75 Q900,135 1200,75 Q1500,15 1800,75 Q2100,135 2400,75 Q2700,15 3000,75 Q3300,135 3600,75';
+    $phrase   = strtoupper(translate('messages.wave_marquee')) . '  •  '
+              . strtoupper(translate('messages.wave_marquee_2')) . '  •  ';
 @endphp
 <!DOCTYPE html>
 <html lang="{{ $locale }}" dir="{{ $isRtl ? 'rtl' : 'ltr' }}">
@@ -29,8 +35,9 @@
         @font-face { font-family:"Thmanyah Sans"; src:url("{{ asset('assets/spots/fonts/thmanyahsans-Black.otf') }}") format("opentype"); font-weight:900; font-display:swap }
 
         :root {
-            --mint:#1EF2A0; --mint-deep:#0FD98C; --teal:#134E4A; --teal-900:#0C3532;
-            --red:#FF3B30; --panel:#0E3532;
+            --mint:#1EF2A0; --mint-deep:#0FD98C; --mint-100:#D6FCEC;
+            --teal:#134E4A; --teal-900:#0C3532; --panel:#0E3532;
+            --red:#FF3B30;
             --ink:#10312E; --ink-2:#3F5754; --ink-3:#6E8481;
             --paper:#FFFFFF; --paper-3:#E7ECEA; --border:#134E4A; --teal-100:#D3E0DE;
             --font-display:"Thmanyah Sans", system-ui, sans-serif;
@@ -38,120 +45,139 @@
 
         * { box-sizing:border-box; -webkit-tap-highlight-color:transparent }
         html, body { margin:0; overflow-x:hidden }
-        body { font-family:var(--font-display); color:var(--ink); background:var(--paper); -webkit-font-smoothing:antialiased }
-        a { color:var(--teal) }
+        body { font-family:var(--font-display); color:var(--ink); background:var(--mint); -webkit-font-smoothing:antialiased }
 
         @keyframes pop { 0% { transform:scale(.6) rotate(-8deg); opacity:0 } 60% { transform:scale(1.08) rotate(2deg) } 100% { transform:scale(1) rotate(0); opacity:1 } }
-        @keyframes rise { from { transform:translateY(16px); opacity:0 } to { transform:translateY(0); opacity:1 } }
+        @keyframes rise { from { transform:translateY(14px); opacity:0 } to { transform:translateY(0); opacity:1 } }
         @keyframes shake { 0%,100% { transform:translateX(0) } 20% { transform:translateX(-7px) } 40% { transform:translateX(7px) } 60% { transform:translateX(-5px) } 80% { transform:translateX(5px) } }
         @keyframes tickerscroll { from { transform:translateX(0) } to { transform:translateX(-50%) } }
         @keyframes wavedrift { from { transform:translateX(0) } to { transform:translateX(-1800px) } }
 
-        /* ── NAV ── */
-        .nav { position:relative; z-index:6; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 20px; background:var(--panel); border-bottom:3px solid var(--border) }
-        .brand { display:flex; align-items:center; gap:9px; font-weight:900; font-size:17px; letter-spacing:.02em; color:#fff; text-transform:uppercase }
-        /* Teal plate behind the mark — white-on-mint was washing it out */
-        .brand .mark { height:30px; width:30px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; background:var(--mint); border:2.5px solid var(--mint); border-radius:7px }
-        .brand .mark img { height:20px; display:block }
-        .brand .accent { color:var(--mint) }
-        .navvenue { font-weight:900; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--teal); background:var(--mint); border:2.5px solid var(--mint); border-radius:6px; padding:6px 11px; white-space:nowrap; box-shadow:3px 3px 0 0 var(--teal-900); overflow:hidden; text-overflow:ellipsis; max-width:46vw }
+        /* ── HEADER ──────────────────────────────────────────────
+           The mark is MINT artwork (#1EF2A0), so it may only ever sit on
+           teal/panel. On mint it is invisible — that is not a contrast
+           preference, the two colours are identical. */
+        .nav { position:relative; z-index:6; display:flex; align-items:center; justify-content:space-between; gap:12px;
+               padding:13px 22px; background:var(--panel); border-bottom:3px solid var(--teal-900) }
+        .brand { display:flex; align-items:center; gap:10px; min-width:0 }
+        .brand img { height:30px; width:auto; display:block; flex:0 0 auto }
+        .brand .word { font-weight:900; font-size:17px; letter-spacing:.02em; color:#fff; text-transform:uppercase; white-space:nowrap }
+        .brand .word i { color:var(--mint); font-style:normal }
+        .navvenue { font-weight:900; font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+                    color:var(--teal); background:var(--mint); border-radius:6px; padding:7px 12px;
+                    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:44vw }
 
-        /* ── TICKER ── */
-        .ticker { position:relative; z-index:6; background:var(--panel); border-bottom:3px solid var(--border); overflow:hidden; padding:9px 0 }
-        .tickertrack { display:flex; width:max-content; animation:tickerscroll 26s linear infinite }
-        .tickertrack span { display:flex; align-items:center; gap:14px; padding:0 18px; font-weight:900; font-size:12px; letter-spacing:.05em; text-transform:uppercase; color:var(--mint); white-space:nowrap }
-        .tickertrack span b { color:#fff }
+        .ticker { position:relative; z-index:6; background:var(--teal-900); overflow:hidden; padding:9px 0 }
+        .tickertrack { display:flex; width:max-content; animation:tickerscroll 30s linear infinite }
+        .tickertrack span { display:flex; align-items:center; gap:14px; padding:0 16px; font-weight:900; font-size:11.5px;
+                            letter-spacing:.06em; text-transform:uppercase; color:var(--mint); white-space:nowrap }
+        .tickertrack span b { color:#fff; opacity:.5 }
 
-        /* ══ STAGE ══ */
-        .stage { position:relative; background:var(--mint); overflow:hidden; padding:0 0 34px }
+        /* ── WAVE BANDS ──────────────────────────────────────────
+           Flush against their neighbours, full-bleed, NO mask. The band is
+           exactly as tall as the svg so no mint gap can open beneath it. */
+        .waveband { position:relative; z-index:3; overflow:hidden; line-height:0; height:104px; background:var(--mint) }
+        .waveband svg { display:block; height:104px; width:3600px; animation:wavedrift 34s linear infinite }
+        .waveband.b svg { animation-duration:42s; animation-direction:reverse }
 
-        /* wave bands now CARRY content: repeating text + the WADDI mark */
-        .waveband { position:relative; z-index:2; overflow:hidden; pointer-events:none; line-height:0;
-            -webkit-mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent);
-            mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent) }
-        .waveband svg { display:block; animation:wavedrift 30s linear infinite }
-        .waveband.b svg { animation-duration:38s; animation-direction:reverse }
+        /* ── STAGE ── */
+        .stage { position:relative; z-index:4; background:var(--mint); padding:30px 16px 34px;
+                 display:flex; flex-direction:column; align-items:center }
 
-        /* ── HEAD (compressed: the input has to win) ── */
-        .head { position:relative; z-index:4; text-align:center; padding:26px 16px 4px }
-        .head .h1 {
-            font-weight:900; font-size:clamp(26px, 6vw, 34px); line-height:.95; text-transform:uppercase;
-            color:var(--paper); margin:0; letter-spacing:-.015em;
-            -webkit-text-stroke:2.5px var(--teal); text-shadow:4px 4px 0 var(--teal-900); paint-order:stroke fill;
-        }
+        /* Heading sits ABOVE the card in normal flow — never behind it. */
+        .head { text-align:center; margin-bottom:22px; max-width:520px }
+        .head .h1 { font-weight:900; font-size:clamp(27px, 6.4vw, 36px); line-height:.94; text-transform:uppercase;
+                    color:var(--paper); margin:0; letter-spacing:-.015em;
+                    -webkit-text-stroke:2.5px var(--teal); text-shadow:4px 4px 0 var(--teal-900); paint-order:stroke fill }
         .head .h1 em { color:var(--mint); font-style:normal }
-        .head p { margin:10px auto 0; max-width:400px; font-size:12.5px; font-weight:900; color:var(--teal); line-height:1.4; text-transform:uppercase; letter-spacing:.04em; opacity:.8 }
+        .head p { margin:12px 0 0; font-size:12.5px; font-weight:900; color:var(--teal);
+                  line-height:1.4; text-transform:uppercase; letter-spacing:.05em; opacity:.85 }
 
         /* ── CARD ── */
-        .cardwrap { position:relative; z-index:5; display:flex; justify-content:center; padding:0 16px }
-        .redeemcard { width:100%; max-width:460px; padding:30px 24px 26px; text-align:center; position:relative;
-            background:var(--paper); border:4px solid var(--border); border-radius:14px; box-shadow:9px 9px 0 0 var(--teal-900) }
-        .cardtab { position:absolute; top:-18px; left:50%; transform:translateX(-50%) rotate(-2deg);
-            background:var(--panel); color:var(--mint); border:3px solid var(--border); border-radius:8px;
-            padding:7px 15px; font-weight:900; font-size:11px; letter-spacing:.14em; text-transform:uppercase;
-            white-space:nowrap; box-shadow:3px 3px 0 0 var(--teal-900) }
-        .rc-title { font-weight:900; font-size:clamp(24px, 6.5vw, 30px); line-height:.95; text-transform:uppercase; color:var(--ink); margin:12px 0 6px; letter-spacing:-.015em }
-        .rc-title u { text-decoration:none; color:var(--mint); -webkit-text-stroke:2.5px var(--teal); paint-order:stroke fill }
+        .redeemcard { width:100%; max-width:440px; padding:34px 24px 26px; text-align:center; position:relative;
+                      background:var(--paper); border:4px solid var(--teal-900); border-radius:14px;
+                      box-shadow:9px 9px 0 0 var(--teal-900) }
+        .cardtab { position:absolute; top:-17px; left:50%; transform:translateX(-50%) rotate(-2deg);
+                   background:var(--teal-900); color:var(--mint); border-radius:8px; padding:7px 15px;
+                   font-weight:900; font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; white-space:nowrap }
+        .rc-title { font-weight:900; font-size:clamp(24px, 6.5vw, 30px); line-height:.95; text-transform:uppercase;
+                    color:var(--ink); margin:8px 0 6px; letter-spacing:-.015em }
+        .rc-title u { text-decoration:none; color:var(--mint-deep) }
         .rc-sub { font-size:12.5px; font-weight:700; color:var(--ink-3); line-height:1.45; margin:0 0 20px }
 
-        .fieldlbl { text-align:start; font-weight:900; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3); margin-bottom:7px }
+        .fieldlbl { text-align:start; font-weight:900; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase;
+                    color:var(--ink-3); margin-bottom:7px }
         .codefield { width:100%; font-family:var(--font-display); font-weight:900;
-            font-size:clamp(22px, 6.5vw, 27px); letter-spacing:.16em; text-transform:uppercase;
-            color:var(--ink); background:var(--paper);
-            border:4px solid var(--fieldborder, var(--border)); border-radius:10px;
-            box-shadow:5px 5px 0 0 var(--fieldborder, var(--border));
-            padding:18px 12px; outline:none; text-align:center; direction:ltr }
-        .codefield:focus { background:#F2FFF9; box-shadow:5px 5px 0 0 var(--mint-deep) }
-        .codefield::placeholder { color:#C2CFCC; letter-spacing:.1em; font-weight:900; font-size:17px; text-transform:none }
+                     font-size:clamp(22px, 6.5vw, 27px); letter-spacing:.16em; text-transform:uppercase;
+                     color:var(--ink); background:var(--paper);
+                     border:4px solid var(--fieldborder, var(--teal-900)); border-radius:10px;
+                     box-shadow:4px 4px 0 0 var(--fieldborder, var(--teal-900));
+                     padding:18px 12px; outline:none; text-align:center; direction:ltr }
+        .codefield:focus { background:var(--mint-100); box-shadow:4px 4px 0 0 var(--mint-deep); border-color:var(--mint-deep) }
+        .codefield::placeholder { color:#BFCCC9; letter-spacing:.1em; font-weight:900; font-size:17px; text-transform:none }
         .codefield.err { animation:shake .4s }
-        .msgrow { display:flex; align-items:flex-start; justify-content:center; gap:8px; margin-top:12px; min-height:16px }
+        .msgrow { display:flex; align-items:flex-start; justify-content:center; gap:7px; margin-top:11px; min-height:16px }
         .msgrow.err { color:var(--red) }
-        .msgrow .txt { font-weight:900; font-size:12.5px; letter-spacing:.02em; line-height:1.4 }
-        .redeembtn { width:100%; margin-top:18px; border:4px solid var(--border); border-radius:12px;
-            box-shadow:6px 6px 0 0 var(--teal-900); background:var(--mint); color:var(--teal);
-            font-family:var(--font-display); font-weight:900; font-size:19px; letter-spacing:.05em;
-            text-transform:uppercase; padding:18px; cursor:pointer }
-        .redeembtn:disabled { background:var(--paper-3); color:var(--ink-3); box-shadow:none; cursor:not-allowed; border-color:#B9C6C3 }
-        .redeembtn:active:not(:disabled) { transform:translate(3px,3px); box-shadow:3px 3px 0 0 var(--teal-900) }
-        .redeembtn.busy { opacity:.75; pointer-events:none }
-        .fine { text-align:center; font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-3); margin-top:12px }
+        .msgrow .txt { font-weight:900; font-size:12.5px; line-height:1.4 }
+        .redeembtn { width:100%; margin-top:16px; border:4px solid var(--teal-900); border-radius:12px;
+                     box-shadow:5px 5px 0 0 var(--teal-900); background:var(--mint); color:var(--teal);
+                     font-family:var(--font-display); font-weight:900; font-size:18px; letter-spacing:.05em;
+                     text-transform:uppercase; padding:18px; cursor:pointer }
+        .redeembtn:disabled { background:var(--paper-3); color:var(--ink-3); box-shadow:none; cursor:not-allowed; border-color:#BFCCC9 }
+        .redeembtn:active:not(:disabled) { transform:translate(3px,3px); box-shadow:2px 2px 0 0 var(--teal-900) }
+        .redeembtn.busy { opacity:.7; pointer-events:none }
+        .fine { text-align:center; font-size:10.5px; font-weight:900; text-transform:uppercase; letter-spacing:.06em;
+                color:var(--ink-3); margin-top:11px }
 
         /* ── WON ── */
-        .wonbadge { width:92px; height:92px; margin:4px auto 0; border-radius:26px; border:4px solid var(--border); box-shadow:7px 7px 0 0 var(--mint); background:var(--teal); display:flex; align-items:center; justify-content:center; font-weight:900; font-size:44px; color:#fff; animation:pop .5s cubic-bezier(.2,1.3,.5,1) both }
-        .wontitle { font-weight:900; font-size:clamp(26px,7vw,34px); line-height:.95; text-transform:uppercase; color:var(--ink); margin-top:16px; animation:rise .4s .08s both; letter-spacing:-.015em }
-        .wonsub { font-size:12.5px; font-weight:700; color:var(--ink-3); margin-top:9px; animation:rise .4s .14s both; line-height:1.5 }
-        .prize2 { position:relative; padding:22px; margin-top:22px; text-align:center; background:var(--mint); border:4px solid var(--border); border-radius:14px; box-shadow:6px 6px 0 0 var(--teal-900); animation:rise .4s .2s both }
-        .prize2 .sticker { position:absolute; top:-16px; inset-inline-end:-12px; background:var(--red); color:#fff; font-weight:900; font-size:11px; letter-spacing:.05em; border:3px solid var(--border); border-radius:7px; padding:7px 11px; transform:rotate(7deg); white-space:nowrap; box-shadow:3px 3px 0 0 var(--teal-900) }
-        .prize2 .pname { font-weight:900; font-size:22px; color:var(--teal); line-height:1.1; text-transform:uppercase; letter-spacing:-.01em }
-        .prize2 .ploc { font-size:12px; font-weight:900; color:var(--teal); opacity:.85; margin-top:7px; text-transform:uppercase; letter-spacing:.05em }
-        .prize2 .pcode { margin-top:14px; font-weight:900; font-size:15px; letter-spacing:.14em; direction:ltr; color:var(--teal); background:var(--paper); border:3px solid var(--teal); border-radius:8px; padding:10px 16px; display:inline-block; box-shadow:3px 3px 0 0 var(--teal) }
-        .wonactions { margin-top:20px; animation:rise .4s .28s both }
-        .ghostbtn { display:block; width:100%; border:4px solid var(--border); border-radius:12px; background:transparent; color:var(--teal); font-family:var(--font-display); font-weight:900; font-size:15px; letter-spacing:.05em; text-transform:uppercase; padding:15px; cursor:pointer; text-decoration:none; text-align:center }
+        .wonbadge { width:88px; height:88px; margin:2px auto 0; border-radius:24px; border:4px solid var(--teal-900);
+                    box-shadow:6px 6px 0 0 var(--mint); background:var(--teal); display:flex; align-items:center;
+                    justify-content:center; font-weight:900; font-size:42px; color:#fff;
+                    animation:pop .5s cubic-bezier(.2,1.3,.5,1) both }
+        .wontitle { font-weight:900; font-size:clamp(25px,7vw,32px); line-height:.95; text-transform:uppercase;
+                    color:var(--ink); margin-top:15px; animation:rise .4s .08s both; letter-spacing:-.015em }
+        .wonsub { font-size:12.5px; font-weight:700; color:var(--ink-3); margin-top:8px; animation:rise .4s .14s both; line-height:1.5 }
+        .prize2 { position:relative; padding:20px; margin-top:20px; text-align:center; background:var(--mint);
+                  border:4px solid var(--teal-900); border-radius:14px; box-shadow:5px 5px 0 0 var(--teal-900);
+                  animation:rise .4s .2s both }
+        .prize2 .sticker { position:absolute; top:-15px; inset-inline-end:-10px; background:var(--red); color:#fff;
+                           font-weight:900; font-size:10.5px; letter-spacing:.05em; border:3px solid var(--teal-900);
+                           border-radius:7px; padding:6px 10px; transform:rotate(6deg); white-space:nowrap }
+        .prize2 .pname { font-weight:900; font-size:21px; color:var(--teal); line-height:1.1; text-transform:uppercase; letter-spacing:-.01em }
+        .prize2 .ploc { font-size:11.5px; font-weight:900; color:var(--teal); opacity:.85; margin-top:6px; text-transform:uppercase; letter-spacing:.05em }
+        .prize2 .pcode { margin-top:13px; font-weight:900; font-size:15px; letter-spacing:.14em; direction:ltr;
+                         color:var(--teal); background:var(--paper); border:3px solid var(--teal); border-radius:8px;
+                         padding:9px 15px; display:inline-block }
+        .wonactions { margin-top:18px; animation:rise .4s .28s both }
+        .ghostbtn { display:block; width:100%; border:4px solid var(--teal-900); border-radius:12px; background:transparent;
+                    color:var(--teal); font-family:var(--font-display); font-weight:900; font-size:14.5px;
+                    letter-spacing:.05em; text-transform:uppercase; padding:14px; cursor:pointer; text-decoration:none; text-align:center }
         .ghostbtn:active { transform:translate(2px,2px) }
 
-        /* ── STRIP ── */
-        .strip { position:relative; z-index:6; background:var(--panel); border-top:3px solid var(--border); display:flex; justify-content:center; padding:20px 16px }
-        .stripin { display:flex; max-width:900px; width:100% }
-        .chip { flex:1; text-align:center; padding:0 10px; font-weight:900; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:#fff; border-inline-end:2px solid var(--teal-100) }
+        /* ── FOOTER (strip + links share one panel, flush to wave B) ── */
+        .footer { position:relative; z-index:5; background:var(--panel) }
+        .strip { display:flex; justify-content:center; padding:22px 16px 18px }
+        .stripin { display:flex; max-width:760px; width:100% }
+        .chip { flex:1; text-align:center; padding:0 10px; font-weight:900; font-size:10px; letter-spacing:.07em;
+                text-transform:uppercase; color:#fff; opacity:.85; border-inline-end:2px solid rgba(255,255,255,.14) }
         .chip:last-child { border-inline-end:none }
-        .chip b { display:block; color:var(--mint); font-size:24px; margin-bottom:3px; line-height:1 }
-
-        /* ── FOOT ── */
-        .foot { position:relative; z-index:6; background:var(--panel); padding:20px 24px }
-        .footin { max-width:900px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap }
+        .chip b { display:block; color:var(--mint); font-size:24px; margin-bottom:3px; line-height:1; opacity:1 }
+        .footin { max-width:760px; margin:0 auto; padding:16px 22px 22px; display:flex; align-items:center;
+                  justify-content:space-between; gap:14px; flex-wrap:wrap; border-top:2px solid rgba(255,255,255,.12) }
         .footlinks { display:flex; gap:15px; flex-wrap:wrap }
         .footlinks a { color:#fff; opacity:.7; text-decoration:none; font-size:12px; font-weight:700 }
         .footlinks a:hover { opacity:1; color:var(--mint) }
-        .copy { font-size:11px; font-weight:700; color:#fff; opacity:.45 }
+        .copy { font-size:11px; font-weight:700; color:#fff; opacity:.42 }
 
-        @media (max-width:520px) {
-            .nav { padding:10px 14px }
-            .brand span.word { display:none }
-            .stage { padding-bottom:26px }
-            .head { padding:20px 14px 4px }
+        @media (max-width:560px) {
+            .nav { padding:11px 15px }
+            .brand .word { font-size:15px }
+            .waveband, .waveband svg { height:74px }
+            .stage { padding:24px 14px 28px }
             .chip { font-size:9px; padding:0 6px }
             .chip b { font-size:20px }
-            .redeemcard { padding:26px 18px 22px }
+            .redeemcard { padding:30px 18px 22px }
+            .footin { justify-content:center; text-align:center }
         }
         @media (prefers-reduced-motion:reduce) {
             .waveband svg, .tickertrack { animation:none !important }
@@ -162,8 +188,8 @@
 
 <div class="nav">
     <div class="brand">
-        <span class="mark"><img src="{{ $logoUrl }}" alt="WADDI"></span>
-        <span class="word">WADDI <span class="accent">SPOTS</span></span>
+        <img src="{{ $logoUrl }}" alt="WADDI">
+        <span class="word">WADDI <i>SPOTS</i></span>
     </div>
     <div class="navvenue">{{ $venue->title }}</div>
 </div>
@@ -179,124 +205,104 @@
     </div>
 </div>
 
+{{-- ── wave A: closes the header, opens the stage ── --}}
+<div class="waveband a">
+    <svg viewBox="0 0 3600 104" preserveAspectRatio="none" aria-hidden="true" style="width:3600px">
+        <defs><path id="wavea" d="{{ $wavePath }}" fill="none"></path></defs>
+        <path d="{{ $wavePath }}" fill="none" stroke="#0C3532" stroke-width="54" stroke-linecap="butt"></path>
+        <text font-family="Thmanyah Sans, sans-serif" font-weight="900" font-size="15" letter-spacing="3" fill="#1EF2A0">
+            <textPath href="#wavea" startOffset="0">{{ str_repeat($phrase, 10) }}</textPath>
+        </text>
+    </svg>
+</div>
+
 <div class="stage">
-
-    @php
-        // One wave geometry, reused by both bands.
-        $wavePath = 'M0,80 Q225,10 450,80 Q675,150 900,80 Q1125,10 1350,80 Q1575,150 1800,80 Q2025,10 2250,80 Q2475,150 2700,80 Q2925,10 3150,80 Q3375,150 3600,80';
-        // Repeating marquee that rides the curve — the mark is drawn as a
-        // glyph-sized image so it reads as brand, not as a word.
-        $phrase = strtoupper(translate('messages.wave_marquee')) . '  •  ' . strtoupper(translate('messages.wave_marquee_2')) . '  •  ';
-    @endphp
-
-    {{-- ── wave band A: the marquee, above the card ── --}}
-    <div class="waveband a">
-        <svg width="3600" height="150" viewBox="0 0 3600 150" aria-hidden="true">
-            <defs><path id="wavea" d="{{ $wavePath }}" fill="none"></path></defs>
-            <path d="{{ $wavePath }}" fill="none" stroke="#FFFFFF" stroke-width="58" stroke-linecap="round"></path>
-            <path d="{{ $wavePath }}" fill="none" stroke="#134E4A" stroke-width="46" stroke-linecap="round"></path>
-            <text font-family="Thmanyah Sans, sans-serif" font-weight="900" font-size="16" letter-spacing="2.5" fill="#1EF2A0">
-                <textPath href="#wavea" startOffset="0">{{ str_repeat($phrase, 8) }}</textPath>
-            </text>
-            {{-- WADDI mark riding the curve between phrases --}}
-            @for ($i = 0; $i < 9; $i++)
-                <image href="{{ $logoUrl }}" width="26" height="26" x="{{ 150 + $i * 400 }}" y="{{ $i % 2 ? 96 : 40 }}" opacity=".95"></image>
-            @endfor
-        </svg>
-    </div>
-
-    {{-- ── head: compressed so the input wins ── --}}
     <div class="head">
         <h1 class="h1">{!! translate('messages.crack_the_code_html') !!}</h1>
         <p>{{ translate('messages.redeem_head_sub_staff') }}</p>
     </div>
 
-    {{-- ── card ── --}}
-    <div class="cardwrap">
-        <div class="redeemcard">
-            @if ($ok)
-                <div class="cardtab">✓ {{ translate('messages.prize_redeemed') }}</div>
-                <div class="wonbadge">✓</div>
-                <div class="wontitle">{{ translate('messages.prize_redeemed') }}</div>
-                <div class="wonsub">{{ $message }}</div>
+    <div class="redeemcard">
+        @if ($ok)
+            <div class="cardtab">✓ {{ translate('messages.prize_redeemed') }}</div>
+            <div class="wonbadge">✓</div>
+            <div class="wontitle">{{ translate('messages.prize_redeemed') }}</div>
+            <div class="wonsub">{{ $message }}</div>
 
-                <div class="prize2">
-                    @if (!empty($prize['expires_at']))
-                        <span class="sticker">⏳ {{ translate('messages.expires') }} {{ $prize['expires_at'] }}</span>
+            <div class="prize2">
+                @if (!empty($prize['expires_at']))
+                    <span class="sticker">⏳ {{ translate('messages.expires') }} {{ $prize['expires_at'] }}</span>
+                @endif
+                <div class="pname">
+                    @if ($capText)
+                        {{ translate('messages.give_one_free_item_up_to') }} {{ $capText }} {{ $currency }}
+                    @else
+                        {{ translate('messages.prize_free_item') }}
                     @endif
-                    <div class="pname">
-                        @if ($capText)
-                            {{ translate('messages.give_one_free_item_up_to') }} {{ $capText }} {{ $currency }}
-                        @else
-                            {{ translate('messages.prize_free_item') }}
-                        @endif
-                    </div>
-                    <div class="ploc">📍 {{ $venue->title }}</div>
-                    @if (!empty($prize['code']))
-                        <div class="pcode">{{ $prize['code'] }}</div>
+                </div>
+                <div class="ploc">📍 {{ $venue->title }}</div>
+                @if (!empty($prize['code']))
+                    <div class="pcode">{{ $prize['code'] }}</div>
+                @endif
+            </div>
+
+            <div class="wonactions">
+                <a class="ghostbtn" href="{{ route('spots.redeem', $token) }}{{ request('lang') ? '?lang=' . request('lang') : '' }}">
+                    {{ translate('messages.redeem_another_code') }}
+                </a>
+            </div>
+        @else
+            <div class="cardtab">{{ translate('messages.enter_prize_code') }}</div>
+            <h2 class="rc-title">{!! translate('messages.cash_it_in_html') !!}</h2>
+            <p class="rc-sub">{{ translate('messages.redeem_card_sub') }}</p>
+
+            <form method="POST" id="redeemform"
+                  action="{{ route('spots.redeem.submit', $token) }}{{ request('lang') ? '?lang=' . request('lang') : '' }}"
+                  autocomplete="off">
+                @csrf
+                <div class="fieldlbl">{{ translate('messages.code') }}</div>
+                <div style="{{ $result ? '--fieldborder:var(--red)' : '' }}">
+                    <input id="code" class="codefield {{ $result ? 'err' : '' }}" name="code"
+                           value="{{ $codeValue }}" placeholder="XXXX-XXXX" maxlength="9"
+                           inputmode="text" autocapitalize="characters" autocorrect="off"
+                           spellcheck="false" required autofocus>
+                </div>
+
+                <div class="msgrow {{ $result ? 'err' : '' }}">
+                    @if ($result)
+                        <span class="txt">⚠ {{ $message }}</span>
                     @endif
                 </div>
 
-                <div class="wonactions">
-                    <a class="ghostbtn" href="{{ route('spots.redeem', $token) }}{{ request('lang') ? '?lang=' . request('lang') : '' }}">
-                        {{ translate('messages.redeem_another_code') }}
-                    </a>
-                </div>
-            @else
-                <div class="cardtab">{{ translate('messages.enter_prize_code') }}</div>
-                <h2 class="rc-title">{!! translate('messages.cash_it_in_html') !!}</h2>
-                <p class="rc-sub">{{ translate('messages.redeem_card_sub') }}</p>
+                <button type="submit" class="redeembtn" id="submitbtn">
+                    {{ translate('messages.redeem_prize') }}
+                </button>
+            </form>
 
-                <form method="POST" id="redeemform"
-                      action="{{ route('spots.redeem.submit', $token) }}{{ request('lang') ? '?lang=' . request('lang') : '' }}"
-                      autocomplete="off">
-                    @csrf
-                    <div class="fieldlbl">{{ translate('messages.code') }}</div>
-                    <div style="{{ $result ? '--fieldborder:var(--red)' : '' }}">
-                        <input id="code" class="codefield {{ $result ? 'err' : '' }}" name="code"
-                               value="{{ $codeValue }}" placeholder="XXXX-XXXX" maxlength="9"
-                               inputmode="text" autocapitalize="characters" autocorrect="off"
-                               spellcheck="false" required autofocus>
-                    </div>
-
-                    <div class="msgrow {{ $result ? 'err' : '' }}">
-                        @if ($result)
-                            <span class="txt">⚠ {{ $message }}</span>
-                        @endif
-                    </div>
-
-                    <button type="submit" class="redeembtn" id="submitbtn">
-                        {{ translate('messages.redeem_prize') }}
-                    </button>
-                </form>
-
-                <div class="fine">{{ translate('messages.one_item_per_code') }}</div>
-            @endif
-        </div>
+            <div class="fine">{{ translate('messages.one_item_per_code') }}</div>
+        @endif
     </div>
 </div>
 
-{{-- ── wave band B: mirrors A below the card, closing the frame ── --}}
-<div class="waveband b" style="background:var(--mint)">
-    <svg width="3600" height="150" viewBox="0 0 3600 150" aria-hidden="true">
+{{-- ── wave B: closes the stage, flush against the footer ── --}}
+<div class="waveband b" style="background:var(--panel)">
+    <svg viewBox="0 0 3600 104" preserveAspectRatio="none" aria-hidden="true" style="width:3600px">
         <defs><path id="waveb" d="{{ $wavePath }}" fill="none"></path></defs>
-        <path d="{{ $wavePath }}" fill="none" stroke="#0C3532" stroke-width="52" stroke-linecap="round"></path>
-        <path d="{{ $wavePath }}" fill="none" stroke="#1EF2A0" stroke-width="40" stroke-linecap="round"></path>
-        <text font-family="Thmanyah Sans, sans-serif" font-weight="900" font-size="15" letter-spacing="2.5" fill="#0C3532">
-            <textPath href="#waveb" startOffset="0">{{ str_repeat($phrase, 8) }}</textPath>
+        <path d="{{ $wavePath }}" fill="none" stroke="#1EF2A0" stroke-width="54" stroke-linecap="butt"></path>
+        <text font-family="Thmanyah Sans, sans-serif" font-weight="900" font-size="15" letter-spacing="3" fill="#0C3532">
+            <textPath href="#waveb" startOffset="0">{{ str_repeat($phrase, 10) }}</textPath>
         </text>
     </svg>
 </div>
 
-<div class="strip">
-    <div class="stripin">
-        <div class="chip"><b>{{ $stats['outstanding'] }}</b>{{ translate('messages.outstanding') }}</div>
-        <div class="chip"><b>{{ $stats['redeemed_total'] }}</b>{{ translate('messages.redeemed') }}</div>
-        <div class="chip"><b>{{ $validity }}</b>{{ translate('messages.days_validity') }}</div>
+<div class="footer">
+    <div class="strip">
+        <div class="stripin">
+            <div class="chip"><b>{{ $stats['outstanding'] }}</b>{{ translate('messages.outstanding') }}</div>
+            <div class="chip"><b>{{ $stats['redeemed_total'] }}</b>{{ translate('messages.redeemed') }}</div>
+            <div class="chip"><b>{{ $validity }}</b>{{ translate('messages.days_validity') }}</div>
+        </div>
     </div>
-</div>
-
-<div class="foot">
     <div class="footin">
         <div class="footlinks">
             <a href="{{ route('about-us') }}">{{ translate('messages.about_us') }}</a>
@@ -322,17 +328,14 @@
             input.value = raw.length > 4 ? raw.slice(0, 4) + '-' + raw.slice(4) : raw;
             if (btn) btn.disabled = raw.length === 0;
         }
-
         input.addEventListener('input', sync);
         sync();
 
-        // A scanned QR lands here prefilled — caret to the end, not selected,
-        // so a stray tap can't wipe it.
+        // A scanned QR lands here prefilled — caret to the end, not selected.
         var len = input.value.length;
         input.setSelectionRange(len, len);
 
-        // Submitting is a network round trip on cafe wifi. Without this the
-        // button looks inert and staff double-submit.
+        // Cafe wifi is slow; without feedback staff double-submit.
         if (form && btn) {
             form.addEventListener('submit', function () {
                 btn.classList.add('busy');
