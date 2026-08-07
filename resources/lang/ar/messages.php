@@ -5598,4 +5598,8 @@
   'days_validity' => 'أيام الصلاحية',
   'redeemed' => 'مستخدمة',
   'cash_it_in_html' => 'اصرف <u>الجائزة</u>',
+  'redeem_head_sub_staff' => 'أدخل الكود الذي يمليه العميل.',
+  'wave_marquee' => 'استخدم الكود',
+  'wave_marquee_2' => 'استلم الجائزة',
+  'one_item_per_code' => 'صنف واحد لكل كود',
 );

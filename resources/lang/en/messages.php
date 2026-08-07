@@ -8274,4 +8274,8 @@ Smartly or Earn. ',
   'days_validity' => 'Days validity',
   'redeemed' => 'Redeemed',
   'cash_it_in_html' => 'Cash it <u>in</u>',
+  'redeem_head_sub_staff' => 'Enter the code the customer reads out.',
+  'wave_marquee' => 'REDEEM YOUR CODE',
+  'wave_marquee_2' => 'CLAIM YOUR PRIZE',
+  'one_item_per_code' => 'One item per code',
 );
