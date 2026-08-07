@@ -102,6 +102,23 @@ class SimulateWeekCommand extends Command
             return self::FAILURE;
         }
 
+        // The draw is genuinely random, so a real tester usually isn't picked.
+        // The point of --user is to see the win in the app, so hand them a
+        // slot after the fact rather than making them re-roll the command.
+        $forcedWin = false;
+        if ($realUserId && !PlacePrize::where('period', $period)->where('user_id', $realUserId)->exists()) {
+            $donor = PlacePrize::where('period', $period)
+                ->whereNotIn('user_id', [$realUserId])
+                ->orderByDesc('id')
+                ->first();
+
+            if ($donor) {
+                $donor->update(['user_id' => $realUserId]);
+                app(\Modules\PlacesToVisit\Services\LeaderboardService::class)->clearRecentWinnersCache();
+                $forcedWin = true;
+            }
+        }
+
         $prizes = PlacePrize::with('user')->where('period', $period)->get();
 
         $this->newLine();
@@ -125,9 +142,14 @@ class SimulateWeekCommand extends Command
 
         if ($realUserId) {
             $mine = $prizes->firstWhere('user_id', $realUserId);
-            $this->line($mine
-                ? "  User #{$realUserId} won: {$mine->code}  (open My Prizes in the app)"
-                : "  User #{$realUserId} was NOT drawn — they may be inside the 30-day cooldown.");
+            if ($mine) {
+                $this->line("  User #{$realUserId} won: {$mine->code}   ← open My Prizes in the app");
+                if ($forcedWin) {
+                    $this->comment('  (slot reassigned to them — the real draw is random and did not pick them)');
+                }
+            } else {
+                $this->warn("  User #{$realUserId} has no prize — they are inside the 30-day repeat-winner cooldown.");
+            }
             $this->newLine();
         }
 
