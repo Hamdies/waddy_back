@@ -74,12 +74,12 @@
                             letter-spacing:.06em; text-transform:uppercase; color:var(--mint); white-space:nowrap }
         .tickertrack span b { color:#fff; opacity:.5 }
 
-        /* ── WAVE BANDS ──────────────────────────────────────────
-           Flush against their neighbours, full-bleed, NO mask. The band is
-           exactly as tall as the svg so no mint gap can open beneath it. */
-        .waveband { position:relative; z-index:3; overflow:hidden; line-height:0; height:150px; background:var(--mint) }
-        .waveband svg { display:block; height:150px; width:3600px; animation:wavedrift 34s linear infinite }
-        .waveband.b svg { animation-duration:42s; animation-direction:reverse }
+          /* ── WAVE BANDS ──────────────────────────────────────────
+              Flush against their neighbours, full-bleed, NO mask. The band is
+              exactly as tall as the svg so no mint gap can open beneath it. */
+          .waveband { position:relative; z-index:3; overflow:hidden; line-height:0; height:150px; background:var(--mint) }
+          .waveband svg { display:block; height:150px; width:3600px; animation:wavedrift 34s linear infinite; will-change:transform }
+          .waveband.b svg { animation-duration:42s; animation-direction:reverse }
 
         /* ── STAGE ── */
         .stage { position:relative; z-index:4; background:var(--mint); padding:30px 16px 34px;
@@ -96,11 +96,14 @@
 
         /* ── CARD ── */
         .redeemcard { width:100%; max-width:440px; padding:34px 24px 26px; text-align:center; position:relative;
-                      background:var(--paper); border:4px solid var(--teal-900); border-radius:14px;
-                      box-shadow:9px 9px 0 0 var(--teal-900) }
-        .cardtab { position:absolute; top:-17px; left:50%; transform:translateX(-50%) rotate(-2deg);
-                   background:var(--teal-900); color:var(--mint); border-radius:8px; padding:7px 15px;
-                   font-weight:900; font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; white-space:nowrap }
+                  background:var(--paper); border:4px solid var(--teal-900); border-radius:14px;
+                  box-shadow:9px 9px 0 0 var(--teal-900) }
+        .cardtab { position:absolute; top:-22px; left:50%; transform:translateX(-50%);
+               background:var(--teal-900); color:var(--mint); border-radius:10px; padding:8px 14px;
+               font-weight:900; font-size:11px; letter-spacing:.12em; text-transform:uppercase; white-space:nowrap }
+        .cardtab.brand { display:flex; align-items:center; gap:10px; padding:10px 18px; border-radius:12px }
+        .cardtab.brand img { height:30px; width:auto; display:block }
+        .cardtab.brand .brand-word { font-weight:900; font-size:15px; letter-spacing:.04em; color:var(--mint) }
         .rc-title { font-weight:900; font-size:clamp(24px, 6.5vw, 30px); line-height:.95; text-transform:uppercase;
                     color:var(--ink); margin:8px 0 6px; letter-spacing:-.015em }
         .rc-title u { text-decoration:none; color:var(--mint-deep) }
@@ -209,9 +212,15 @@
 {{-- ── wave A: closes the header, opens the stage ── --}}
 <div class="waveband a">
     <svg viewBox="0 0 3600 200" preserveAspectRatio="none" aria-hidden="true" style="width:3600px">
-        <defs><path id="wavea" d="{{ $wavePath }}" fill="none"></path></defs>
-        <path d="{{ $wavePath }}" fill="none" stroke="#0C3532" stroke-width="54" stroke-linecap="butt"></path>
-        <text font-family="Thmanyah Sans, sans-serif" font-weight="900" font-size="15" letter-spacing="3" fill="#1EF2A0">
+        <defs>
+            <path id="wavea" d="{{ $wavePath }}" fill="none"></path>
+            <filter id="ribbondrop" x="-50%" y="-50%" width="200%" height="200%">
+                <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#0C3532" flood-opacity="0.18"/>
+            </filter>
+        </defs>
+        <path d="{{ $wavePath }}" fill="none" stroke="#ffffff" stroke-width="120" stroke-linecap="round" stroke-linejoin="round" filter="url(#ribbondrop)"></path>
+        <path d="{{ $wavePath }}" fill="none" stroke="#0C3532" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity="0.12"></path>
+        <text font-family="Thmanyah Sans, sans-serif" font-weight="900" font-size="18" letter-spacing="3" fill="#0C3532">
             <textPath href="#wavea" startOffset="0">{{ str_repeat($phrase, 10) }}</textPath>
         </text>
     </svg>
@@ -253,7 +262,10 @@
                 </a>
             </div>
         @else
-            <div class="cardtab">{{ translate('messages.enter_prize_code') }}</div>
+            <div class="cardtab brand">
+                <img src="{{ $logoUrl }}" alt="WADDI">
+                <span class="brand-word">WADDI <i>SPOTS</i></span>
+            </div>
             <h2 class="rc-title">{!! translate('messages.cash_it_in_html') !!}</h2>
             <p class="rc-sub">{{ translate('messages.redeem_card_sub') }}</p>
 
@@ -288,9 +300,15 @@
 {{-- ── wave B: closes the stage, flush against the footer ── --}}
 <div class="waveband b" style="background:var(--panel)">
     <svg viewBox="0 0 3600 200" preserveAspectRatio="none" aria-hidden="true" style="width:3600px">
-        <defs><path id="waveb" d="{{ $wavePath }}" fill="none"></path></defs>
-        <path d="{{ $wavePath }}" fill="none" stroke="#1EF2A0" stroke-width="54" stroke-linecap="butt"></path>
-        <text font-family="Thmanyah Sans, sans-serif" font-weight="900" font-size="15" letter-spacing="3" fill="#0C3532">
+        <defs>
+            <path id="waveb" d="{{ $wavePath }}" fill="none"></path>
+            <filter id="ribbondropb" x="-50%" y="-50%" width="200%" height="200%">
+                <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.18"/>
+            </filter>
+        </defs>
+        <path d="{{ $wavePath }}" fill="none" stroke="#ffffff" stroke-width="120" stroke-linecap="round" stroke-linejoin="round" filter="url(#ribbondropb)"></path>
+        <path d="{{ $wavePath }}" fill="none" stroke="#1EF2A0" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity="0.16"></path>
+        <text font-family="Thmanyah Sans, sans-serif" font-weight="900" font-size="18" letter-spacing="3" fill="#1EF2A0">
             <textPath href="#waveb" startOffset="0">{{ str_repeat($phrase, 10) }}</textPath>
         </text>
     </svg>
