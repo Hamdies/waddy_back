@@ -296,6 +296,10 @@ class PrizeDrawService
             'value_cap' => $prize->value_cap,
             'currency' => $prize->currency,
             'expires_at' => $prize->expires_at?->toIso8601String(),
+            // The draw date. The details screen shows it, and deriving it from
+            // expires_at minus validity_days would silently drift the moment
+            // that config changes.
+            'won_at' => $prize->created_at?->toIso8601String(),
             'seconds_remaining' => $prize->secondsRemaining(),
             'redeemed_at' => $prize->redeemed_at?->toIso8601String(),
             'place' => $place ? [

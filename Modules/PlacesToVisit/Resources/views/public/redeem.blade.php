@@ -15,7 +15,7 @@
 
     // The wave marquee. One geometry, drawn edge-to-edge with no mask —
     // masking is what produced the white rectangles at the viewport edges.
-    $wavePath = 'M0,75 Q300,15 600,75 Q900,135 1200,75 Q1500,15 1800,75 Q2100,135 2400,75 Q2700,15 3000,75 Q3300,135 3600,75';
+    $wavePath = 'M0,100 Q300,20 600,100 Q900,180 1200,100 Q1500,20 1800,100 Q2100,180 2400,100 Q2700,20 3000,100 Q3300,180 3600,100';
     $phrase   = strtoupper(translate('messages.wave_marquee')) . '  •  '
               . strtoupper(translate('messages.wave_marquee_2')) . '  •  ';
 @endphp
@@ -58,10 +58,11 @@
            teal/panel. On mint it is invisible — that is not a contrast
            preference, the two colours are identical. */
         .nav { position:relative; z-index:6; display:flex; align-items:center; justify-content:space-between; gap:12px;
-               padding:13px 22px; background:var(--panel); border-bottom:3px solid var(--teal-900) }
-        .brand { display:flex; align-items:center; gap:10px; min-width:0 }
-        .brand img { height:30px; width:auto; display:block; flex:0 0 auto }
-        .brand .word { font-weight:900; font-size:17px; letter-spacing:.02em; color:#fff; text-transform:uppercase; white-space:nowrap }
+               padding:16px 24px; background:var(--panel); border-bottom:3px solid var(--teal-900) }
+        .brand { display:flex; align-items:center; gap:12px; min-width:0 }
+        .brand img { height:40px; width:auto; display:block; flex:0 0 auto }
+        .brand .word { font-weight:900; font-size:20px; letter-spacing:.04em; color:#fff; text-transform:uppercase; white-space:nowrap }
+        .brand .word .name { color:#fff }
         .brand .word i { color:var(--mint); font-style:normal }
         .navvenue { font-weight:900; font-size:11px; letter-spacing:.1em; text-transform:uppercase;
                     color:var(--teal); background:var(--mint); border-radius:6px; padding:7px 12px;
@@ -76,8 +77,8 @@
         /* ── WAVE BANDS ──────────────────────────────────────────
            Flush against their neighbours, full-bleed, NO mask. The band is
            exactly as tall as the svg so no mint gap can open beneath it. */
-        .waveband { position:relative; z-index:3; overflow:hidden; line-height:0; height:104px; background:var(--mint) }
-        .waveband svg { display:block; height:104px; width:3600px; animation:wavedrift 34s linear infinite }
+        .waveband { position:relative; z-index:3; overflow:hidden; line-height:0; height:150px; background:var(--mint) }
+        .waveband svg { display:block; height:150px; width:3600px; animation:wavedrift 34s linear infinite }
         .waveband.b svg { animation-duration:42s; animation-direction:reverse }
 
         /* ── STAGE ── */
@@ -86,11 +87,11 @@
 
         /* Heading sits ABOVE the card in normal flow — never behind it. */
         .head { text-align:center; margin-bottom:22px; max-width:520px }
-        .head .h1 { font-weight:900; font-size:clamp(27px, 6.4vw, 36px); line-height:.94; text-transform:uppercase;
+        .head .h1 { font-weight:900; font-size:clamp(34px, 8vw, 58px); line-height:.92; text-transform:uppercase;
                     color:var(--paper); margin:0; letter-spacing:-.015em;
                     -webkit-text-stroke:2.5px var(--teal); text-shadow:4px 4px 0 var(--teal-900); paint-order:stroke fill }
         .head .h1 em { color:var(--mint); font-style:normal }
-        .head p { margin:12px 0 0; font-size:12.5px; font-weight:900; color:var(--teal);
+        .head p { margin:14px 0 0; font-size:14px; font-weight:900; color:var(--teal);
                   line-height:1.4; text-transform:uppercase; letter-spacing:.05em; opacity:.85 }
 
         /* ── CARD ── */
@@ -189,7 +190,7 @@
 <div class="nav">
     <div class="brand">
         <img src="{{ $logoUrl }}" alt="WADDI">
-        <span class="word">WADDI <i>SPOTS</i></span>
+        <span class="word"><span class="name">WADDI</span> <i>SPOTS</i></span>
     </div>
     <div class="navvenue">{{ $venue->title }}</div>
 </div>
@@ -207,7 +208,7 @@
 
 {{-- ── wave A: closes the header, opens the stage ── --}}
 <div class="waveband a">
-    <svg viewBox="0 0 3600 104" preserveAspectRatio="none" aria-hidden="true" style="width:3600px">
+    <svg viewBox="0 0 3600 200" preserveAspectRatio="none" aria-hidden="true" style="width:3600px">
         <defs><path id="wavea" d="{{ $wavePath }}" fill="none"></path></defs>
         <path d="{{ $wavePath }}" fill="none" stroke="#0C3532" stroke-width="54" stroke-linecap="butt"></path>
         <text font-family="Thmanyah Sans, sans-serif" font-weight="900" font-size="15" letter-spacing="3" fill="#1EF2A0">
@@ -286,7 +287,7 @@
 
 {{-- ── wave B: closes the stage, flush against the footer ── --}}
 <div class="waveband b" style="background:var(--panel)">
-    <svg viewBox="0 0 3600 104" preserveAspectRatio="none" aria-hidden="true" style="width:3600px">
+    <svg viewBox="0 0 3600 200" preserveAspectRatio="none" aria-hidden="true" style="width:3600px">
         <defs><path id="waveb" d="{{ $wavePath }}" fill="none"></path></defs>
         <path d="{{ $wavePath }}" fill="none" stroke="#1EF2A0" stroke-width="54" stroke-linecap="butt"></path>
         <text font-family="Thmanyah Sans, sans-serif" font-weight="900" font-size="15" letter-spacing="3" fill="#0C3532">
