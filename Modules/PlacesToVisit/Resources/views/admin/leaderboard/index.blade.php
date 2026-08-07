@@ -78,7 +78,7 @@
                 <div class="text-center py-5">
                     <i class="tio-sad text-muted" style="font-size: 3rem;"></i>
                     <p class="text-muted mt-2">{{ translate('messages.no_places_qualified_yet') }}</p>
-                    <small>{{ translate('messages.min_votes_required', ['count' => config('default_min_votes', 10)]) }}</small>
+                    <small>{{ translate('messages.min_votes_required', ['count' => config('placestovisit.min_votes_for_leaderboard', 1)]) }}</small>
                 </div>
             @else
                 <div class="table-responsive">
@@ -105,23 +105,30 @@
                                         <span class="badge badge-soft-dark">#{{ $index + 1 }}</span>
                                     @endif
                                 </td>
+                                {{-- LeaderboardService::getTopPlaces() returns a flat array
+                                     (id / title / image / category / votes_count / avg_rating),
+                                     not a nested Place model. --}}
                                 <td>
                                     <div class="d-flex align-items-center gap-2">
-                                        @if($entry['place']->image)
-                                            <img src="{{ asset('storage/app/public/places/' . $entry['place']->image) }}" 
+                                        @if(!empty($entry['image']))
+                                            {{-- Already a full URL — Place::getImageAttribute() wraps it in asset() --}}
+                                            <img src="{{ $entry['image'] }}"
                                                  class="rounded" style="width:40px;height:40px;object-fit:cover">
                                         @else
-                                            <div class="rounded bg-soft-secondary d-flex align-items-center justify-content-center" 
+                                            <div class="rounded bg-soft-secondary d-flex align-items-center justify-content-center"
                                                  style="width:40px;height:40px;">
                                                 <i class="tio-place"></i>
                                             </div>
                                         @endif
                                         <div>
-                                            <a href="{{ route('admin.places.edit', $entry['place']->id) }}" class="text-body">
-                                                {{ $entry['place']->localized_name }}
+                                            <a href="{{ route('admin.places.edit', $entry['id']) }}" class="text-body">
+                                                {{ $entry['title'] }}
                                             </a>
-                                            @if($entry['place']->category)
-                                                <br><small class="text-muted">{{ $entry['place']->category->localized_name }}</small>
+                                            @if(!empty($entry['category']))
+                                                <br><small class="text-muted">{{ $entry['category'] }}</small>
+                                            @endif
+                                            @if(!empty($entry['zone']))
+                                                <br><small class="text-muted">{{ $entry['zone'] }}</small>
                                             @endif
                                         </div>
                                     </div>
@@ -130,9 +137,10 @@
                                     <span class="badge badge-soft-primary">{{ $entry['votes_count'] }}</span>
                                 </td>
                                 <td class="text-center">
-                                    @if($entry['rating'])
+                                    {{-- avg_rating is rounded to 0 (not null) when nobody rated --}}
+                                    @if(!empty($entry['avg_rating']))
                                         <span class="badge badge-soft-success">
-                                            ⭐ {{ number_format($entry['rating'], 1) }}
+                                            ⭐ {{ number_format($entry['avg_rating'], 1) }}
                                         </span>
                                     @else
                                         <span class="text-muted">—</span>

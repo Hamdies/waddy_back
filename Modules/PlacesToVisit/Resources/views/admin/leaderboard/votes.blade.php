@@ -41,7 +41,7 @@
                         <option value="">{{ translate('messages.all_places') }}</option>
                         @foreach($places as $place)
                             <option value="{{ $place->id }}" {{ request('place_id') == $place->id ? 'selected' : '' }}>
-                                {{ $place->localized_name }}
+                                {{ $place->title }}
                             </option>
                         @endforeach
                     </select>
@@ -77,7 +77,7 @@
                             <td>{{ $votes->firstItem() + $key }}</td>
                             <td>
                                 <a href="{{ route('admin.places.edit', $vote->place_id) }}">
-                                    {{ $vote->place->localized_name ?? '-' }}
+                                    {{ $vote->place->title ?? '-' }}
                                 </a>
                             </td>
                             <td>
