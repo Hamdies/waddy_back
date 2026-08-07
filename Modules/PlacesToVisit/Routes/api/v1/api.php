@@ -23,6 +23,8 @@ Route::group(['prefix' => 'places'], function () {
     // Weekly winners (hall of fame + latest champion)
     Route::get('winners', 'WinnerController@index');
     Route::get('winners/latest', 'WinnerController@latest');
+    // Recent voter-prize winners — social proof strip, no codes exposed
+    Route::get('winners/recent', 'WinnerController@recent');
 
     // KPI events from the app (guests count too; auth attaches user when present)
     Route::post('events', 'PlaceEventController@store')->middleware('throttle:60,1');
@@ -41,6 +43,11 @@ Route::group(['prefix' => 'places'], function () {
     // ==================== Protected Routes ====================
     
     Route::group(['middleware' => ['auth:api']], function () {
+        // Voter prizes ("My Prizes"). Declared before the {place} patterns
+        // below so `prizes/my` can't be swallowed as a place slug.
+        Route::get('prizes/my', 'PrizeController@index');
+        Route::get('prizes/{prize}', 'PrizeController@show');
+
         // Voting & Reviews (rate-limited to deter abuse)
         Route::post('{place}/vote', 'VoteController@vote')->middleware('throttle:30,1');
         Route::delete('{place}/vote', 'VoteController@removeVote')->middleware('throttle:30,1');

@@ -141,6 +141,35 @@
         </div>
     </div>
 
+    <!-- Prize redemption link — the venue's only credential -->
+    <div class="card mb-3">
+        <div class="card-header">
+            <h5 class="card-title mb-0">
+                <i class="tio-gift"></i> {{ translate('messages.staff_redemption_link') }}
+            </h5>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-2">{{ translate('messages.staff_redemption_link_hint') }}</p>
+            <div class="input-group">
+                <input type="text" id="redeem-link" class="form-control" readonly
+                       value="{{ $place->redeem_url }}">
+                <div class="input-group-append">
+                    <button type="button" class="btn btn-primary" onclick="copyRedeemLink()">
+                        {{ translate('messages.copy') }}
+                    </button>
+                    <a href="{{ $place->redeem_url }}" target="_blank" rel="noopener" class="btn btn-outline-primary">
+                        {{ translate('messages.open') }}
+                    </a>
+                    <a href="{{ route('admin.places.regenerate-redeem-token', $place->id) }}"
+                       class="btn btn-outline-danger"
+                       onclick="return confirm('{{ translate('messages.regenerate_redeem_link_confirm') }}')">
+                        {{ translate('messages.regenerate') }}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Card -->
     <div class="card">
         <div class="card-body">
@@ -405,6 +434,29 @@
                 </div>
                 @endif
 
+                <!-- Voter prize -->
+                <div class="card bg-light mb-3">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="tio-gift"></i> {{ translate('messages.voter_prize') }}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label class="input-label">
+                                    {{ translate('messages.prize_value_cap') }}
+                                    ({{ config('placestovisit.prize.currency', 'EGP') }})
+                                </label>
+                                <input type="number" step="0.01" min="0" name="prize_value_cap" class="form-control"
+                                       value="{{ old('prize_value_cap', $place->getRawOriginal('prize_value_cap')) }}"
+                                       placeholder="{{ config('placestovisit.prize.value_cap', 60) }}">
+                                <small class="text-muted">{{ translate('messages.prize_value_cap_hint') }}</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Opening Hours -->
                 <div class="card bg-light mb-3">
                     <div class="card-header">
@@ -483,7 +535,22 @@
 <script src="https://maps.googleapis.com/maps/api/js?key={{ \App\Models\BusinessSetting::where('key', 'map_api_key')->first()?->value }}&libraries=places&callback=initMap&v=3.45.8" async defer></script>
 <script>
     "use strict";
-    
+
+    // Copy the venue's redemption link so it can be pasted straight into the
+    // cafe's WhatsApp — that's how the cashier ends up with the bookmark.
+    function copyRedeemLink() {
+        var field = document.getElementById('redeem-link');
+        if (!field) return;
+        field.select();
+        field.setSelectionRange(0, 99999);
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(field.value);
+        } else {
+            document.execCommand('copy');
+        }
+        toastr.success('{{ translate('messages.redeem_link_copied') }}');
+    }
+
     // Logo preview
     document.getElementById('imageInput').addEventListener('change', function(e) {
         const file = e.target.files[0];

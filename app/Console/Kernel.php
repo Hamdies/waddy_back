@@ -44,6 +44,10 @@ class Kernel extends ConsoleKernel
         // Sunday-evening nudge when the weekly spot race is close (locks midnight)
         $schedule->command('placestovisit:final-hours-push')
             ->weeklyOn(0, '21:00')->timezone($raceTz);
+
+        // Voter-prize vouchers: auto-expire after their 7-day window and
+        // nudge winners in the last 24h. No reissue, no rollover.
+        $schedule->command('placestovisit:expire-prizes')->hourly();
     }
 
     /**

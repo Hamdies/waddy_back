@@ -482,6 +482,14 @@
                                     </span>
                                 </a>
                             </li>
+                            <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/places/prizes*') ? 'active' : '' }}">
+                                <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.places.prizes.index') }}" title="{{ translate('messages.voter_prizes') }}">
+                                    <span class="tio-circle nav-indicator-icon"></span>
+                                    <span class="text-truncate">
+                                        {{ translate('messages.voter_prizes') }}
+                                    </span>
+                                </a>
+                            </li>
                             <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/places/banners*') ? 'active' : '' }}">
                                 <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.places.banners.index') }}" title="{{ translate('messages.banners') }}">
                                     <span class="tio-circle nav-indicator-icon"></span>

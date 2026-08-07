@@ -80,6 +80,16 @@
                         </a>
                     </li>
 
+                    <!-- Voter Prizes -->
+                    <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/places/prizes*') ? 'active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.places.prizes.index') }}" title="{{ translate('messages.voter_prizes') }}">
+                            <i class="tio-gift nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                                {{ translate('messages.voter_prizes') }}
+                            </span>
+                        </a>
+                    </li>
+
                     <!-- Zones -->
                     <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/places/zones*') ? 'active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.places.zones.index') }}" title="{{ translate('messages.zones') }}">

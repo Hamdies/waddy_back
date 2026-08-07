@@ -107,6 +107,33 @@ class Place extends Model
         return $this->belongsToMany(PlaceTag::class, 'place_tag_pivot', 'place_id', 'tag_id');
     }
 
+    public function prizes(): HasMany
+    {
+        return $this->hasMany(PlacePrize::class);
+    }
+
+    // ==================== Prize Redemption ====================
+
+    /**
+     * The venue's bookmarkable redemption page. The token in the path is the
+     * only credential the cashier needs — a code entered here can only redeem
+     * if it was won at this venue.
+     */
+    public function getRedeemUrlAttribute(): ?string
+    {
+        $token = $this->attributes['redeem_token'] ?? null;
+        return $token ? url("spots/redeem/{$token}") : null;
+    }
+
+    /** Value ceiling for a free item here, falling back to the global default */
+    public function getEffectivePrizeValueCapAttribute(): ?float
+    {
+        $cap = $this->attributes['prize_value_cap'] ?? null;
+        return $cap !== null
+            ? (float) $cap
+            : (float) config('placestovisit.prize.value_cap', 60);
+    }
+
     // ==================== Localization ====================
 
     public function translation(?string $locale = null): ?PlaceTranslation

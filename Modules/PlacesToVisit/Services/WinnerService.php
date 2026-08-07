@@ -29,13 +29,21 @@ class WinnerService
 
         // Overall champion (zone_id null)
         if ($top = $this->topPlaceFor($period)) {
-            $created->push(PlaceWinner::create([
+            $overall = PlaceWinner::create([
                 'period' => $period,
                 'zone_id' => null,
                 'place_id' => $top->id,
                 'votes_count' => $top->votes_count,
                 'avg_rating' => round($top->votes_avg_rating ?? 0, 1),
-            ]));
+            ]);
+            $created->push($overall);
+
+            // The voter prize draw runs the instant the venue winner is
+            // confirmed. Only the overall champion draws — zone champions
+            // keep the trophy and the Hall of Fame entry, but no voucher.
+            // PrizeDrawService is idempotent, which matters because this
+            // whole method is also reached lazily from latest()/history().
+            app(PrizeDrawService::class)->drawFor($overall);
         }
 
         // Per-zone champions

@@ -172,6 +172,7 @@ class PlaceController extends Controller
             'gallery.*' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'tags' => 'nullable|array',
             'tags.*' => 'exists:place_tags,id',
+            'prize_value_cap' => 'nullable|numeric|min:0',
         ]);
 
         $imagePath = $place->raw_image;
@@ -204,6 +205,8 @@ class PlaceController extends Controller
             'cover_image' => $coverImagePath,
             'is_active' => $request->has('is_active'),
             'is_featured' => $request->has('is_featured'),
+            // Blank means "use the global cap", not "free item worth zero"
+            'prize_value_cap' => $request->filled('prize_value_cap') ? $request->prize_value_cap : null,
         ]);
 
         // Update English translation
@@ -281,8 +284,20 @@ class PlaceController extends Controller
     public function toggleFeatured(Place $place): RedirectResponse
     {
         $place->update(['is_featured' => !$place->is_featured]);
-        
+
         \Toastr::success(translate('messages.featured_status_updated'));
+        return back();
+    }
+
+    /**
+     * Mint a fresh redemption link for a venue. The old link stops working
+     * immediately — use this when a bookmark leaks beyond the counter.
+     */
+    public function regenerateRedeemToken(Place $place): RedirectResponse
+    {
+        $place->update(['redeem_token' => \Illuminate\Support\Str::random(32)]);
+
+        \Toastr::success(translate('messages.redeem_link_regenerated'));
         return back();
     }
 }

@@ -44,6 +44,32 @@ return [
         'submission_approved' => 25, // XP for an approved place submission
     ],
 
+    // ==================== Voter Prize ====================
+    //
+    // Random draw from the voters of the week's *overall* winning venue.
+    // Voting frequency has zero effect on selection — every voter in the pool
+    // has the same chance, which is the line the UI copy must never blur.
+
+    'prize' => [
+        'enabled' => true,
+
+        // How many voters win each week (fewer is fine when the pool is small)
+        'winners_per_week' => 5,
+
+        // Days the voucher stays alive before it auto-expires. No reissue,
+        // no rollover — expiry is what keeps the offer finite for the venue.
+        'validity_days' => 7,
+
+        // Default ceiling on the free item ("any drink up to X"). A venue can
+        // override this with places.prize_value_cap.
+        'value_cap' => 60,
+        'currency' => 'EGP',
+
+        // Cooldown before a past winner is eligible again, so prizes spread
+        // across the user base instead of pooling on the same regulars.
+        'winner_cooldown_days' => 30,
+    ],
+
     // ==================== Moderation ====================
 
     'report_auto_flag_threshold' => 3, // Number of reports before auto-flagging a review

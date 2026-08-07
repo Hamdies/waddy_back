@@ -238,18 +238,24 @@ class PlaceController extends Controller
 
     /**
      * Get top voters (chillers)
-     * GET /api/v1/places/top-voters
+     * GET /api/v1/places/top-voters?scope=all_time|week
+     *
+     * Defaults to cumulative all-time points. A single week can't rank anyone:
+     * voting is capped at one per user per week, so the weekly scope is a flat
+     * wall of 1s by construction.
      */
     public function topVoters(Request $request): JsonResponse
     {
+        $scope = $request->scope === 'week' ? 'week' : 'all_time';
         $period = $request->period ?? \Modules\PlacesToVisit\Services\RaceClock::period();
         $zoneId = $request->zone_id ? (int) $request->zone_id : null;
         $limit = $request->limit ? (int) $request->limit : 10;
 
-        $topVoters = $this->leaderboardService->getTopVoters($period, $zoneId, $limit);
+        $topVoters = $this->leaderboardService->getTopVoters($zoneId, $limit, $scope, $period);
 
         return response()->json([
             'success' => true,
+            'scope' => $scope,
             'period' => $period,
             'data' => $topVoters,
         ]);

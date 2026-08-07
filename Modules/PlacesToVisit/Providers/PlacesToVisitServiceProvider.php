@@ -4,9 +4,13 @@ namespace Modules\PlacesToVisit\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Modules\PlacesToVisit\Console\CloseWeekCommand;
+use Modules\PlacesToVisit\Console\ExpirePrizesCommand;
 use Modules\PlacesToVisit\Console\FinalHoursPushCommand;
+use Modules\PlacesToVisit\Console\SimulateWeekCommand;
 use Modules\PlacesToVisit\Services\PlacePushService;
 use Modules\PlacesToVisit\Services\LeaderboardService;
+use Modules\PlacesToVisit\Services\PrizeDrawService;
+use Modules\PlacesToVisit\Services\PrizeRedemptionService;
 use Modules\PlacesToVisit\Services\TrendingService;
 use Modules\PlacesToVisit\Services\VotingService;
 use Modules\PlacesToVisit\Services\WinnerService;
@@ -24,7 +28,14 @@ class PlacesToVisitServiceProvider extends ServiceProvider
         $this->app->singleton(TrendingService::class);
         $this->app->singleton(WinnerService::class);
         $this->app->singleton(PlacePushService::class);
-        $this->commands([CloseWeekCommand::class, FinalHoursPushCommand::class]);
+        $this->app->singleton(PrizeDrawService::class);
+        $this->app->singleton(PrizeRedemptionService::class);
+        $this->commands([
+            CloseWeekCommand::class,
+            FinalHoursPushCommand::class,
+            ExpirePrizesCommand::class,
+            SimulateWeekCommand::class,
+        ]);
     }
 
     public function boot(): void
@@ -78,6 +89,8 @@ class PlacesToVisitServiceProvider extends ServiceProvider
             VotingService::class,
             TrendingService::class,
             WinnerService::class,
+            PrizeDrawService::class,
+            PrizeRedemptionService::class,
         ];
     }
 

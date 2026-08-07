@@ -66,37 +66,108 @@ class LeaderboardService
     }
 
     /**
-     * Get top voters (chillers) ranked by number of votes
+     * Top voters — the loyalty layer, and the one place in Spots where
+     * history matters.
+     *
+     * Ranked on CUMULATIVE points: one point per week a user cast their vote,
+     * summed across every week they've played. Missing a week *pauses* you
+     * (you stop gaining, you keep your total); it never resets — resets punish
+     * an otherwise low-friction habit and churn users out of a young feature.
+     *
+     * Points are derived from place_votes rather than kept in their own table:
+     * with one vote per user per week, COUNT(DISTINCT period) *is* the score,
+     * and a derived score can't drift out of sync with the votes it describes.
+     *
+     * @param string $scope 'all_time' (cumulative, the real leaderboard) or
+     *                      'week' (single-period counts — retained for callers
+     *                      that still want the weekly slice)
      */
-    public function getTopVoters(?string $period = null, ?int $zoneId = null, int $limit = 10): Collection
+    public function getTopVoters(?int $zoneId = null, int $limit = 10, string $scope = 'all_time', ?string $period = null): Collection
     {
-        $period = $period ?? \Modules\PlacesToVisit\Services\RaceClock::period();
         $maxLimit = max($limit, 10);
-        $cacheKey = "top_voters:{$period}:" . ($zoneId ?? 'all');
 
-        $fullList = Cache::remember($cacheKey, $this->cacheMinutes * 60, function () use ($period, $zoneId, $maxLimit) {
-            $topVoters = PlaceVote::query()
-                ->select('user_id', DB::raw('COUNT(*) as votes_count'))
+        if ($scope === 'week') {
+            $period = $period ?? \Modules\PlacesToVisit\Services\RaceClock::period();
+            $cacheKey = "top_voters:week:{$period}:" . ($zoneId ?? 'all');
+            $query = fn() => PlaceVote::query()
+                ->select('user_id', DB::raw('COUNT(*) as points'), DB::raw('MIN(id) as first_vote_id'))
                 ->where('period', $period)
+                ->where('is_flagged', false)
                 ->when($zoneId, fn($q) => $q->whereHas('place', fn($pq) => $pq->where('zone_id', $zoneId)))
                 ->groupBy('user_id')
-                ->orderByDesc('votes_count')
+                ->orderByDesc('points')
+                ->orderBy('first_vote_id')
                 ->limit($maxLimit)
                 ->get();
+        } else {
+            $cacheKey = 'top_voters:all_time:' . ($zoneId ?? 'all');
+            $query = fn() => PlaceVote::query()
+                ->select('user_id', DB::raw('COUNT(DISTINCT period) as points'), DB::raw('MIN(id) as first_vote_id'))
+                ->where('is_flagged', false)
+                ->when($zoneId, fn($q) => $q->whereHas('place', fn($pq) => $pq->where('zone_id', $zoneId)))
+                ->groupBy('user_id')
+                ->orderByDesc('points')
+                ->orderBy('first_vote_id') // ties go to whoever started first
+                ->limit($maxLimit)
+                ->get();
+        }
 
-            return $topVoters->map(function ($row, $index) {
+        $fullList = Cache::remember($cacheKey, $this->cacheMinutes * 60, function () use ($query) {
+            return $query()->map(function ($row, $index) {
                 $user = User::select('id', 'f_name', 'l_name', 'image')->with('storage')->find($row->user_id);
                 return [
                     'position' => $index + 1,
                     'user_id' => $row->user_id,
                     'username' => $user?->f_name,
                     'image' => $user?->image_full_url,
-                    'votes_count' => (int) $row->votes_count,
+                    'points' => (int) $row->points,
+                    // Legacy key — the app parses this today. Kept so an older
+                    // build doesn't render a wall of zeroes mid-rollout.
+                    'votes_count' => (int) $row->points,
                 ];
             });
         });
 
         return $fullList->take($limit)->values();
+    }
+
+    /**
+     * Recent voter-prize winners — social proof, not a ranking.
+     *
+     * Names are trimmed to "Ahmed H." and the voucher code is never exposed:
+     * this feed is public and a code is bearer-grade until it's redeemed.
+     */
+    public function getRecentPrizeWinners(int $limit = 10): Collection
+    {
+        $limit = max(1, min($limit, 30));
+
+        return Cache::remember("recent_prize_winners:{$limit}", 15 * 60, function () use ($limit) {
+            return \Modules\PlacesToVisit\Entities\PlacePrize::with(['place.translations', 'user'])
+                ->orderByDesc('id')
+                ->limit($limit)
+                ->get()
+                ->map(function ($prize) {
+                    $user = $prize->user;
+                    $first = trim((string) ($user?->f_name ?? ''));
+                    $lastInitial = trim((string) ($user?->l_name ?? ''));
+                    $lastInitial = $lastInitial !== '' ? mb_substr($lastInitial, 0, 1) . '.' : '';
+                    $name = trim("{$first} {$lastInitial}");
+
+                    return [
+                        'id' => $prize->id,
+                        'period' => $prize->period,
+                        'username' => $name !== '' ? $name : translate('messages.a_waddi_voter'),
+                        'image' => $user?->image_full_url,
+                        'won_at' => $prize->created_at?->toIso8601String(),
+                        'place' => $prize->place ? [
+                            'id' => $prize->place->id,
+                            'title' => $prize->place->title,
+                            'image' => $prize->place->image,
+                        ] : null,
+                    ];
+                })
+                ->values();
+        });
     }
 
     /**
@@ -143,10 +214,24 @@ class LeaderboardService
             Cache::forget("leaderboard:{$period}:all:{$zoneId}");
         }
 
-        // Clear top voters caches
-        Cache::forget("top_voters:{$period}:all");
+        // Clear top voters caches — both the weekly slice and the cumulative
+        // all-time board, which a new vote can also reorder.
+        Cache::forget("top_voters:week:{$period}:all");
+        Cache::forget('top_voters:all_time:all');
         foreach ($zones as $zoneId) {
-            Cache::forget("top_voters:{$period}:{$zoneId}");
+            Cache::forget("top_voters:week:{$period}:{$zoneId}");
+            Cache::forget("top_voters:all_time:{$zoneId}");
+        }
+    }
+
+    /**
+     * Drop the recent-winners feed after a draw. Cached per limit, so clear
+     * the handful of limits the app actually asks for.
+     */
+    public function clearRecentWinnersCache(): void
+    {
+        foreach ([5, 8, 10, 12, 15, 20, 24, 30] as $limit) {
+            Cache::forget("recent_prize_winners:{$limit}");
         }
     }
 }

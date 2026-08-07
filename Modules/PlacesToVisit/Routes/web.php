@@ -78,6 +78,12 @@ Route::group([
         Route::delete('{submission}', 'PlaceSubmissionController@destroy')->name('destroy');
     });
 
+    // Voter prizes
+    Route::group(['prefix' => 'prizes', 'as' => 'prizes.'], function () {
+        Route::get('/', 'PlacePrizeController@index')->name('index');
+        Route::post('{prize}/redeem', 'PlacePrizeController@redeem')->name('redeem');
+    });
+
     // Places
     Route::get('/', 'PlaceController@index')->name('index');
     Route::get('create', 'PlaceController@create')->name('create');
@@ -88,5 +94,21 @@ Route::group([
     Route::delete('{place}', 'PlaceController@destroy')->name('destroy');
     Route::get('{place}/toggle-status', 'PlaceController@toggleStatus')->name('toggle-status');
     Route::get('{place}/toggle-featured', 'PlaceController@toggleFeatured')->name('toggle-featured');
+    Route::get('{place}/regenerate-redeem-token', 'PlaceController@regenerateRedeemToken')->name('regenerate-redeem-token');
     Route::delete('images/{image}', 'PlaceController@deleteImage')->name('delete-image');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Public Routes — venue prize redemption
+|--------------------------------------------------------------------------
+| Deliberately outside the admin group: cafe staff have no WADDI account.
+| The 32-char token in the path is the venue's only credential, and a code
+| entered here can only redeem if it was won at that same venue.
+*/
+Route::group(['prefix' => 'spots', 'namespace' => 'Publik'], function () {
+    Route::get('redeem/{token}', 'PrizeRedemptionController@show')->name('spots.redeem');
+    Route::post('redeem/{token}', 'PrizeRedemptionController@redeem')
+        ->middleware('throttle:20,1')
+        ->name('spots.redeem.submit');
 });

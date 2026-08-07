@@ -5,12 +5,14 @@ namespace Modules\PlacesToVisit\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Modules\PlacesToVisit\Services\LeaderboardService;
 use Modules\PlacesToVisit\Services\WinnerService;
 
 class WinnerController extends Controller
 {
     public function __construct(
-        protected WinnerService $winnerService
+        protected WinnerService $winnerService,
+        protected LeaderboardService $leaderboardService
     ) {}
 
     /**
@@ -43,6 +45,21 @@ class WinnerController extends Controller
         return response()->json([
             'success' => true,
             'data' => $winner ? $this->winnerService->toApiPayload($winner) : null,
+        ]);
+    }
+
+    /**
+     * Recent voter-prize winners — the "real people are winning" showcase.
+     * Deliberately not a ranking, and never exposes a voucher code.
+     * GET /api/v1/places/winners/recent
+     */
+    public function recent(Request $request): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'data' => $this->leaderboardService->getRecentPrizeWinners(
+                (int) ($request->limit ?? 10)
+            ),
         ]);
     }
 }
