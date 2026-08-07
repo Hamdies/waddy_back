@@ -8273,4 +8273,5 @@ Smartly or Earn. ',
   'prize_free_item' => 'One free item, on us',
   'days_validity' => 'Days validity',
   'redeemed' => 'Redeemed',
+  'cash_it_in_html' => 'Cash it <u>in</u>',
 );

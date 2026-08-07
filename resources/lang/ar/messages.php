@@ -5597,4 +5597,5 @@
   'prize_free_item' => 'صنف مجاني واحد',
   'days_validity' => 'أيام الصلاحية',
   'redeemed' => 'مستخدمة',
+  'cash_it_in_html' => 'اصرف <u>الجائزة</u>',
 );
