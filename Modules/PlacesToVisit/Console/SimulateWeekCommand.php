@@ -38,6 +38,10 @@ class SimulateWeekCommand extends Command
     /** Reserved so cleanup can never touch a real account */
     private const TEST_EMAIL_DOMAIN = '@spots-sim.invalid';
 
+    /** Human-looking names for seeded voters, so tables read like real people instead of "Sim Voter3" */
+    private const TEST_FIRST_NAMES = ['Layla', 'Omar', 'Yasmin', 'Karim', 'Nour', 'Amir', 'Salma', 'Youssef', 'Farida', 'Hassan', 'Mariam', 'Adam'];
+    private const TEST_LAST_NAMES = ['Ibrahim', 'Fahmy', 'Saeed', 'Nasser', 'Aziz', 'Rashad', 'Tawfik', 'Mansour', 'Gaber', 'Khalil', 'Sabry', 'Zaki'];
+
     public function handle(WinnerService $winnerService): int
     {
         if (app()->environment('production') && !$this->confirmProduction()) {
@@ -221,11 +225,14 @@ class SimulateWeekCommand extends Command
         $voters = collect();
 
         for ($i = 1; $i <= $count; $i++) {
+            $fName = self::TEST_FIRST_NAMES[($i - 1) % count(self::TEST_FIRST_NAMES)];
+            $lName = self::TEST_LAST_NAMES[($i - 1) % count(self::TEST_LAST_NAMES)];
+
             $voters->push(User::firstOrCreate(
                 ['email' => "spots-sim-{$i}" . self::TEST_EMAIL_DOMAIN],
                 [
-                    'f_name' => 'Sim',
-                    'l_name' => "Voter{$i}",
+                    'f_name' => $fName,
+                    'l_name' => $lName,
                     'phone' => '+2010000' . str_pad((string) $i, 5, '0', STR_PAD_LEFT),
                     'password' => bcrypt(Str::random(32)),
                     'is_phone_verified' => 1,
