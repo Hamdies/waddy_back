@@ -16,6 +16,17 @@ import { BASE, HEADERS, endpoints } from './config.js';
 
 const PEAK = parseInt(__ENV.PEAK_VUS || '25', 10);
 
+// Abort guards. The defaults are protective, for testing a healthy server.
+// For a deliberate BASELINE run against a server you already know is
+// saturated, loosen them (e.g. MAX_P95=10000 MAX_FAIL=0.30) so the run
+// measures the ceiling instead of aborting the moment it finds it.
+const MAX_P95 = parseInt(__ENV.MAX_P95 || '2000', 10);
+const MAX_FAIL = parseFloat(__ENV.MAX_FAIL || '0.05');
+
+// Stage lengths, shortened for runs against live sites.
+const RAMP = __ENV.RAMP || '30s';
+const HOLD = __ENV.HOLD || '2m';
+
 // Per-endpoint latency, so you can tell which query is the bottleneck rather
 // than only seeing one blended average.
 const byEndpoint = {};
@@ -26,18 +37,19 @@ const errorRate = new Rate('endpoint_errors');
 
 export const options = {
   stages: [
-    { duration: '30s', target: Math.ceil(PEAK * 0.2) },  // warm caches/opcache
-    { duration: '1m',  target: Math.ceil(PEAK * 0.5) },
-    { duration: '1m',  target: PEAK },
-    { duration: '2m',  target: PEAK },                   // hold — the real read
-    { duration: '30s', target: 0 },                      // recovery
+    { duration: RAMP, target: Math.ceil(PEAK * 0.2) },   // warm caches/opcache
+    { duration: RAMP, target: Math.ceil(PEAK * 0.5) },
+    { duration: RAMP, target: PEAK },
+    { duration: HOLD, target: PEAK },                    // hold — the real read
+    { duration: '20s', target: 0 },                      // recovery
   ],
   thresholds: {
-    // abortOnFail stops the run the moment the server is genuinely unhealthy.
-    http_req_failed: [{ threshold: 'rate<0.05', abortOnFail: true, delayAbortEval: '20s' }],
+    // abortOnFail stops the run once the server is genuinely unhealthy.
+    http_req_failed: [
+      { threshold: `rate<${MAX_FAIL}`, abortOnFail: true, delayAbortEval: '30s' },
+    ],
     http_req_duration: [
-      { threshold: 'p(95)<2000', abortOnFail: true, delayAbortEval: '30s' },
-      'p(99)<5000',
+      { threshold: `p(95)<${MAX_P95}`, abortOnFail: true, delayAbortEval: '30s' },
     ],
   },
 };

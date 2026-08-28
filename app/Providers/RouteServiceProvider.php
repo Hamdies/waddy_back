@@ -90,6 +90,12 @@ class RouteServiceProvider extends ServiceProvider
     protected function configureRateLimiting()
     {
         RateLimiter::for('api', function (Request $request) {
+            // Capacity testing only — see config/loadtest.php. Empty in normal
+            // operation, so this is a no-op unless LOADTEST_EXEMPT_IPS is set.
+            if (in_array($request->ip(), config('loadtest.exempt_ips', []), true)) {
+                return Limit::none();
+            }
+
             return Limit::perMinute(120)->by(optional($request->user())->id ?: $request->ip());
         });
 
