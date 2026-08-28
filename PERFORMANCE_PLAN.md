@@ -39,7 +39,41 @@ Target, achievable without the server getting one millisecond faster:
 
 ---
 
-# Tier 1 — Transport
+# Tier 1 — Transport ✅ DONE (29 Aug 2026)
+
+Deployed and measured from Egypt:
+
+| | Before | After |
+|---|---|---|
+| Protocol | HTTP/1.1 | **HTTP/2** |
+| `stores/get-stores/all` | 10,983 B | **1,900 B** (83%) |
+| `module` | 10,630 B | **1,612 B** (85%) |
+| `config` | 8,939 B | **2,387 B** (74%) |
+| Admin stylesheet | 299 KB every load | **55 KB once**, then cached 30d |
+| Uploaded images | revalidated every screen | **immutable, 1 year** |
+| API home screen total | ~56 KB | **~10 KB** |
+
+Server capacity was unaffected: the localhost load test returned 52.2 req/s and
+7,370 requests both before and after, identical. At these payload sizes
+compression costs microseconds against ~65 ms of PHP per request, so
+`gzip_comp_level 5` does not need lowering.
+
+Two things this cost, worth recording:
+
+- Stock `nginx.conf` already sets `gzip on;` — a duplicate is fatal. It also
+  leaves `gzip_types` commented out, defaulting to `text/html`, which is why
+  compression appeared enabled while every JSON response went out uncompressed.
+- The asset regex initially hijacked the `/public/` alias and 404'd every admin
+  stylesheet, because nginx evaluates regex locations before falling back to a
+  prefix match. Fixed with `^~` on the alias. **`nginx -t` passes on this;
+  only requesting a real asset catches it.**
+
+Implemented by `deploy/nginx/waddy-performance.conf` (http-context drop-in) and
+`deploy/nginx/apply-vhost-tuning.sh` (server-context, idempotent, self-reverting).
+
+---
+
+## Original analysis
 
 **Effort:** ~2 hours · **Risk:** low, all reversible · **No application changes**
 
