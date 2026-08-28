@@ -54,30 +54,37 @@ BLOCK = """    # --- static caching (Tier 1) ---
     # Upload filenames carry a date and hash and are never rewritten in place,
     # so `immutable` is safe: browsers stop revalidating entirely.
     location ^~ /storage/ {
-        expires 1y;
+        # No `expires` directive: it emits its own Cache-Control header, and
+        # combined with add_header the response carries two of them. Only
+        # add_header can express `immutable`, so that is the one kept.
         add_header Cache-Control "public, max-age=31536000, immutable";
         access_log off;
         try_files $uri =404;
     }
 
     location ~* \\.(css|js|woff2?|ttf|otf|svg|ico|png|jpe?g|gif|webp|avif)$ {
-        expires 30d;
         add_header Cache-Control "public, max-age=2592000";
         access_log off;
     }
 
 """
 
-if "static caching (Tier 1)" in src:
-    print("  caching: already present")
+# Replace an existing block rather than skipping it, so corrections to the
+# policy can be redeployed by re-running this script.
+existing = re.search(
+    r'^[ \t]*# --- static caching \(Tier 1\) ---.*?\n(?=[ \t]*location\s+/\s*\{)',
+    src, re.S | re.M)
+if existing:
+    src = src[:existing.start()] + src[existing.end():]
+    changed.append("replaced previous caching block")
+
+# Insert immediately before the catch-all `location / {`.
+m = re.search(r'^([ \t]*)location\s+/\s*\{', src, re.M)
+if not m:
+    print("  caching: WARNING — no `location / {` found, skipped")
 else:
-    # Insert immediately before the catch-all `location / {`.
-    m = re.search(r'^([ \t]*)location\s+/\s*\{', src, re.M)
-    if not m:
-        print("  caching: WARNING — no `location / {` found, skipped")
-    else:
-        src = src[:m.start()] + BLOCK + src[m.start():]
-        changed.append("caching for /storage and static assets")
+    src = src[:m.start()] + BLOCK + src[m.start():]
+    changed.append("caching for /storage and static assets")
 
 if src != orig:
     open(path, 'w').write(src)
@@ -89,9 +96,12 @@ if nginx -t; then
     systemctl reload nginx
     echo
     echo "reloaded. verifying:"
-    printf '  protocol : '
-    curl -s -o /dev/null -w 'HTTP/%{http_version}\n' \
-        -H 'moduleId: 1' -H 'zoneId: [1]' https://waddyapp.com/api/v1/config
+    # This box's curl is built without HTTP/2, so it will report 1.1 even when
+    # nginx is serving h2. Read the ALPN advertisement from OpenSSL instead.
+    printf '  h2 advertised : '
+    echo | openssl s_client -alpn h2 -connect waddyapp.com:443 \
+        -servername waddyapp.com 2>/dev/null \
+        | grep -i 'ALPN protocol' || echo 'none (check from a client with HTTP/2)'
 else
     echo
     echo "nginx rejected the config — reverting to $BACKUP" >&2
