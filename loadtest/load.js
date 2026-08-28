@@ -36,6 +36,9 @@ for (const ep of endpoints) {
 const errorRate = new Rate('endpoint_errors');
 
 export const options = {
+  // k6 computes avg/min/med/max/p(90)/p(95) by default — p(99) has to be asked
+  // for explicitly, or it reads back as 0 in the summary.
+  summaryTrendStats: ['avg', 'min', 'med', 'p(90)', 'p(95)', 'p(99)', 'max'],
   stages: [
     { duration: RAMP, target: Math.ceil(PEAK * 0.2) },   // warm caches/opcache
     { duration: RAMP, target: Math.ceil(PEAK * 0.5) },
