@@ -57,7 +57,6 @@ class BusinessSettingObserver
         // it returns nothing, which silently left settings cached forever after
         // an admin edit.
         Cache::forget('business_settings_all_data');
-        Cache::forget('payment_gateway_live_values');
 
         $prefix = 'business_settings_';
         $cacheKeys = config('cache.default') === 'database'
