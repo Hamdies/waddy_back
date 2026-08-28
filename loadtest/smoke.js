@@ -35,9 +35,14 @@ export default function () {
       });
 
       if (!ok) {
-        console.error(
-          `${ep.name} -> HTTP ${res.status}\n${String(res.body).slice(0, 400)}`
-        );
+        // One tidy line per failure. Dumping the body floods the terminal with
+        // HTML error pages when every endpoint fails for the same reason.
+        const hint = String(res.body || '')
+          .replace(/<[^>]*>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, 90);
+        console.error(`${ep.name} -> HTTP ${res.status} | ${hint}`);
       }
     });
   }
