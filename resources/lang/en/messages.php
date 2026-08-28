@@ -8278,4 +8278,8 @@ Smartly or Earn. ',
   'wave_marquee' => 'REDEEM YOUR CODE',
   'wave_marquee_2' => 'CLAIM YOUR PRIZE',
   'one_item_per_code' => 'One item per code',
+  'target_store' => 'Target store',
+  'any_store' => 'Any store',
+  'target_store_hint' => 'Optional. Pins this challenge to one store - the app then sends the customer straight there.',
+  'edit_challenge' => 'Edit challenge',
 );

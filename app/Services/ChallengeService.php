@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Store;
 use App\Models\User;
 use App\Models\XpChallenge;
 use App\Models\UserChallenge;
@@ -234,6 +235,15 @@ class ChallengeService
             $progress = $userChallenge->progress ?? [];
             $completed = false;
 
+            // A challenge may name the store that satisfies it. When it does,
+            // an order from anywhere else must not move the progress bar —
+            // otherwise the app's "order from X" tile would tick up on an
+            // unrelated order and the copy would be a lie.
+            $targetStoreId = $challenge->conditions['store_id'] ?? null;
+            if ($targetStoreId && (int) $order->store_id !== (int) $targetStoreId) {
+                continue;
+            }
+
             switch ($challenge->challenge_type) {
                 case 'complete_order':
                     $completed = true;
@@ -374,11 +384,32 @@ class ChallengeService
             'xp_reward' => $challenge->xp_reward,
             'status' => $userChallenge->status,
             'progress' => $userChallenge->progress,
-            'conditions' => $challenge->conditions,
+            'conditions' => self::decorateConditions($challenge->conditions),
             'started_at' => $userChallenge->started_at?->toIso8601String(),
             'expires_at' => $userChallenge->expires_at?->toIso8601String(),
             'completed_at' => $userChallenge->completed_at?->toIso8601String(),
         ];
+    }
+
+    /**
+     * Add the target store's display name alongside its id.
+     *
+     * The app routes on `store_id`; the name lets it say WHICH store without a
+     * second request. Resolved here rather than client-side because the client
+     * has no store lookup on this screen.
+     */
+    protected static function decorateConditions(?array $conditions): ?array
+    {
+        if (empty($conditions['store_id'])) {
+            return $conditions;
+        }
+
+        $store = Store::select('id', 'name')->find($conditions['store_id']);
+        if ($store) {
+            $conditions['store_name'] = $store->name;
+        }
+
+        return $conditions;
     }
 
     /**

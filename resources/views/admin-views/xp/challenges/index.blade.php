@@ -79,6 +79,15 @@
                             <input type="number" name="order_count" class="form-control" min="1" placeholder="For multiple_orders type">
                         </div>
                     </div>
+                    <div class="col-md-4 js-store-target">
+                        <div class="form-group">
+                            <label class="input-label">{{translate('messages.target_store')}} ({{translate('messages.optional')}})</label>
+                            <select name="store_id" class="js-data-example-ajax form-control" data-placeholder="{{translate('messages.select_store')}}">
+                                <option value="">---{{translate('messages.any_store')}}---</option>
+                            </select>
+                            <small class="form-text text-muted">{{translate('messages.target_store_hint')}}</small>
+                        </div>
+                    </div>
                     <div class="col-md-4">
                         <div class="form-group">
                             <label class="input-label">{{translate('messages.status')}}</label>
@@ -184,3 +193,54 @@
     </div>
 </div>
 @endsection
+
+@push('script_2')
+<script>
+    $(document).on('ready', function () {
+        let module_id = {{Config::get('module.current_module_id')}};
+
+        // Same store picker the coupon form uses, so an admin targets a store
+        // the same way in both places.
+        $('.js-data-example-ajax').select2({
+            allowClear: true,
+            placeholder: '{{translate('messages.any_store')}}',
+            ajax: {
+                url: '{{url('/')}}/admin/store/get-stores',
+                data: function (params) {
+                    return {
+                        q: params.term,
+                        page: params.page,
+                        module_id: module_id
+                    };
+                },
+                processResults: function (data) {
+                    return {results: data};
+                },
+                __port: function (params, success, failure) {
+                    var $request = $.ajax(params);
+                    $request.then(success);
+                    $request.fail(failure);
+                    return $request;
+                }
+            }
+        });
+
+        // The target store only means something for types that are satisfied by
+        // ordering somewhere specific. Hide it for the rest rather than storing
+        // a condition the evaluator will ignore.
+        function toggleStorePicker() {
+            var type = $('select[name="challenge_type"]').val();
+            var supportsStore = type === 'complete_order'
+                || type === 'min_order_amount'
+                || type === 'multiple_orders';
+            $('.js-store-target').toggle(supportsStore);
+            if (!supportsStore) {
+                $('select[name="store_id"]').val('').trigger('change');
+            }
+        }
+
+        $(document).on('change', 'select[name="challenge_type"]', toggleStorePicker);
+        toggleStorePicker();
+    });
+</script>
+@endpush

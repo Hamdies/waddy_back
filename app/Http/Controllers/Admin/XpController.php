@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Level;
 use App\Models\LevelPrize;
+use App\Models\Store;
 use App\Models\XpChallenge;
 use App\Models\XpTransaction;
 use App\Models\XpSetting;
@@ -249,7 +250,8 @@ class XpController extends Controller
         $prize->update($request->all());
 
         Toastr::success(translate('messages.prize_updated_successfully'));
-        return redirect()->route('admin.xp.prizes');
+        // Same unregistered-route bug as challengeUpdate had.
+        return redirect()->route('admin.users.customer.xp.prizes');
     }
 
     public function prizeDelete($id)
@@ -276,6 +278,38 @@ class XpController extends Controller
         return $frequency === 'weekly' ? 168 : 24;
     }
 
+    /**
+     * Build the `conditions` payload from the admin form.
+     *
+     * `store_id` is optional and only meaningful for the types a specific store
+     * can satisfy — `new_store` is evaluated against wherever the user has NOT
+     * ordered before, so pinning a store to it would contradict the rule.
+     * The customer app reads this key to route a challenge tile straight to the
+     * store instead of the general food feed.
+     */
+    private function challengeConditions(Request $request): array
+    {
+        $conditions = [];
+
+        if ($request->challenge_type === 'min_order_amount' && $request->min_amount) {
+            $conditions['min_amount'] = (int) $request->min_amount;
+        }
+        if ($request->challenge_type === 'multiple_orders' && $request->order_count) {
+            $conditions['order_count'] = (int) $request->order_count;
+        }
+
+        $storeTargetable = in_array($request->challenge_type, [
+            'complete_order',
+            'min_order_amount',
+            'multiple_orders',
+        ], true);
+        if ($storeTargetable && $request->filled('store_id')) {
+            $conditions['store_id'] = (int) $request->store_id;
+        }
+
+        return $conditions;
+    }
+
     public function challengeStore(Request $request)
     {
         $request->validate([
@@ -285,15 +319,10 @@ class XpController extends Controller
             'frequency' => 'required|in:daily,weekly',
             'xp_reward' => 'required|integer|min:1',
             'time_limit_hours' => 'nullable|integer|min:1',
+            'store_id' => 'nullable|exists:stores,id',
         ]);
 
-        $conditions = [];
-        if ($request->challenge_type === 'min_order_amount' && $request->min_amount) {
-            $conditions['min_amount'] = (int) $request->min_amount;
-        }
-        if ($request->challenge_type === 'multiple_orders' && $request->order_count) {
-            $conditions['order_count'] = (int) $request->order_count;
-        }
+        $conditions = $this->challengeConditions($request);
 
         XpChallenge::create([
             'title' => $request->title,
@@ -313,7 +342,17 @@ class XpController extends Controller
     public function challengeEdit($id)
     {
         $challenge = XpChallenge::findOrFail($id);
-        return view('admin-views.xp.challenges.edit', compact('challenge'));
+
+        // The store picker loads its options over AJAX, so the currently
+        // pinned store has to be passed in explicitly — otherwise the select
+        // renders empty and saving the form would silently unpin it.
+        $targetStore = null;
+        if (!empty($challenge->conditions['store_id'])) {
+            $targetStore = Store::select('id', 'name')
+                ->find($challenge->conditions['store_id']);
+        }
+
+        return view('admin-views.xp.challenges.edit', compact('challenge', 'targetStore'));
     }
 
     public function challengeUpdate(Request $request, $id)
@@ -324,15 +363,10 @@ class XpController extends Controller
             'challenge_type' => 'required',
             'frequency' => 'required|in:daily,weekly',
             'xp_reward' => 'required|integer|min:1',
+            'store_id' => 'nullable|exists:stores,id',
         ]);
 
-        $conditions = [];
-        if ($request->challenge_type === 'min_order_amount' && $request->min_amount) {
-            $conditions['min_amount'] = (int) $request->min_amount;
-        }
-        if ($request->challenge_type === 'multiple_orders' && $request->order_count) {
-            $conditions['order_count'] = (int) $request->order_count;
-        }
+        $conditions = $this->challengeConditions($request);
 
         $challenge = XpChallenge::findOrFail($id);
         $challenge->update([
@@ -347,7 +381,9 @@ class XpController extends Controller
         ]);
 
         Toastr::success(translate('messages.challenge_updated_successfully'));
-        return redirect()->route('admin.xp.challenges');
+        // Was `admin.xp.challenges`, which is not a registered route name — the
+        // update saved and then threw on the redirect.
+        return redirect()->route('admin.users.customer.xp.challenges');
     }
 
     public function challengeDelete($id)
