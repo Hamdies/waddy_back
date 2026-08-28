@@ -15,3 +15,12 @@ error_log
 /storage/tmp
 .DS_Store
 docker-local/
+
+# local IDE state and runtime scratch
+/.idea
+/.qoder
+/.vscode
+/app/tmp
+/composer.phar
+/.rnd
+*.DS_Store
