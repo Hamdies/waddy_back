@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use Closure;
+use App\Models\Guest;
 use Illuminate\Http\Request;
 use Throwable;
 
@@ -38,8 +39,35 @@ class APIGuestMiddleware
             }
         }
 
-        if ($request->guest_id) {
-            return $next($request);
+        // Preferred path: an unguessable token proves who the guest is.
+        $guestToken = $request->header('guest-token') ?: $request->input('guest_token');
+
+        if ($guestToken) {
+            $guest = Guest::where('token', $guestToken)->first();
+
+            if ($guest) {
+                // The token is authoritative — never trust a client-supplied
+                // guest_id alongside it.
+                $request->merge(['guest_id' => $guest->id]);
+                $request->attributes->set('guest', $guest);
+
+                return $next($request);
+            }
+
+            return response()->json(['errors' => 'Unauthorized'], 401);
+        }
+
+        // Legacy path: guest_id alone. It is guessable, so it is only accepted
+        // while clients are still being migrated to tokens, and only for a
+        // guest row that actually exists.
+        if ($request->guest_id && !config('guest.require_token')) {
+            $guest = Guest::find($request->guest_id);
+
+            if ($guest) {
+                $request->attributes->set('guest', $guest);
+
+                return $next($request);
+            }
         }
 
         return response()->json(['errors' => 'Unauthorized'], 401);

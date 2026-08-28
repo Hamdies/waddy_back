@@ -6,6 +6,7 @@ use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
 use App\Models\DeliveryMan;
 use App\Models\DMReview;
+use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -58,6 +59,18 @@ class DeliveryManReviewController extends Controller
         $dm = DeliveryMan::find($request->delivery_man_id);
         if (isset($dm) == false) {
             $validator->errors()->add('delivery_man_id', translate('messages.not_found'));
+        }
+
+        // The order must belong to the reviewer, be delivered, and have been
+        // delivered by the deliveryman being rated.
+        $order = Order::where('id', $request->order_id)
+            ->where('user_id', $request->user()->id)
+            ->where('is_guest', 0)
+            ->where('delivery_man_id', $request->delivery_man_id)
+            ->where('order_status', 'delivered')
+            ->first();
+        if (isset($order) == false) {
+            $validator->errors()->add('order_id', translate('messages.order_data_not_found'));
         }
 
         if ($validator->errors()->count() > 0) {

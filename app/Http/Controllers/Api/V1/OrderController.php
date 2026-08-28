@@ -89,13 +89,9 @@ class OrderController extends Controller
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
-        $user_id = $request->user ? $request->user->id : $request['guest_id'];
-
-        $paginator = Order::with(['store', 'delivery_man.rating', 'parcel_category', 'refund:order_id,admin_note,customer_note'])->withCount('details')->where(['user_id' => $user_id])->whereIn('order_status', ['delivered', 'canceled', 'refund_requested', 'refund_request_canceled', 'refunded', 'failed'])
-            ->when(isset($request->user), function ($query) {
-                $query->where('is_guest', 0);
-            })
-
+        $paginator = Order::with(['store', 'delivery_man.rating', 'parcel_category', 'refund:order_id,admin_note,customer_note'])->withCount('details')
+            ->scopedToRequester($request)
+            ->whereIn('order_status', ['delivered', 'canceled', 'refund_requested', 'refund_request_canceled', 'refunded', 'failed'])
             ->Notpos()->latest()->paginate($request['limit'], ['*'], 'page', $request['offset']);
         $orders = array_map(function ($data) {
             $data['delivery_address'] = $data['delivery_address'] ? json_decode($data['delivery_address']) : $data['delivery_address'];
@@ -125,13 +121,9 @@ class OrderController extends Controller
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
-        $user_id = $request->user ? $request->user->id : $request['guest_id'];
-
         $paginator = Order::with(['store', 'delivery_man.rating', 'parcel_category'])
-            ->when(isset($request->user), function ($query) {
-                $query->where('is_guest', 0);
-            })
-            ->withCount('details')->where(['user_id' => $user_id])->whereNotIn('order_status', ['delivered', 'canceled', 'refund_requested', 'refund_request_canceled', 'refunded', 'failed'])->Notpos()->latest()->paginate($request['limit'], ['*'], 'page', $request['offset']);
+            ->scopedToRequester($request)
+            ->withCount('details')->whereNotIn('order_status', ['delivered', 'canceled', 'refund_requested', 'refund_request_canceled', 'refunded', 'failed'])->Notpos()->latest()->paginate($request['limit'], ['*'], 'page', $request['offset']);
 
         $orders = array_map(function ($data) {
             $data['delivery_address'] = $data['delivery_address'] ? json_decode($data['delivery_address']) : $data['delivery_address'];
@@ -157,15 +149,11 @@ class OrderController extends Controller
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
-        $user_id = $request?->user?->id;
-
+        // Always scope to the caller. Previously the guest branch applied no
+        // owner filter at all, so any order id could be read by anyone.
         $order = Order::with('details', 'offline_payments', 'parcel_category')
-            ->when(isset($request->user), function ($query) {
-                $query->where('is_guest', 0);
-            })
-            ->when($request->user, function ($query) use ($user_id) {
-                return $query->where('user_id', $user_id);
-            })->findOrFail($request->order_id);
+            ->scopedToRequester($request)
+            ->findOrFail($request->order_id);
 
         $details = isset($order->details) ? $order->details : null;
         if ($details != null && $details->count() > 0) {
@@ -333,17 +321,16 @@ class OrderController extends Controller
             ], 403);
         }
 
-        $user_id = $request->user ? $request->user->id : $request['guest_id'];
-        $order = Order::where(['user_id' => $user_id, 'id' => $request['order_id']])->Notpos()->first();
+        $order = Order::scopedToRequester($request)->where('id', $request['order_id'])->Notpos()->first();
         if ($order) {
             if ($order->payment_method != 'partial_payment') {
-                Order::where(['user_id' => $user_id, 'id' => $request['order_id']])->update([
+                Order::where('id', $order->id)->update([
                     'payment_method' => 'cash_on_delivery',
                     'order_status' => 'pending',
                     'pending' => now()
                 ]);
             } else {
-                Order::where(['user_id' => $user_id, 'id' => $request['order_id']])->update([
+                Order::where('id', $order->id)->update([
                     'order_status' => 'pending',
                     'pending' => now()
                 ]);
@@ -354,7 +341,8 @@ class OrderController extends Controller
                 $payment->save();
             }
 
-            $order = Order::where(['user_id' => $user_id, 'id' => $request['order_id']])->Notpos()->first();
+            // Re-read so the notification below sees the values just written.
+            $order = $order->fresh();
 
             $order_mail_status = Helpers::get_mail_status('place_order_mail_status_user');
             $order_verification_mail_status = Helpers::get_mail_status('order_verification_mail_status_user');
@@ -451,7 +439,9 @@ class OrderController extends Controller
                 ]
             ], 403);
         }
-        $order = Order::findOrFail($request->order_id);
+        // Guest-reachable endpoint: without an owner filter any order could be
+        // switched to offline payment by an anonymous caller.
+        $order = Order::scopedToRequester($request)->findOrFail($request->order_id);
 
         $offline_payment_info = [];
         $method = OfflinePaymentMethod::where(['id' => $request->method_id, 'status' => 1])->first();
@@ -511,9 +501,11 @@ class OrderController extends Controller
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
-        $order = Order::where('id', $request->order_id)->firstOrfail();
+        // Scope to the caller: this endpoint is guest-reachable, and without an
+        // owner filter anyone could rewrite the payment info of any order.
+        $order = Order::scopedToRequester($request)->where('id', $request->order_id)->firstOrfail();
 
-        $info = OfflinePayments::where('order_id', $request->order_id)->firstOrfail();
+        $info = OfflinePayments::where('order_id', $order->id)->firstOrfail();
         $old_data =   json_decode($info->payment_info, true);
         $method_id = data_get($old_data, 'method_id', null);
         $offline_payment_info = [];

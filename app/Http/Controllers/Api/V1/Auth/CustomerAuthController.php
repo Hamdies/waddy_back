@@ -374,11 +374,15 @@ class CustomerAuthController extends Controller
         $guest = new Guest();
         $guest->ip_address = $request->ip();
         $guest->fcm_token = $request->fcm_token;
+        $guest->token = Guest::newToken();
 
         if ($guest->save()) {
             return response()->json([
                 'message' => translate('messages.guest_verified'),
                 'guest_id' => $guest->id,
+                // Clients should store this and send it as the `guest-token`
+                // header (or `guest_token` param) on every guest request.
+                'guest_token' => $guest->token,
             ], 200);
         }
 

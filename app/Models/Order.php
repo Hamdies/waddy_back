@@ -203,6 +203,29 @@ class Order extends Model
         return $this->module ? $this->module->module_type : null;
     }
 
+    /**
+     * Restrict a query to orders owned by whoever made this request.
+     *
+     * Guests and registered users share the `user_id` column, so the
+     * `is_guest` flag is what keeps the two id spaces apart — without it a
+     * caller can pass a registered user's id as `guest_id` and read their
+     * orders. A request that carries neither identity matches nothing.
+     */
+    public function scopeScopedToRequester($query, $request)
+    {
+        if ($request->user) {
+            return $query->where('user_id', $request->user->id)->where('is_guest', 0);
+        }
+
+        $guest_id = $request->guest_id ?? $request->input('guest_id');
+
+        if ($guest_id) {
+            return $query->where('user_id', $guest_id)->where('is_guest', 1);
+        }
+
+        return $query->whereRaw('1 = 0');
+    }
+
     public function scopeAccepteByDeliveryman($query)
     {
         return $query->where('order_status', 'accepted');

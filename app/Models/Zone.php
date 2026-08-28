@@ -132,10 +132,6 @@ class Zone extends Model
         return $query->where('status', '=', 1);
     }
 
-    public function scopeContains($query,$abc){
-        return $query->whereRaw("ST_Distance_Sphere(coordinates, POINT({$abc}))");
-    }
-
     protected static function booted(): void
     {
         static::addGlobalScope(new ZoneScope);

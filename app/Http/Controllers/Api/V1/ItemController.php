@@ -674,13 +674,24 @@ class ItemController extends Controller
             'rating' => 'required|numeric|max:5',
         ]);
 
-        $order = Order::find($request->order_id);
+        // The order must belong to the reviewer, be delivered, and actually
+        // contain the item. Without these checks any user could rate any
+        // product by quoting an arbitrary order id.
+        $order = Order::where('id', $request->order_id)
+            ->where('user_id', $request->user()->id)
+            ->where('is_guest', 0)
+            ->where('order_status', 'delivered')
+            ->first();
         if (isset($order) == false) {
             $validator->errors()->add('order_id', translate('messages.order_data_not_found'));
         }
 
         $item = Item::find($request->item_id);
-        if (isset($order) == false) {
+        if (isset($item) == false) {
+            $validator->errors()->add('item_id', translate('messages.item_not_found'));
+        }
+
+        if ($order && $item && $order->details()->where('item_id', $item->id)->doesntExist()) {
             $validator->errors()->add('item_id', translate('messages.item_not_found'));
         }
 
