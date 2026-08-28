@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f5f194f6ea090b7b28a0ae1b52d6795c",
+    "content-hash": "ce7a99a3e836aeb1eaf1427dadcdfd3b",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -3779,41 +3779,6 @@
                 "source": "https://github.com/laravel/tinker/tree/v2.10.0"
             },
             "time": "2024-09-23T13:32:56+00:00"
-        },
-        {
-            "name": "laravelpkg/laravelchk",
-            "version": "dev-master",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/sixamtech/laravelchk.git",
-                "reference": "4d88f6e0c5b4b5c6c3cfb305b1320288efb84708"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/sixamtech/laravelchk/zipball/4d88f6e0c5b4b5c6c3cfb305b1320288efb84708",
-                "reference": "4d88f6e0c5b4b5c6c3cfb305b1320288efb84708",
-                "shasum": ""
-            },
-            "require": {
-                "ext-curl": "*",
-                "ext-json": "*"
-            },
-            "default-branch": true,
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "Laravelpkg\\Laravelchk\\": "src/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "support": {
-                "issues": "https://github.com/sixamtech/laravelchk/issues",
-                "source": "https://github.com/sixamtech/laravelchk/tree/master"
-            },
-            "time": "2022-12-07T04:23:58+00:00"
         },
         {
             "name": "lcobucci/clock",
@@ -13901,17 +13866,15 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {
-        "laravelpkg/laravelchk": 20
-    },
+    "stability-flags": {},
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
-        "php": "^7.3|^8.1",
+        "php": "^8.2",
         "ext-curl": "*",
         "ext-json": "*",
         "ext-simplexml": "*"
     },
-    "platform-dev": [],
-    "plugin-api-version": "2.3.0"
+    "platform-dev": {},
+    "plugin-api-version": "2.6.0"
 }
