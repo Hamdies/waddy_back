@@ -230,8 +230,16 @@ customer and removes that endpoint from your server almost entirely under load.
 
 ### 2.3 Cloudflare
 
-Free tier is sufficient. It has a Cairo PoP, which is the whole point: **RTT
-71 ms → ~15 ms**.
+Free tier covers most of this, with two caveats found on 29 Aug 2026:
+
+- **Egypt is served from Marseille (`colo=MRS`), not Cairo.** Measured direct vs
+  proxied, API latency was roughly neutral — 0.065 s vs 0.051 s connect, 0.309 s
+  vs 0.282 s TTFB. The "RTT 71 ms → 15 ms" figure below was wrong.
+- **Polish is a paid feature**, so edge WebP conversion is not available.
+
+The real free-tier win is edge caching of static content: an image served from
+cache measured **0.176 s versus 0.351 s** direct — half the time, and it never
+touches the origin. That offload matters more as the catalogue grows.
 
 Order of operations matters:
 
@@ -245,8 +253,11 @@ Order of operations matters:
    per-endpoint only after §2.1 is resolved.
 6. Cache rule: `/storage/*` → cache everything, edge TTL 1 year, respect origin
    headers.
-7. Enable **Polish (Lossy) + WebP** — converts your 57 KB PNGs to ~10 KB WebP at
-   the edge with no upload-pipeline change.
+7. ~~Enable **Polish (Lossy) + WebP**~~ — **NOT available on the free plan.**
+   Verified 29 Aug 2026: the dashboard shows "Upgrade required" (Pro, ~$20/mo).
+   The 57 KB → ~10 KB image saving must therefore come from the origin instead —
+   see TIER3_PLAN.md §3, which uses intervention/image (already a dependency) to
+   generate WebP variants on upload.
 
 > Keep the origin rate limiter. Cloudflare hides client IPs behind its own, so
 > also enable `TrustProxies` (currently commented out in `app/Http/Kernel.php`)
