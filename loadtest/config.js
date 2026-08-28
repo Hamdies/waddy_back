@@ -33,6 +33,10 @@ export const endpoints = [
   { name: 'categories',        path: '/api/v1/categories' },
   { name: 'stores_all',        path: '/api/v1/stores/get-stores/all?offset=1&limit=10' },
   { name: 'stores_popular',    path: '/api/v1/stores/popular?offset=1&limit=10' },
+  { name: 'stores_latest',     path: '/api/v1/stores/latest?offset=1&limit=10' },
+  { name: 'stores_top_rated',  path: '/api/v1/stores/top-rated?offset=1&limit=10' },
   { name: 'items_popular',     path: '/api/v1/items/popular?offset=1&limit=10' },
-  { name: 'items_latest',      path: '/api/v1/items/latest?offset=1&limit=10' },
+  { name: 'categories_popular', path: '/api/v1/categories/popular' },
 ];
+// NB: /api/v1/items/latest is deliberately absent — it requires store_id and
+// category_id, so it cannot stand in for a generic catalogue read.
