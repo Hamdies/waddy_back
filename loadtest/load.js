@@ -36,6 +36,8 @@ for (const ep of endpoints) {
 const errorRate = new Rate('endpoint_errors');
 
 export const options = {
+  // Local runs address the box by IP, so the cert will not match the host.
+  insecureSkipTLSVerify: true,
   // k6 computes avg/min/med/max/p(90)/p(95) by default — p(99) has to be asked
   // for explicitly, or it reads back as 0 in the summary.
   summaryTrendStats: ['avg', 'min', 'med', 'p(90)', 'p(95)', 'p(99)', 'max'],

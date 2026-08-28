@@ -11,6 +11,8 @@ import { check, group } from 'k6';
 import { BASE, HEADERS, endpoints } from './config.js';
 
 export const options = {
+  // Local runs address the box by IP, so the cert will not match the host.
+  insecureSkipTLSVerify: true,
   vus: 1,
   duration: '30s',
   thresholds: {

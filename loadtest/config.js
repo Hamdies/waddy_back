@@ -16,14 +16,23 @@ export const ZONE_ID = __ENV.ZONE_ID || '1';
 export const LATITUDE = __ENV.LATITUDE || '30.0444';   // Cairo
 export const LONGITUDE = __ENV.LONGITUDE || '31.2357';
 
-export const HEADERS = {
-  'Content-Type': 'application/json',
-  moduleId: MODULE_ID,
-  zoneId: `[${ZONE_ID}]`,
-  latitude: LATITUDE,
-  longitude: LONGITUDE,
-  'X-localization': 'en',
-};
+// Set HOST_HEADER when hitting the server by IP from the box itself — nginx
+// matches on server_name, so without it the request lands on the default
+// vhost and gets redirected off the machine, which defeats the point of
+// testing locally.
+export const HOST_HEADER = __ENV.HOST_HEADER || '';
+
+export const HEADERS = Object.assign(
+  {
+    'Content-Type': 'application/json',
+    moduleId: MODULE_ID,
+    zoneId: `[${ZONE_ID}]`,
+    latitude: LATITUDE,
+    longitude: LONGITUDE,
+    'X-localization': 'en',
+  },
+  HOST_HEADER ? { Host: HOST_HEADER } : {}
+);
 
 // Ordered cheapest-first so a failure in the basics is obvious immediately.
 export const endpoints = [
