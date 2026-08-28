@@ -107,8 +107,12 @@ export function handleSummary(data) {
   }
   out += '\n=======================================================\n';
 
+  // Relative to the working directory, so this works whether the script is run
+  // from the repo root or from a copy elsewhere. Override with SUMMARY_OUT.
+  const out_file = __ENV.SUMMARY_OUT || 'summary.json';
+
   return {
     stdout: out,
-    'loadtest/results/summary.json': JSON.stringify(data, null, 2),
+    [out_file]: JSON.stringify(data, null, 2),
   };
 }
