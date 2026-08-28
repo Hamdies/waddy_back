@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "ce7a99a3e836aeb1eaf1427dadcdfd3b",
+    "content-hash": "6908eca3f212757a11804479cabaa199",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -3082,62 +3082,6 @@
             "time": "2022-05-21T17:30:32+00:00"
         },
         {
-            "name": "iyzico/iyzipay-php",
-            "version": "v2.0.58",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/iyzico/iyzipay-php.git",
-                "reference": "61089e8deb03977af3a1ff396b73dc01ad12fdb0"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/iyzico/iyzipay-php/zipball/61089e8deb03977af3a1ff396b73dc01ad12fdb0",
-                "reference": "61089e8deb03977af3a1ff396b73dc01ad12fdb0",
-                "shasum": ""
-            },
-            "require": {
-                "ext-curl": "*",
-                "php": ">=7.4.0"
-            },
-            "require-dev": {
-                "phpunit/phpunit": "~9.6",
-                "satooshi/php-coveralls": "~0.6.1"
-            },
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "Iyzipay\\": "src/Iyzipay/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "iyzico and contributors",
-                    "homepage": "https://github.com/iyzico/iyzipay-php/contributors"
-                }
-            ],
-            "description": "iyzipay api php client",
-            "homepage": "https://www.iyzico.com",
-            "keywords": [
-                "iyzico",
-                "iyzico.com",
-                "iyzipay",
-                "iyzipay api",
-                "iyzipay api php",
-                "iyzipay api php client",
-                "iyzipay php",
-                "payment processing"
-            ],
-            "support": {
-                "issues": "https://github.com/iyzico/iyzipay-php/issues",
-                "source": "https://github.com/iyzico/iyzipay-php/tree/v2.0.58"
-            },
-            "time": "2024-12-26T12:49:12+00:00"
-        },
-        {
             "name": "kreait/firebase-php",
             "version": "7.16.1",
             "source": {
@@ -5054,45 +4998,6 @@
             "time": "2024-01-05T07:50:54+00:00"
         },
         {
-            "name": "mercadopago/dx-php",
-            "version": "3.0.7",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/mercadopago/sdk-php.git",
-                "reference": "3e52ce992bbe79116eafbe9b7b658f0c3f105290"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/mercadopago/sdk-php/zipball/3e52ce992bbe79116eafbe9b7b658f0c3f105290",
-                "reference": "3e52ce992bbe79116eafbe9b7b658f0c3f105290",
-                "shasum": ""
-            },
-            "require": {
-                "php": ">=8.2"
-            },
-            "require-dev": {
-                "friendsofphp/php-cs-fixer": "^3.22",
-                "phpunit/phpunit": "^10.2",
-                "squizlabs/php_codesniffer": "3.*"
-            },
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "MercadoPago\\": "src/MercadoPago"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "description": "Mercado Pago PHP SDK",
-            "homepage": "https://github.com/mercadopago/sdk-php",
-            "support": {
-                "source": "https://github.com/mercadopago/sdk-php/tree/3.0.7"
-            },
-            "time": "2024-07-04T17:06:16+00:00"
-        },
-        {
             "name": "monolog/monolog",
             "version": "3.8.1",
             "source": {
@@ -6353,102 +6258,6 @@
             "time": "2024-09-04T12:51:01+00:00"
         },
         {
-            "name": "paypal/paypal-checkout-sdk",
-            "version": "1.0.2",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/paypal/Checkout-PHP-SDK.git",
-                "reference": "19992ce7051ff9e47e643f28abb8cc1b3e5f1812"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/paypal/Checkout-PHP-SDK/zipball/19992ce7051ff9e47e643f28abb8cc1b3e5f1812",
-                "reference": "19992ce7051ff9e47e643f28abb8cc1b3e5f1812",
-                "shasum": ""
-            },
-            "require": {
-                "paypal/paypalhttp": "1.0.1"
-            },
-            "require-dev": {
-                "phpunit/phpunit": "^5.7"
-            },
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "Sample\\": "samples/",
-                    "PayPalCheckoutSdk\\": "lib/PayPalCheckoutSdk"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "https://github.com/paypal/Checkout-PHP-SDK/blob/master/LICENSE"
-            ],
-            "authors": [
-                {
-                    "name": "PayPal",
-                    "homepage": "https://github.com/paypal/Checkout-PHP-SDK/contributors"
-                }
-            ],
-            "description": "PayPal's PHP SDK for Checkout REST APIs",
-            "homepage": "http://github.com/paypal/Checkout-PHP-SDK/",
-            "keywords": [
-                "checkout",
-                "orders",
-                "payments",
-                "paypal",
-                "rest",
-                "sdk"
-            ],
-            "support": {
-                "source": "https://github.com/paypal/Checkout-PHP-SDK/tree/1.0.2"
-            },
-            "abandoned": "paypal/paypal-server-sdk",
-            "time": "2021-09-21T20:57:38+00:00"
-        },
-        {
-            "name": "paypal/paypalhttp",
-            "version": "1.0.1",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/paypal/paypalhttp_php.git",
-                "reference": "7b09c89c80828e842c79230e7f156b61fbb68d25"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/paypal/paypalhttp_php/zipball/7b09c89c80828e842c79230e7f156b61fbb68d25",
-                "reference": "7b09c89c80828e842c79230e7f156b61fbb68d25",
-                "shasum": ""
-            },
-            "require": {
-                "ext-curl": "*"
-            },
-            "require-dev": {
-                "phpunit/phpunit": "^5.7",
-                "wiremock-php/wiremock-php": "1.43.2"
-            },
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "PayPalHttp\\": "lib/PayPalHttp"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "PayPal",
-                    "homepage": "https://github.com/paypal/paypalhttp_php/contributors"
-                }
-            ],
-            "support": {
-                "issues": "https://github.com/paypal/paypalhttp_php/issues",
-                "source": "https://github.com/paypal/paypalhttp_php/tree/1.0.1"
-            },
-            "time": "2021-09-14T21:35:26+00:00"
-        },
-        {
             "name": "phayes/geophp",
             "version": "1.2",
             "source": {
@@ -6487,20 +6296,6 @@
                 "source": "https://github.com/phayes/geoPHP/tree/master"
             },
             "time": "2014-12-02T06:11:22+00:00"
-        },
-        {
-            "name": "phonepe/phonepe-pg-php-sdk",
-            "version": "1.0.0",
-            "dist": {
-                "type": "zip",
-                "url": "https://phonepe.mycloudrepo.io/public/repositories/phonepe-pg-php-sdk/phonepe-pg-php-sdk.zip"
-            },
-            "type": "library",
-            "autoload": {
-                "classmap": [
-                    "/"
-                ]
-            }
         },
         {
             "name": "phpoffice/phpspreadsheet",
@@ -7747,71 +7542,6 @@
             "time": "2021-12-09T23:20:49+00:00"
         },
         {
-            "name": "razorpay/razorpay",
-            "version": "2.9.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/razorpay/razorpay-php.git",
-                "reference": "a3d7c2bcb416091edd6a76eb5a7600eaf00ac837"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/razorpay/razorpay-php/zipball/a3d7c2bcb416091edd6a76eb5a7600eaf00ac837",
-                "reference": "a3d7c2bcb416091edd6a76eb5a7600eaf00ac837",
-                "shasum": ""
-            },
-            "require": {
-                "ext-json": "*",
-                "php": ">=7.3",
-                "rmccue/requests": "^2.0"
-            },
-            "require-dev": {
-                "phpunit/phpunit": "^9",
-                "raveren/kint": "1.*"
-            },
-            "type": "library",
-            "autoload": {
-                "files": [
-                    "Deprecated.php"
-                ],
-                "psr-4": {
-                    "Razorpay\\Api\\": "src/",
-                    "Razorpay\\Tests\\": "tests/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Abhay Rana",
-                    "email": "nemo@razorpay.com",
-                    "homepage": "https://captnemo.in",
-                    "role": "Developer"
-                },
-                {
-                    "name": "Shashank Kumar",
-                    "email": "shashank@razorpay.com",
-                    "role": "Developer"
-                }
-            ],
-            "description": "Razorpay PHP Client Library",
-            "homepage": "https://docs.razorpay.com",
-            "keywords": [
-                "api",
-                "client",
-                "php",
-                "razorpay"
-            ],
-            "support": {
-                "email": "contact@razorpay.com",
-                "issues": "https://github.com/Razorpay/razorpay-php/issues",
-                "source": "https://github.com/Razorpay/razorpay-php"
-            },
-            "time": "2023-12-18T04:19:46+00:00"
-        },
-        {
             "name": "react/cache",
             "version": "v1.2.0",
             "source": {
@@ -8418,93 +8148,6 @@
             "time": "2024-11-27T12:13:42+00:00"
         },
         {
-            "name": "rmccue/requests",
-            "version": "v2.0.15",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/WordPress/Requests.git",
-                "reference": "877cd66169755899682f1595e057334b40d9d149"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/WordPress/Requests/zipball/877cd66169755899682f1595e057334b40d9d149",
-                "reference": "877cd66169755899682f1595e057334b40d9d149",
-                "shasum": ""
-            },
-            "require": {
-                "ext-json": "*",
-                "php": ">=5.6"
-            },
-            "require-dev": {
-                "dealerdirect/phpcodesniffer-composer-installer": "^0.7",
-                "php-parallel-lint/php-console-highlighter": "^0.5.0",
-                "php-parallel-lint/php-parallel-lint": "^1.3.1",
-                "phpcompatibility/php-compatibility": "^9.0",
-                "requests/test-server": "dev-main",
-                "roave/security-advisories": "dev-latest",
-                "squizlabs/php_codesniffer": "^3.6",
-                "wp-coding-standards/wpcs": "^2.0",
-                "yoast/phpunit-polyfills": "^1.0.0"
-            },
-            "suggest": {
-                "art4/requests-psr18-adapter": "For using Requests as a PSR-18 HTTP Client",
-                "ext-curl": "For improved performance",
-                "ext-openssl": "For secure transport support",
-                "ext-zlib": "For improved performance when decompressing encoded streams"
-            },
-            "type": "library",
-            "autoload": {
-                "files": [
-                    "library/Deprecated.php"
-                ],
-                "psr-4": {
-                    "WpOrg\\Requests\\": "src/"
-                },
-                "classmap": [
-                    "library/Requests.php"
-                ]
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "ISC"
-            ],
-            "authors": [
-                {
-                    "name": "Ryan McCue",
-                    "homepage": "https://rmccue.io/"
-                },
-                {
-                    "name": "Alain Schlesser",
-                    "homepage": "https://github.com/schlessera"
-                },
-                {
-                    "name": "Juliette Reinders Folmer",
-                    "homepage": "https://github.com/jrfnl"
-                },
-                {
-                    "name": "Contributors",
-                    "homepage": "https://github.com/WordPress/Requests/graphs/contributors"
-                }
-            ],
-            "description": "A HTTP library written in PHP, for human beings.",
-            "homepage": "https://requests.ryanmccue.info/",
-            "keywords": [
-                "curl",
-                "fsockopen",
-                "http",
-                "idna",
-                "ipv6",
-                "iri",
-                "sockets"
-            ],
-            "support": {
-                "docs": "https://requests.ryanmccue.info/",
-                "issues": "https://github.com/WordPress/Requests/issues",
-                "source": "https://github.com/WordPress/Requests"
-            },
-            "time": "2025-01-21T10:13:31+00:00"
-        },
-        {
             "name": "setasign/fpdi",
             "version": "v2.6.2",
             "source": {
@@ -8575,67 +8218,6 @@
                 }
             ],
             "time": "2024-12-10T13:12:19+00:00"
-        },
-        {
-            "name": "stripe/stripe-php",
-            "version": "v10.21.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/stripe/stripe-php.git",
-                "reference": "b4ab319731958077227fad1874a3671458c5d593"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/stripe/stripe-php/zipball/b4ab319731958077227fad1874a3671458c5d593",
-                "reference": "b4ab319731958077227fad1874a3671458c5d593",
-                "shasum": ""
-            },
-            "require": {
-                "ext-curl": "*",
-                "ext-json": "*",
-                "ext-mbstring": "*",
-                "php": ">=5.6.0"
-            },
-            "require-dev": {
-                "friendsofphp/php-cs-fixer": "3.5.0",
-                "php-coveralls/php-coveralls": "^2.5",
-                "phpstan/phpstan": "^1.2",
-                "phpunit/phpunit": "^5.7 || ^9.0",
-                "squizlabs/php_codesniffer": "^3.3"
-            },
-            "type": "library",
-            "extra": {
-                "branch-alias": {
-                    "dev-master": "2.0-dev"
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Stripe\\": "lib/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Stripe and contributors",
-                    "homepage": "https://github.com/stripe/stripe-php/contributors"
-                }
-            ],
-            "description": "Stripe PHP Library",
-            "homepage": "https://stripe.com/",
-            "keywords": [
-                "api",
-                "payment processing",
-                "stripe"
-            ],
-            "support": {
-                "issues": "https://github.com/stripe/stripe-php/issues",
-                "source": "https://github.com/stripe/stripe-php/tree/v10.21.0"
-            },
-            "time": "2023-08-11T00:23:24+00:00"
         },
         {
             "name": "symfony/console",
@@ -10994,84 +10576,6 @@
             "time": "2023-02-22T19:59:53+00:00"
         },
         {
-            "name": "unicodeveloper/laravel-paystack",
-            "version": "1.2.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/unicodeveloper/laravel-paystack.git",
-                "reference": "4d540e081f63f8ceca42ded5668da8ec93a3a084"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/unicodeveloper/laravel-paystack/zipball/4d540e081f63f8ceca42ded5668da8ec93a3a084",
-                "reference": "4d540e081f63f8ceca42ded5668da8ec93a3a084",
-                "shasum": ""
-            },
-            "require": {
-                "guzzlehttp/guzzle": "~6|~7|~8|~9",
-                "illuminate/support": "~6|~7|~8|~9|^10.0|^11.0",
-                "php": "^7.2|^8.0|^8.1"
-            },
-            "require-dev": {
-                "mockery/mockery": "^1.3",
-                "php-coveralls/php-coveralls": "^2.0",
-                "phpunit/phpunit": "^8.4|^9.0|^10.5",
-                "scrutinizer/ocular": "~1.1"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "aliases": {
-                        "Paystack": "Unicodeveloper\\Paystack\\Facades\\Paystack"
-                    },
-                    "providers": [
-                        "Unicodeveloper\\Paystack\\PaystackServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "files": [
-                    "src/Support/helpers.php"
-                ],
-                "psr-4": {
-                    "Unicodeveloper\\Paystack\\": "src/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "unicodeveloper",
-                    "email": "prosperotemuyiwa@gmail.com"
-                },
-                {
-                    "name": "iamfunsho",
-                    "email": "info@devfunsho.com"
-                }
-            ],
-            "description": "A Laravel Package for Paystack",
-            "keywords": [
-                "github",
-                "laravel",
-                "laravel 6",
-                "laravel 7",
-                "laravel 8",
-                "open source",
-                "payments",
-                "paystack",
-                "paystack.co",
-                "php",
-                "subscription"
-            ],
-            "support": {
-                "issues": "https://github.com/unicodeveloper/laravel-paystack/issues",
-                "source": "https://github.com/unicodeveloper/laravel-paystack/tree/1.2.0"
-            },
-            "time": "2024-04-08T09:40:49+00:00"
-        },
-        {
             "name": "vlucas/phpdotenv",
             "version": "v5.6.1",
             "source": {
@@ -11286,51 +10790,6 @@
                 "source": "https://github.com/webmozarts/assert/tree/1.11.0"
             },
             "time": "2022-06-03T18:03:27+00:00"
-        },
-        {
-            "name": "xendit/xendit-php",
-            "version": "2.19.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/xendit/xendit-php.git",
-                "reference": "02e9e413a072e68d238adb1750d9e125268b16e5"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/xendit/xendit-php/zipball/02e9e413a072e68d238adb1750d9e125268b16e5",
-                "reference": "02e9e413a072e68d238adb1750d9e125268b16e5",
-                "shasum": ""
-            },
-            "require": {
-                "ext-json": "*",
-                "guzzlehttp/guzzle": ">=6.0",
-                "php": ">=7.2.0"
-            },
-            "require-dev": {
-                "phpunit/phpunit": "^8.5.13",
-                "squizlabs/php_codesniffer": "~3.5",
-                "vlucas/phpdotenv": "^4.1"
-            },
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "Xendit\\": "src/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "description": "PHP clients for Xendit API",
-            "homepage": "https://github.com/xendit/xendit-php",
-            "keywords": [
-                "xendit"
-            ],
-            "support": {
-                "issues": "https://github.com/xendit/xendit-php/issues",
-                "source": "https://github.com/xendit/xendit-php/tree/2.19.0"
-            },
-            "time": "2022-10-12T03:31:31+00:00"
         }
     ],
     "packages-dev": [
