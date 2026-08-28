@@ -3,7 +3,6 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PaymobController;
 use App\Http\Controllers\FirebaseController;
-use Illuminate\Support\Facades\Http;
 
 /*
 |--------------------------------------------------------------------------
@@ -71,13 +70,6 @@ Route::group(['prefix' => 'payment'], function () {
 });
 
 
-Route::get('/test', function () {
-dd('Hello tester');
-});
-
-Route::get('module-test', function () {
-});
-
 //Restaurant Registration
 Route::group(['prefix' => 'vendor', 'as' => 'restaurant.'], function () {
     Route::get('apply', 'VendorController@create')->name('create');
@@ -98,20 +90,9 @@ Route::group(['prefix' => 'deliveryman', 'as' => 'deliveryman.'], function () {
 
 });
 
-Route::get('/image-proxy', function () {
-    $url = request('url');
-    if (!$url) {
-        abort(400, 'Missing url parameter');
-    }
-
-    $response = Http::withHeaders([
-        'User-Agent' => 'Laravel-Image-Proxy'
-    ])->get($url);
-
-    return response($response->body(), $response->status())
-        ->header('Content-Type', $response->header('Content-Type'))
-        ->header('Access-Control-Allow-Origin', '*');
-});
+Route::get('/image-proxy', \App\Http\Controllers\ImageProxyController::class)
+    ->middleware('throttle:60,1')
+    ->name('image-proxy');
 
 /*
 |--------------------------------------------------------------------------
