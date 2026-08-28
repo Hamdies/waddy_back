@@ -52,10 +52,17 @@ class BusinessSettingObserver
 
     private function refreshBusinessSettingsCache($config=null)
     {
+        // Forget the known keys explicitly. The `cache` table sweep below only
+        // finds anything when CACHE_DRIVER=database; on the file/redis drivers
+        // it returns nothing, which silently left settings cached forever after
+        // an admin edit.
+        Cache::forget('business_settings_all_data');
+        Cache::forget('payment_gateway_live_values');
+
         $prefix = 'business_settings_';
-        $cacheKeys = DB::table('cache')
-            ->where('key', 'like', "%" . $prefix . "%")
-            ->pluck('key');
+        $cacheKeys = config('cache.default') === 'database'
+            ? DB::table('cache')->where('key', 'like', "%" . $prefix . "%")->pluck('key')
+            : collect();
         $appName = env('APP_NAME').'_cache';
         $remove_prefix = strtolower(str_replace('=', '', $appName));
         $sanitizedKeys = $cacheKeys->map(function ($key) use ($remove_prefix) {
