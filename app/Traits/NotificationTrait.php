@@ -212,39 +212,32 @@ trait NotificationTrait
         return self::sendNotificationToHttp($postData);
     }
 
+    /**
+     * Queue one push message. Mirrors Helpers::sendNotificationToHttp — this
+     * trait carries a second copy of the same sender, so both had to move off
+     * the request path. Worth collapsing into one implementation later.
+     */
     public static function sendNotificationToHttp(array|null $data)
     {
-        $config = self::get_business_settings('push_notification_service_file_content');
-        $key = (array)$config;
-        
-        if(!isset($key['project_id']) || !$key['project_id']){
+        if (!$data) {
+            return false;
+        }
+
+        $key = (array) self::get_business_settings('push_notification_service_file_content');
+
+        if (!data_get($key, 'project_id')) {
             \Log::warning('FCM: No project_id configured');
             return false;
         }
-        
-        $url = 'https://fcm.googleapis.com/v1/projects/'.$key['project_id'].'/messages:send';
-        $headers = [
-            'Authorization' => 'Bearer ' . self::getAccessToken($key),
-            'Content-Type' => 'application/json',
-        ];
-        
+
         try {
-            $response = Http::withHeaders($headers)->post($url, $data);
-            
-            if ($response->successful()) {
-                return true;
-            }
-            
-            \Log::error('FCM notification failed', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-            return false;
-            
-        } catch (\Exception $exception) {
-            \Log::error('FCM exception: ' . $exception->getMessage());
+            \App\Jobs\SendPushNotification::dispatch($data, $key);
+        } catch (\Throwable $exception) {
+            \Log::warning('Could not queue push notification: ' . $exception->getMessage());
             return false;
         }
+
+        return true;
     }
 
     public static function getAccessToken($key)

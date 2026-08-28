@@ -68,6 +68,7 @@ use Modules\Rental\Emails\ProviderSubscriptionSuccessful;
 use Modules\Rental\Emails\ProviderSubscriptionRenewOrShift;
 use Laravelpkg\Laravelchk\Http\Controllers\LaravelchkController;
 use Modules\Rental\Entities\Vehicle;
+use App\Jobs\SendPushNotification;
 
 class Helpers
 {
@@ -1312,23 +1313,37 @@ class Helpers
         return $currency_symbol_position == 'right' ? number_format($value, config('round_up_to_digit')) . ' ' . self::currency_symbol() : self::currency_symbol() . ' ' . number_format($value, config('round_up_to_digit'));
     }
 
+    /**
+     * Hand one push message to the queue.
+     *
+     * This is the single choke point every push in the application funnels
+     * through, so dispatching here makes all of them asynchronous without
+     * touching the call sites. Previously each message did two blocking HTTP
+     * round trips to Google inside the user's request.
+     *
+     * Dispatch failures are swallowed deliberately: a push that cannot be
+     * queued must never break the order, review or chat action that triggered it.
+     */
     public static function sendNotificationToHttp(array|null $data)
     {
-        $config = self::get_business_settings('push_notification_service_file_content');
-        $key = (array)$config;
-        if(data_get($key,'project_id')){
-            $url = 'https://fcm.googleapis.com/v1/projects/'.$key['project_id'].'/messages:send';
-            $headers = [
-                'Authorization' => 'Bearer ' . self::getAccessToken($key),
-                'Content-Type' => 'application/json',
-            ];
-            try {
-                Http::withHeaders($headers)->post($url, $data);
-            }catch (\Exception $exception){
-                return false;
-            }
+        if (!$data) {
+            return false;
         }
-        return false;
+
+        $key = (array) self::get_business_settings('push_notification_service_file_content');
+
+        if (!data_get($key, 'project_id')) {
+            return false;
+        }
+
+        try {
+            SendPushNotification::dispatch($data, $key);
+        } catch (\Throwable $exception) {
+            \Illuminate\Support\Facades\Log::warning('Could not queue push notification: ' . $exception->getMessage());
+            return false;
+        }
+
+        return true;
     }
 
     public static function getAccessToken($key)

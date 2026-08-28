@@ -1,0 +1,17 @@
+[Unit]
+Description=Waddi queue worker
+After=network.target mysql.service
+
+[Service]
+User=deploy
+Group=www-data
+Restart=always
+RestartSec=5
+# --max-time recycles the worker hourly so a leaked reference cannot grow
+# unbounded; systemd restarts it immediately.
+ExecStart=/usr/bin/php8.2 /var/www/waddy/artisan queue:work database --queue=default --sleep=3 --tries=3 --max-time=3600 --timeout=60
+StandardOutput=append:/var/www/waddy/storage/logs/queue.log
+StandardError=append:/var/www/waddy/storage/logs/queue.log
+
+[Install]
+WantedBy=multi-user.target
