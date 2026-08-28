@@ -78,6 +78,27 @@ if existing:
     src = src[:existing.start()] + src[existing.end():]
     changed.append("replaced previous caching block")
 
+# --- 3. Protect the /public/ alias from the asset regex ------------------
+# The admin panel references assets as /public/assets/... , served by an alias.
+# nginx evaluates regex locations BEFORE falling back to a plain prefix match,
+# so the asset regex above would capture those URLs and serve them from `root`,
+# looking for public/public/assets/... and 404ing. `^~` makes the prefix win
+# outright and skips regex evaluation for it.
+if re.search(r'^\s*location\s+\^~\s+/public/', src, re.M):
+    print("  /public/ alias: already protected")
+else:
+    src, n = re.subn(
+        r'(^[ \t]*)location(\s+)(/public/\s*\{)',
+        r'\1location\2^~ \3',
+        src, count=1, flags=re.M)
+    if n:
+        # give it the same caching the regex would have applied
+        src, _ = re.subn(
+            r'(location\s+\^~\s+/public/\s*\{\n)(\s*)(alias[^\n]*\n)',
+            r'\1\2\3\2add_header Cache-Control "public, max-age=2592000";\n\2access_log off;\n',
+            src, count=1)
+        changed.append("^~ on the /public/ alias")
+
 # Insert immediately before the catch-all `location / {`.
 m = re.search(r'^([ \t]*)location\s+/\s*\{', src, re.M)
 if not m:
