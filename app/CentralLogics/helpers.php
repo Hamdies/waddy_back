@@ -66,7 +66,6 @@ use MatanYadaev\EloquentSpatial\Objects\Point;
 use App\Models\SubscriptionBillingAndRefundHistory;
 use Modules\Rental\Emails\ProviderSubscriptionSuccessful;
 use Modules\Rental\Emails\ProviderSubscriptionRenewOrShift;
-use Laravelpkg\Laravelchk\Http\Controllers\LaravelchkController;
 use Modules\Rental\Entities\Vehicle;
 use App\Jobs\SendPushNotification;
 
@@ -2351,13 +2350,6 @@ class Helpers
         return $envValue;
     }
 
-    public static function requestSender()
-    {
-        $class = new LaravelchkController();
-        $response = $class->actch();
-        return json_decode($response->getContent(), true);
-    }
-
     public static function insert_business_settings_key($key, $value = null)
     {
         $data =  BusinessSetting::where('key', $key)->first();
@@ -3284,47 +3276,6 @@ class Helpers
     public static function product_tax($price , $tax, $is_include=false){
         $price_tax = ($price * $tax) / (100 + ($is_include?$tax:0)) ;
         return $price_tax;
-    }
-
-    public static function apple_client_secret(){
-        // Set up the necessary variables
-        $keyId = 'U7KA7F82UM';
-        $teamId = '7WSYLQ8Y87';
-        $clientId = 'com.sixamtech.sixamMartApp';
-        $privateKey = file_get_contents('AuthKey_U7KA7F82UM.p8'); // Should be a string containing the contents of the private key file.
-
-        // Create the JWT header
-        $header = [
-            'alg' => 'ES256',
-            'kid' => $keyId,
-        ];
-
-        // Create the JWT payload
-        $payload = [
-            'iss' => $teamId,
-            'iat' => time(),
-            'exp' => time() + 86400 * 180, // 180 days in seconds
-            'aud' => 'https://appleid.apple.com',
-            'sub' => $clientId,
-        ];
-
-        // Encode the JWT header and payload
-        $base64Header = base64_encode(json_encode($header));
-        $base64Payload = base64_encode(json_encode($payload));
-
-        // Create the signature using the private key and the SHA-256 algorithm
-        $dataToSign = $base64Header . '.' . $base64Payload;
-        $signature = '';
-        openssl_sign($dataToSign, $signature, $privateKey, 'sha256');
-
-        // Encode the signature
-        $base64Signature = base64_encode($signature);
-
-        // Create the Apple Client Secret key
-        $clientSecret = $base64Header . '.' . $base64Payload . '.' . $base64Signature;
-
-        // Output the key
-        return $clientSecret;
     }
 
     public static function error_formater($key, $mesage, $errors = [])

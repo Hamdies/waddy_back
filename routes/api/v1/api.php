@@ -54,7 +54,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
 
         Route::post('guest/request','CustomerAuthController@guest_request');
 
-        Route::group(['prefix' => 'delivery-man','middleware' => 'actch:deliveryman_app'], function () {
+        Route::group(['prefix' => 'delivery-man'], function () {
             Route::post('login', 'DeliveryManLoginController@login');
             Route::post('store', 'DeliveryManLoginController@store');
 
@@ -63,7 +63,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
             Route::post('firebase-verify-token', 'DMPasswordResetController@firebase_auth_verify');
             Route::put('reset-password', 'DMPasswordResetController@reset_password_submit');
         });
-        Route::group(['prefix' => 'vendor','middleware' => 'actch:vendor_app'], function () {
+        Route::group(['prefix' => 'vendor'], function () {
             Route::post('login', 'VendorLoginController@login');
             Route::post('forgot-password', 'VendorPasswordResetController@reset_password_request');
             Route::post('verify-token', 'VendorPasswordResetController@verify_token');
@@ -104,10 +104,10 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
         Route::get('zone-request/status', 'ZoneRequestController@status');
     });
     Route::get('landing-page', 'ConfigController@landing_page');
-    Route::get('react-landing-page', 'ConfigController@react_landing_page')->middleware('actch:react_web');
+    Route::get('react-landing-page', 'ConfigController@react_landing_page');
     Route::get('flutter-landing-page', 'ConfigController@flutter_landing_page');
 
-    Route::group(['prefix' => 'delivery-man','middleware' => 'actch:deliveryman_app' ], function () {
+    Route::group(['prefix' => 'delivery-man' ], function () {
         Route::get('last-location', 'DeliverymanController@get_last_location');
 
 
@@ -165,7 +165,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
         });
     });
 
-    Route::group(['prefix' => 'vendor', 'namespace' => 'Vendor', 'middleware'=>['vendor.api','actch:vendor_app']], function () {
+    Route::group(['prefix' => 'vendor', 'namespace' => 'Vendor', 'middleware'=>['vendor.api']], function () {
         Route::get('notifications', 'VendorController@get_notifications');
         Route::get('profile', 'VendorController@get_profile');
         Route::post('update-active-status', 'VendorController@active_status');

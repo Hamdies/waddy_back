@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
-    Route::group(['middleware' => ['admin', 'current-module', 'actch:admin_panel' ]], function () {
+    Route::group(['middleware' => ['admin', 'current-module' ]], function () {
         Route::get('/test', function () {
             // return view('admin-views.test.VendorPanel-tax-report');
             // return view('admin-views.test.surgeprice-setup.list');
@@ -233,10 +233,6 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         });
 
 
-        Route::get('addon/system-addons', function (){
-            return to_route('admin.system-addon.index');
-        })->name('addon.index');
-
         Route::get('order/generate-invoice/{id}', 'OrderController@generate_invoice')->name('order.generate-invoice');
         Route::get('order/print-invoice/{id}', 'OrderController@print_invoice')->name('order.print-invoice');
         Route::get('order/status', 'OrderController@status')->name('order.status');
@@ -344,11 +340,6 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::group(['prefix' => 'login-settings', 'as' => 'login-settings.'], function () {
                 Route::get('login-setup', 'BusinessSettingsController@login_settings')->name('index');
                 Route::post('login-setup/update', 'BusinessSettingsController@login_settings_update')->name('update');
-            });
-
-            Route::group(['prefix' => 'addon-activation', 'as' => 'addon-activation.'], function () {
-                Route::get('', 'AddonActivationController@index')->name('index');
-                Route::post('activation', 'AddonActivationController@activation')->name('activation');
             });
 
             Route::get('login-url-setup', 'BusinessSettingsController@login_url_page')->name('login_url_page');
@@ -487,14 +478,6 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::put('automated-message/update', 'AutomatedMessageController@update')->name('automated_message.update');
             Route::get('automated-message/status/{id}/{status}', 'AutomatedMessageController@status')->name('automated_message.status');
             Route::delete('automated-message/destroy/{id}', 'AutomatedMessageController@destroy')->name('automated_message.destroy');
-
-            Route::group(['namespace' => 'System','prefix' => 'system-addon', 'as' => 'system-addon.', 'middleware'=>['module:user_management']], function () {
-                Route::get('/', 'AddonController@index')->name('index');
-                Route::post('publish', 'AddonController@publish')->name('publish');
-                Route::post('activation', 'AddonController@activation')->name('activation');
-                Route::post('upload', 'AddonController@upload')->name('upload');
-                Route::post('delete', 'AddonController@delete_theme')->name('delete');
-            });
 
         });
 

@@ -6,7 +6,7 @@ use App\Http\Controllers\Vendor\SubscriptionController;
 
 Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
 
-    Route::group(['middleware' => ['vendor', 'actch:admin_panel']], function () {
+    Route::group(['middleware' => ['vendor']], function () {
 
         Route::post('search-routing', 'SearchRoutingController@index')->name('search.routing');
         Route::get('recent-search', 'SearchRoutingController@recentSearch')->name('recent.search');

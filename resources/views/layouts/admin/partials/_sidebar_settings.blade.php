@@ -472,17 +472,6 @@
                             </a>
                         </li>
 
-                        <li
-                            class="navbar-vertical-aside-has-menu {{ Request::is('admin/business-settings/addon-activation*') ? 'active' : '' }}">
-                            <a class="nav-link "
-                                href="{{ route('admin.business-settings.addon-activation.index') }}"
-                                title="{{ translate('messages.Addon_Activation') }}">
-                                <span class="tio-appointment nav-icon"></span>
-                                <span class="text-truncate">{{ translate('messages.Addon_Activation') }}</span>
-                            </a>
-                        </li>
-
-
                         @if (addon_published_status('Rental'))
                             <li class="navbar-vertical-aside-has-menu @yield('notification_setup_type')">
                                 <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" id="tourb-3"
@@ -542,21 +531,6 @@
                             </a>
                         </li>
                     @endif
-
-                    <!-- Dashboards -->
-                    <li
-                        class="navbar-vertical-aside-has-menu {{ Request::is('admin/business-settings/system-addon') ? 'show active' : '' }}">
-                        <a class="js-navbar-vertical-aside-menu-link nav-link"
-                            href="{{ route('admin.business-settings.system-addon.index') }}"
-                            title="{{ translate('system_addons') }}">
-                            <i class="tio-add-circle-outlined nav-icon"></i>
-                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
-                                {{ translate('system_addons') }}
-                            </span>
-                        </a>
-                    </li>
-                    <!-- End Dashboards -->
-
 
                     @if (count(config('addon_admin_routes')) > 0)
                         <li class="nav-item">

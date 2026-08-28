@@ -39,7 +39,7 @@ class GenerateAdminRoute extends Command
         $excludeTermsRoute = [
             'print', 'download', 'export', 'edit', 'update', 'invoice', 'child', 'update-default-status', 'update-status',
             'system-currency', 'status', 'paidStatus', 'priority', 'remove-proof-image', 'select-customer', 'orders', 'logs',
-            'refund_mode', 'account-transaction/create', 'provide-deliveryman-earnings/create', 'system-addons', 'social-media/create',
+            'refund_mode', 'account-transaction/create', 'provide-deliveryman-earnings/create', 'social-media/create',
             'drivemond'
         ];
 

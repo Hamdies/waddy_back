@@ -21,12 +21,10 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\View;
 use App\Models\AdminPromotionalBanner;
 use App\Models\SubscriptionTransaction;
-use App\Traits\ActivationClass;
 use Illuminate\Support\Facades\Session;
 
 class HomeController extends Controller
 {
-      use ActivationClass;
 
     /**
      * Show the application dashboard.
@@ -456,19 +454,4 @@ class HomeController extends Controller
         return back();
     }
 
-    public function getActivationCheckView(Request $request)
-    {
-        return view('installation.activation-check');
-    }
-
-    public function activationCheck(Request $request)
-    {
-        $response = $this->getRequestConfig(
-            username: $request['username'],
-            purchaseKey: $request['purchase_key'],
-            softwareType: $request->get('software_type', base64_decode('cHJvZHVjdA=='))
-        );
-        $this->updateActivationConfig(app: 'admin_panel', response: $response);
-        return redirect(url('/'));
-    }
 }
