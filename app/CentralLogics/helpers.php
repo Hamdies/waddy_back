@@ -318,6 +318,27 @@ class Helpers
         })->toArray();
     }
 
+    /**
+     * Category id -> name, resolved from one cached map.
+     *
+     * This was a `where id = ?` query per category per item, so a list of 10
+     * items with two categories each cost 20 queries just to label them. The
+     * table is small (tens of rows), so the whole map is fetched once and
+     * cached.
+     */
+    private static function category_name($id): string
+    {
+        static $names = null;
+
+        if ($names === null) {
+            $names = Cache::remember('category_names_map', 600, function () {
+                return Category::pluck('name', 'id')->all();
+            });
+        }
+
+        return $names[$id] ?? ($names[(int) $id] ?? 'NA');
+    }
+
     public static function product_data_formatting($data, $multi_data = false, $trans = false, $local = 'en' , $temp_product=false)
     {
         $storage = [];
@@ -348,8 +369,7 @@ class Helpers
                 $item['recommended'] =(int) $item->recommended;
                 $categories = [];
                 foreach (json_decode($item['category_ids']) as $value) {
-                    $category_name = Category::where('id',$value->id)->pluck('name');
-                    $categories[] = ['id' => (string)$value->id, 'position' => $value->position, 'name'=>data_get($category_name,'0','NA')];
+                    $categories[] = ['id' => (string)$value->id, 'position' => $value->position, 'name'=>self::category_name($value->id)];
                 }
                 $item['category_ids'] = $categories;
                 $item['attributes'] = json_decode($item['attributes']);
@@ -424,8 +444,7 @@ class Helpers
             $variations = [];
             $categories = [];
             foreach (json_decode($data['category_ids']) as $value) {
-                $category_name = Category::where('id',$value->id)->pluck('name');
-                $categories[] = ['id' => (string)$value->id, 'position' => $value->position, 'name'=>data_get($category_name,'0','NA')];
+                $categories[] = ['id' => (string)$value->id, 'position' => $value->position, 'name'=>self::category_name($value->id)];
             }
             $data['category_ids'] = $categories;
 
@@ -873,13 +892,40 @@ class Helpers
         return $data;
     }
 
+    /**
+     * The extra-packaging setting, decoded once.
+     *
+     * This used to be read with a fresh `where key = ?` query for every store
+     * in a list — same key, same value, N times per response. It comes from the
+     * cached accessor now, which the rest of the file already uses.
+     */
+    private static function extra_packaging_config(): array
+    {
+        $value = self::get_business_settings('extra_packaging_data');
+
+        if (is_string($value)) {
+            $value = json_decode($value, true);
+        }
+
+        return is_array($value) ? $value : [];
+    }
+
     public static function store_data_formatting($data, $multi_data = false)
     {
         $storage = [];
         if ($multi_data == true) {
+            // storeConfig and module were both lazy-loaded per row inside the
+            // loop, so a list of 10 stores cost 20 queries before any work was
+            // done. Load them once for the whole set instead. Callers pass a
+            // plain array (`$paginator->items()`), so wrap it — the models are
+            // objects, so the loop below sees the loaded relations.
+            $relation_loader = $data instanceof Collection ? $data : new Collection($data);
+            $relation_loader->loadMissing(['storeConfig', 'module']);
+
+            $extra_packaging_data = self::extra_packaging_config();
+
             foreach ($data as $item) {
 
-                $item->load('storeConfig');
                 $ratings = StoreLogic::calculate_store_rating($item['rating']);
                 $item['ratings'] = $item?->rating ?? [];
                 unset($item['rating']);
@@ -890,8 +936,6 @@ class Helpers
                 $item['total_campaigns'] = $item['campaigns_count'];
                 $item['is_recommended'] = false;
                 $item['halal_tag_status'] =   (bool) $item?->storeConfig?->halal_tag_status;
-                $extra_packaging_data = \App\Models\BusinessSetting::where('key', 'extra_packaging_data')->first()?->value ?? '';
-                $extra_packaging_data =json_decode($extra_packaging_data , true);
                 $item['extra_packaging_status'] =   (bool) (!empty($extra_packaging_data) && data_get($extra_packaging_data,$item->module->module_type)=='1')?$item?->storeConfig?->extra_packaging_status:false;
                 $item['extra_packaging_amount'] =   (float) (!empty($extra_packaging_data) && (data_get($extra_packaging_data,$item->module->module_type)=='1') && ($item?->storeConfig?->extra_packaging_status == '1'))?$item?->storeConfig?->extra_packaging_amount:0;
                 if($item->storeConfig && $item->storeConfig->is_recommended_deleted == 0 ){
@@ -908,12 +952,11 @@ class Helpers
             }
             $data = $storage;
         } else {
-            $data->load('storeConfig');
+            $data->loadMissing('storeConfig');
             $data['is_recommended'] = false;
             $data['minimum_stock_for_warning'] =   (int) $data?->storeConfig?->minimum_stock_for_warning ?? 0;
             $data['halal_tag_status'] =   (bool) $data?->storeConfig?->halal_tag_status;
-            $extra_packaging_data = \App\Models\BusinessSetting::where('key', 'extra_packaging_data')->first()?->value ?? '';
-            $extra_packaging_data =json_decode($extra_packaging_data , true);
+            $extra_packaging_data = self::extra_packaging_config();
             $data['extra_packaging_status'] =   (bool) (!empty($extra_packaging_data) && data_get($extra_packaging_data ,$data?->module?->module_type))?$data?->storeConfig?->extra_packaging_status:false;
             $data['extra_packaging_amount'] =   (float) (!empty($extra_packaging_data) && (data_get($extra_packaging_data ,$data?->module?->module_type)) && ($data?->storeConfig?->extra_packaging_status == '1'))?$data?->storeConfig?->extra_packaging_amount:0;
             if($data->storeConfig && $data->storeConfig->is_recommended_deleted == 0 ){
