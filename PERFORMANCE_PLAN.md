@@ -318,20 +318,25 @@ Design notes that matter:
 Expect the response to be larger than any single current call but far smaller
 than the nine combined, especially gzipped.
 
-### 3.2 Images
+### 3.2 Images ✅ DONE (29 Aug 2026)
 
-Cloudflare Polish (§2.3) handles format conversion at the edge and is the fast
-path. The durable fix is at upload:
+Cloudflare Polish turned out to be a paid feature (§2.3), so this was done at the
+origin instead — which is the more durable place regardless.
 
-- Generate `thumb` (150px), `card` (400px), `hero` (1200px) variants on upload —
-  `intervention/image` is already a dependency.
-- Store WebP with a JPEG fallback.
-- Have the API return a variant set rather than one URL, so the client requests
-  the size it will actually display.
+`Helpers::upload()` now queues `thumb` (150 px) and `card` (400 px) WebP copies,
+each with a JPEG fallback, beside the untouched original; a queued
+`images:backfill-variants` command does the same for everything already uploaded.
+The API exposes them as a `logo_variants` object *only* to a client that asks
+with `X-Image-Variants: 1`, so payloads for the builds in the field are
+unchanged.
 
-A store card currently downloads a 57 KB 300×300 PNG to render at roughly 120px.
-That is ~50 KB wasted per card, on a mobile connection, times every card on the
-screen.
+**Measured on the existing image set: 1,464 KB → 58 KB, 96% smaller.** The
+conversion, not the resize, is most of that — a 500 px PNG re-encoded to WebP at
+unchanged dimensions is already ~70% smaller.
+
+The caveat this section originally understated: the pipeline deploys with no app
+release, but the bytes only leave the wire once the client requests the variant
+URLs. Detail and caveats in [TIER3_PLAN.md](TIER3_PLAN.md) §3.
 
 ### 3.3 The client is where "instant" actually comes from
 
@@ -355,9 +360,10 @@ answers in 300 ms feels instant behind a skeleton screen and a warm cache.
 
 | Stage | Effort | Gain | Depends on |
 |---|---|---|---|
-| Tier 1 | hours | 83% fewer bytes, one handshake | — |
+| Tier 1 ✅ | hours | 83% fewer bytes, one handshake | — |
+| Cloudflare + `TrustProxies` ✅ | days | edge cache, HTTP/3; **not** the predicted RTT win | Tier 1 |
+| Tier 3 image variants ✅ | days | 96% fewer image bytes | — |
 | §2.1 header/URL audit | days | correctness gate | — |
-| Cloudflare + `TrustProxies` | days | RTT 71 → 15 ms, WebP | Tier 1 |
 | Tier 3 aggregate endpoint | weeks | 1,312 → 289 ms | §2.1 |
 | Client caching / skeletons | weeks | perceived instant | aggregate |
 

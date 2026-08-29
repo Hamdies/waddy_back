@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use App\Traits\ReportFilter;
+use App\Traits\HasImageVariants;
 use Modules\Rental\Entities\Trips;
 use Modules\Rental\Entities\TripTransaction;
 use Modules\Rental\Entities\Vehicle;
@@ -86,6 +87,8 @@ use Modules\TaxModule\Entities\OrderTax;
 class Store extends Model
 {
     use ReportFilter;
+    use HasImageVariants;
+
     /**
      * The attributes that are mass assignable.
      *
@@ -936,4 +939,23 @@ class Store extends Model
         return $this->morphMany(OrderTax::class, 'store');
     }
 
+    /**
+     * Variant sets for the two images the app renders on a card. Additive:
+     * logo_full_url and cover_photo_full_url are unchanged, and these keys are
+     * only present when the client asks for them.
+     */
+    public function imageVariantAppends(): array
+    {
+        return ['logo_variants', 'cover_photo_variants'];
+    }
+
+    public function getLogoVariantsAttribute(): ?array
+    {
+        return $this->imageVariantUrls('store', $this->logo, 'logo');
+    }
+
+    public function getCoverPhotoVariantsAttribute(): ?array
+    {
+        return $this->imageVariantUrls('store/cover', $this->cover_photo, 'cover_photo');
+    }
 }

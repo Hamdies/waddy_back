@@ -276,6 +276,57 @@ Solved in nginx rather than Laravel's `TrustProxies` deliberately — nginx corr
 `REMOTE_ADDR` before PHP runs, so the limiter, `$request->ip()` and audit logging
 are all correct with no application change.
 
+## 3.3 Tier 3 — origin-side image variants ✅
+
+Cloudflare Polish being a paid feature (§3.2) left the 57 KB image problem to the
+origin. It is now solved there, which is the more durable place anyway.
+
+`Helpers::upload()` — the one function every upload in the codebase funnels
+through, along with its duplicate in `FileManagerTrait` — now queues a job that
+writes resized WebP copies beside the original:
+
+```
+store/2024-11-19-abc.png                    ← original, untouched
+store/variants/thumb/2024-11-19-abc.webp    ← 150 px
+store/variants/card/2024-11-19-abc.webp     ← 400 px
+                    …and a .jpg of each, for clients without WebP
+```
+
+Backfilling the existing images: **1,464 KB → 58 KB, 96% smaller.** The worst
+single case was a 596 KB promotional banner at 11.7 KB. **The conversion, not the
+resize, is most of that** — a 500 px PNG logo re-encoded to WebP at unchanged
+dimensions is already ~70% smaller.
+
+Two decisions are worth knowing about:
+
+- **The API change is opt-in.** `logo_full_url` and its siblings are untouched;
+  a `logo_variants` object appears only for a client sending
+  `X-Image-Variants: 1`. Appending it unconditionally would have added ~150
+  bytes per card to every response including the app builds in the field that
+  cannot use it — 7 KB of pure overhead on a fifty-store home screen, which is
+  the opposite of what this tier is for. There is a test asserting an
+  opted-out payload is byte-identical.
+- **Nothing is recorded in the database.** Variant paths are a pure function of
+  the original path, so there is no migration, no per-model column, and no
+  manifest that can drift from what is actually on disk. The cost is one
+  existence probe per image on read, cached for a day — load-bearing on S3,
+  where that probe is an HTTP HEAD.
+
+> The variant URLs inherit `/storage/`'s `Cache-Control: immutable, max-age=1y`
+> from Tier 1. Regenerating one in place (`--force`, after changing quality)
+> therefore changes bytes at a URL caches have been told never to revalidate.
+> Change encoding settings only alongside a re-upload, or purge the edge.
+
+Backfill:
+
+```bash
+php artisan images:backfill-variants --dry-run   # what would be processed
+php artisan images:backfill-variants             # queue it; idempotent, resumable
+journalctl -u waddy-queue -f
+```
+
+Full detail, measurements and caveats in [TIER3_PLAN.md](TIER3_PLAN.md) §3.
+
 ---
 
 # 4. Removing the 6amMart scaffolding
@@ -399,8 +450,9 @@ sed -i '/LOADTEST_EXEMPT_IPS/d' .env && php artisan config:cache
 
 | | |
 |---|---|
-| Origin-side WebP variants | 57 KB → ~10 KB per image. Biggest byte saving left; Cloudflare won't do it free. `TIER3_PLAN.md` §3 |
 | Aggregate home endpoint | 9 calls → 1, ~1,312 ms → ~289 ms. `TIER3_PLAN.md` §2 |
+| App: request the variant URLs | The pipeline shipped (§3.3); the bytes come off the wire when the client sends `X-Image-Variants: 1` and reads `logo_variants.webp.card` |
+| `Store::retrieved` runs a subscription sweep per hydrated row | `app/Models/Store.php:724`. Cheap on the happy path — a cached settings read that short-circuits — but it is a listener doing date arithmetic on every store in every list. Worth measuring before the aggregate endpoint multiplies the row count |
 | Client skeleton screens / cached-first render | Where most of the *perceived* gap with Talabat lives |
 | More CPU cores | The only remaining throughput lever without profiling |
 | `BusinessSettingsController` | 45 dead gateway references in a 7,684-line file |

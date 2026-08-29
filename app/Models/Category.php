@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Modules\TaxModule\Entities\Taxable;
+use App\Traits\HasImageVariants;
 
 /**
  * Class Category
@@ -32,6 +33,7 @@ use Modules\TaxModule\Entities\Taxable;
 class Category extends Model
 {
     use HasFactory;
+    use HasImageVariants;
 
     protected $with=['translations','storage'];
     /**
@@ -187,5 +189,19 @@ class Category extends Model
     public function taxVats()
     {
         return $this->morphMany(Taxable::class, 'taxable');
+    }
+
+    /**
+     * Additive variant set; image_full_url is unchanged and these keys appear
+     * only when the client asks for them.
+     */
+    public function imageVariantAppends(): array
+    {
+        return ['image_variants'];
+    }
+
+    public function getImageVariantsAttribute(): ?array
+    {
+        return $this->imageVariantUrls('category', $this->image, 'image');
     }
 }

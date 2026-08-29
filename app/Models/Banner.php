@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use App\Traits\HasImageVariants;
 
 /**
  * Class Banner
@@ -33,6 +34,7 @@ use Illuminate\Support\Facades\DB;
 class Banner extends Model
 {
     use HasFactory;
+    use HasImageVariants;
     /**
      * The attributes that are mass assignable.
      *
@@ -190,5 +192,19 @@ class Banner extends Model
                 ]);
             }
         });
+    }
+
+    /**
+     * Additive variant set; image_full_url is unchanged and these keys appear
+     * only when the client asks for them.
+     */
+    public function imageVariantAppends(): array
+    {
+        return ['image_variants'];
+    }
+
+    public function getImageVariantsAttribute(): ?array
+    {
+        return $this->imageVariantUrls('banner', $this->image, 'image');
     }
 }

@@ -2237,6 +2237,7 @@ class Helpers
 
     public static function upload(string $dir, string $format, $image = null)
     {
+        $imageName = 'def.png';
         try {
             if ($image != null) {
                 $imageName = \Carbon\Carbon::now()->toDateString() . "-" . uniqid() . "." . $format;
@@ -2244,12 +2245,43 @@ class Helpers
                     Storage::disk(self::getDisk())->makeDirectory($dir);
                 }
                 Storage::disk(self::getDisk())->putFileAs($dir, $image, $imageName);
-            } else {
-                $imageName = 'def.png';
+                self::queue_image_variants($dir, $imageName);
             }
         } catch (\Exception $e) {
         }
         return $imageName;
+    }
+
+    /**
+     * Queues WebP/resized copies of a freshly stored image.
+     *
+     * Never throws: an encoder failure must not fail the save that produced
+     * the upload. Without variants the API simply keeps serving the original.
+     */
+    public static function queue_image_variants(string $dir, ?string $imageName): void
+    {
+        try {
+            $variants = app(\App\Services\ImageVariantService::class);
+
+            if ($variants->shouldGenerate($dir, $imageName)) {
+                \App\Jobs\GenerateImageVariants::dispatch(self::getDisk(), $dir, $imageName);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Could not queue image variants', [
+                'dir' => $dir,
+                'file' => $imageName,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /** Removes the variant set belonging to an image that is going away. */
+    public static function delete_image_variants(string $dir, ?string $imageName): void
+    {
+        try {
+            app(\App\Services\ImageVariantService::class)->delete(self::getDisk(), $dir, $imageName);
+        } catch (\Throwable $e) {
+        }
     }
 
     public static function update(string $dir, $old_image, string $format, $image = null)
@@ -2263,6 +2295,7 @@ class Helpers
             }
         } catch (\Exception $e) {
         }
+        self::delete_image_variants($dir, $old_image);
         $imageName = Helpers::upload($dir, $format, $image);
         return $imageName;
     }
@@ -2278,6 +2311,15 @@ class Helpers
                 Storage::disk('s3')->delete($dir . $old_image);
             }
         } catch (\Exception $e) {
+        }
+
+        // Both disks, because this helper does not know which one holds the
+        // original either.
+        try {
+            $variants = app(\App\Services\ImageVariantService::class);
+            $variants->delete('public', $dir, $old_image);
+            $variants->delete('s3', $dir, $old_image);
+        } catch (\Throwable $e) {
         }
 
         return true;

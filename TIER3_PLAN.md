@@ -49,9 +49,9 @@ handshake if the connection is cold — for sections with no content.
 Either populate them or stop calling them. In an aggregate response an empty
 section costs a few bytes instead of a round trip.
 
-### 1.3 The formatters run 2 queries per store
+### 1.3 The formatters run 2 queries per store ✅ FIXED
 
-`Helpers::store_data_formatting()`, inside its `foreach`:
+`Helpers::store_data_formatting()` used to do this inside its `foreach`:
 
 ```php
 $item->load('storeConfig');                                        // 1 query per store
@@ -65,9 +65,11 @@ re-queried for every store in the list, while a cached accessor
 
 Three sections × 10 stores = **60 avoidable queries per home screen**.
 
-> **Fix this first.** It is a contained change, it benefits v1 immediately, and
-> it makes the aggregate endpoint cheap to build. Doing it after the aggregate
-> means the aggregate inherits the problem.
+> **Fixed.** The multi-row branch now does one `loadMissing(['storeConfig',
+> 'module'])` for the whole set and reads `extra_packaging_data` through the
+> cached `Helpers::get_business_settings()` once, outside the loop. The
+> aggregate endpoint in §2 can now be built on top of it without inheriting
+> the problem.
 
 ---
 
@@ -175,36 +177,145 @@ cache keys and their versions and short-circuit before assembly.
 
 ---
 
-## 3. Images
+## 3. Images ✅ SHIPPED (29 Aug 2026)
 
-Store logos are currently **300×300 PNG at 57 KB**, rendered on a card at roughly
-120 px. That is ~50 KB wasted per card, on mobile data, times every card on
-screen.
+Store logos are **300–500 px PNGs at 10–57 KB**, rendered on a card at roughly
+120 px. Promotional banners were worse: one is a **596 KB PNG**.
 
-Cloudflare Polish (PERFORMANCE_PLAN §2.3) converts to WebP at the edge and is the
-fast path — no pipeline change. The durable fix is at upload:
+The resize is not where the saving is — the **format conversion** is. A 500 px
+PNG logo re-encoded to WebP at the same dimensions is already ~70% smaller;
+resizing it to a 150 px thumbnail takes it to 87%.
 
-- Generate `thumb` 150 px, `card` 400 px, `hero` 1200 px on upload.
-  `intervention/image` is already a dependency.
-- Store WebP with a JPEG fallback for older clients.
-- Return a variant set from the API rather than one URL:
+### 3.1 What was built
+
+| | |
+|---|---|
+| `config/imagevariants.php` | sizes, quality, which upload directories get variants |
+| `app/Services/ImageVariantService.php` | generate / delete / resolve-URLs |
+| `app/Jobs/GenerateImageVariants.php` | one queued job per image |
+| `app/Console/Commands/BackfillImageVariants.php` | `php artisan images:backfill-variants` |
+| `app/Traits/HasImageVariants.php` | the read side, on Store / Item / Category / Banner |
+| `tests/Unit/ImageVariantServiceTest.php` | 10 tests, no database required |
+
+Uploads are unchanged in shape: `Helpers::upload()` still stores the original
+and still returns the same filename. It now also dispatches a job that writes
+
+```
+store/2024-11-19-abc.png                    ← original, untouched
+store/variants/thumb/2024-11-19-abc.webp    ← 150 px
+store/variants/thumb/2024-11-19-abc.jpg     ← fallback
+store/variants/card/2024-11-19-abc.webp     ← 400 px
+store/variants/card/2024-11-19-abc.jpg
+```
+
+`variants/` rather than `thumb/` directly under `store/`, because `store/cover/`
+is a real content directory and a size name could one day collide with one.
+
+`Helpers::update()` and `Helpers::check_and_delete()` remove the variant set
+along with the original, so replacing a logo does not leave the old one behind.
+
+### 3.2 Measured
+
+Backfilling the 19 images in the demo dataset:
+
+| | Original | Smallest WebP | |
+|---|---|---|---|
+| Store logo | 10,878 B | 1,368 B | thumb |
+| Store cover | 14,580 B | 2,824 B | card |
+| Category icon | 9,559 B | 228 B | thumb |
+| Promotional banner | 596,165 B | 11,742 B | card |
+| Module icon | 197,327 B | 2,950 B | thumb |
+| **19 images** | **1,464,447 B** | **57,880 B** | **96% smaller** |
+
+Correctness checks that were actually run, not assumed:
+
+- output dimensions are 150/400 as configured, and a 120 px source is **not**
+  upscaled to 400
+- the WebP keeps its alpha channel (corner pixel alpha 127)
+- the JPEG fallback is flattened onto **white**, not GD's default black
+- re-running the backfill is a no-op; `--force` regenerates
+
+### 3.3 The read side is opt-in, and that is deliberate
+
+`logo_full_url` and the other `*_full_url` strings are **unchanged**. The
+variant set arrives as a new sibling key:
 
 ```jsonc
-"logo": {
-  "thumb": "https://.../thumb/abc.webp",
-  "card":  "https://.../card/abc.webp",
-  "fallback": "https://.../card/abc.jpg"
+"logo_variants": {
+  "webp": { "thumb": "https://.../store/variants/thumb/abc.webp",
+            "card":  "https://.../store/variants/card/abc.webp" },
+  "jpg":  { "thumb": "...", "card": "..." },
+  "original": "https://.../store/abc.png"
 }
 ```
 
-so the client requests the size it will actually display.
+but only when the client asks, via `X-Image-Variants: 1` or `?image_variants=1`.
 
-Backfill existing images with a queued command rather than a synchronous script —
-the queue infrastructure is already in place.
+Appending it unconditionally would add ~150 bytes per card to every response —
+including the builds in the field that cannot use it. On a fifty-store home
+screen that is 7 KB spent telling old clients about URLs they will never
+request, which is the exact opposite of the point of this tier. An old client
+now gets a **byte-identical** payload; there is a test asserting it.
 
-Expected: **57 KB → ~8 KB** per store logo at card size.
+> **The sequencing claim in §5 was too optimistic.** This ships with no app
+> release, but the bytes do not come off the wire until the app requests the
+> variant URLs. What ships today is the pipeline, the backfill and the API;
+> the saving lands with the next client release.
+>
+> The one route to a saving with no client change would be nginx serving WebP
+> by content negotiation on `Accept: image/webp` — but Flutter's image loader
+> sends no `Accept` header, so it would only ever help the admin panel and the
+> web landing page.
 
----
+### 3.4 Running the backfill
+
+```bash
+php artisan images:backfill-variants --dry-run     # what would be processed
+php artisan images:backfill-variants               # queue it
+php artisan images:backfill-variants --sync        # encode inline instead
+journalctl -u waddy-queue -f                       # watch it
+```
+
+`--dir=store`, `--limit=100` and `--force` narrow it down. Already-generated
+images are skipped, so it is safe to re-run and safe to interrupt.
+
+Add it to the deploy runbook only if you want it automatic; it is idempotent,
+but on a large catalogue the first run is a lot of CPU and belongs on a quiet
+window rather than inside a deploy.
+
+### 3.5 Caveats worth knowing before touching this
+
+- **Variant URLs are immutable to caches.** nginx serves `/storage/` with
+  `Cache-Control: public, max-age=31536000, immutable` (Tier 1). Regenerating
+  a variant in place with `--force` — after lowering `webp_quality`, say —
+  changes bytes at a URL browsers and Cloudflare have been told never to
+  revalidate. Change quality only alongside a re-upload, or purge the edge.
+- **`QUEUE_CONNECTION=sync` makes generation inline.** On any box where the
+  worker is not running, an admin saving a store logo pays the encode inside
+  the request. That is the right failure mode — the alternative is a job that
+  silently never runs — but it is why `waddy-queue` matters (AUDIT §5.1).
+- **GIFs are excluded on purpose.** Intervention 2 flattens animation to the
+  first frame, so a variant would silently lose it.
+- **Verify nginx knows the MIME type.** `.webp` has been in nginx's
+  `mime.types` since 1.11.6, but confirm rather than assume:
+  ```bash
+  curl -sI https://waddyapp.com/storage/store/variants/card/<file>.webp \
+    | grep -i 'content-type\|cache-control'
+  # want: image/webp, and the immutable 1-year policy
+  ```
+- **Encoding failures are non-fatal by design.** A store still saves if its
+  logo cannot be decoded; the API keeps serving the original and the failure is
+  logged. Grep for `Image variant generation failed`.
+
+### 3.6 What is left here
+
+- Point the app at `logo_variants.webp.card` and send the opt-in header.
+- Consider `hero` (1200 px) for `store/cover` once the detail screen is
+  measured — it is configured but the cover only needs it if the screen
+  actually renders that large.
+- AVIF is another ~20% below WebP, but PHP-GD on the production box cannot
+  encode it. Not worth an Imagick install for 20%.
+
 
 ## 4. The client
 
@@ -226,16 +337,18 @@ skeleton screen with warm cached data feels instant.
 
 ## 5. Sequencing
 
-| Step | Effort | Depends on | Ship independently? |
+| Step | Effort | Depends on | State |
 |---|---|---|---|
-| 1.3 formatter N+1 fix | hours | — | **yes**, benefits v1 today |
-| 1.2 drop or populate empty sections | hours | — | **yes**, app-side |
-| 2.x aggregate endpoint | ~1 week | 1.3 | backend first, app later |
-| 3 image variants | ~3 days | — | **yes**, backfill via queue |
-| 4 client caching | ~1 week | 2.x | needs the aggregate |
+| 1.3 formatter N+1 fix | hours | — | ✅ done — `store_data_formatting()` loads `storeConfig`/`module` once and reads a cached `extra_packaging_data` |
+| 3 image variants | ~3 days | — | ✅ done — pipeline, backfill and API shipped; see §3 |
+| 1.2 drop or populate empty sections | hours | — | open, app-side |
+| 2.x aggregate endpoint | ~1 week | 1.3 | open — backend first, app later |
+| 4 client caching | ~1 week | 2.x | open — needs the aggregate |
 
-Ship the N+1 fix and image variants first — both improve v1 immediately with no
-app release. Build the aggregate behind v2 while the app team works to it.
+The two independent wins are in. Neither needed an app release to *deploy*, but
+§3's bytes only come off the wire once the client requests the variant URLs —
+see the note in §3.3. Build the aggregate behind v2 while the app team works to
+both changes at once.
 
 ---
 

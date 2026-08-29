@@ -13,10 +13,12 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Modules\TaxModule\Entities\Taxable;
+use App\Traits\HasImageVariants;
 
 class Item extends Model
 {
     use HasFactory, ReportFilter;
+    use HasImageVariants;
     protected $guarded = ['id'];
     protected $with = ['translations','storage'];
     protected $casts = [
@@ -403,5 +405,19 @@ class Item extends Model
     public function taxVats()
     {
         return $this->morphMany(Taxable::class, 'taxable');
+    }
+
+    /**
+     * Additive variant set; image_full_url is unchanged and these keys appear
+     * only when the client asks for them.
+     */
+    public function imageVariantAppends(): array
+    {
+        return ['image_variants'];
+    }
+
+    public function getImageVariantsAttribute(): ?array
+    {
+        return $this->imageVariantUrls('product', $this->image, 'image');
     }
 }

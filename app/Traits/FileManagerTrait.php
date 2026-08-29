@@ -9,6 +9,7 @@ trait FileManagerTrait
 {
     public static function upload(string $dir, string $format, $image = null): string
     {
+        $imageName = 'def.png';
         try {
             if ($image != null) {
                 $imageName = Carbon::now()->toDateString() . "-" . uniqid() . "." . $format;
@@ -16,8 +17,7 @@ trait FileManagerTrait
                     Storage::disk(self::getDisk())->makeDirectory($dir);
                 }
                 Storage::disk(self::getDisk())->putFileAs($dir, $image, $imageName);
-            } else {
-                $imageName = 'def.png';
+                \App\CentralLogics\Helpers::queue_image_variants($dir, $imageName);
             }
         } catch (\Exception $e) {
         }
@@ -37,6 +37,8 @@ trait FileManagerTrait
             }
         } catch (\Exception $e) {
         }
+        \App\CentralLogics\Helpers::delete_image_variants($dir, $old_image);
+
         return self::upload($dir, $format, $image);
     }
 
