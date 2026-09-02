@@ -79,13 +79,19 @@ $moved = collect($mapping)
 echo "subcategories to re-parent: {$moved}\n";
 
 $toHide = $categories
-    ->filter(fn ($row) => in_array($row->name, $strays, true) && $row->parent_id != 0)
+    ->filter(fn ($row) => $row->parent_id != 0
+        && (in_array($row->name, $strays, true) || array_key_exists($row->name, $topLevelNames)))
     ->count();
 
 echo "stray rows to hide (status=0, not deleted): {$toHide}\n";
 
+// A subcategory sharing a name with one of the new top-level categories is
+// a duplicate of it, hidden at the root by the migration rather than
+// re-parented, so it is handled even though no mapping names it.
 $unmapped = $children
-    ->reject(fn ($row) => isset($mapping[$row->name]) || in_array($row->name, $strays, true));
+    ->reject(fn ($row) => isset($mapping[$row->name])
+        || in_array($row->name, $strays, true)
+        || array_key_exists($row->name, $topLevelNames));
 
 if ($unmapped->count() > 0) {
     echo "\nWARNING - subcategories with no mapping, these stay where they are:\n";
