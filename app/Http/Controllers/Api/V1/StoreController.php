@@ -38,7 +38,8 @@ class StoreController extends Controller
         $sort = $request->query('sort');
         $category_id = $request->query('category_id');
         $max_delivery_time = $request->query('max_delivery_time');
-        $stores = StoreLogic::get_stores( $zone_id, $filter_data, $type, $store_type, $request['limit'], $request['offset'], $request->query('featured'),$longitude,$latitude, $filter, $rating_count, $sort, $category_id, $max_delivery_time);
+        $cuisine_id = $request->query('cuisine_id');
+        $stores = StoreLogic::get_stores( $zone_id, $filter_data, $type, $store_type, $request['limit'], $request['offset'], $request->query('featured'),$longitude,$latitude, $filter, $rating_count, $sort, $category_id, $max_delivery_time, $cuisine_id);
         $stores['stores'] = Helpers::store_data_formatting($stores['stores'], true);
 
         return response()->json($stores, 200);

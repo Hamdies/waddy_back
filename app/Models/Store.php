@@ -528,6 +528,17 @@ class Store extends Model
     }
 
     /**
+     * What this store IS. Its menu says what it sells, which is a different
+     * question — an Italian restaurant has no item in an "Italian" category.
+     *
+     * @return BelongsToMany
+     */
+    public function cuisines(): BelongsToMany
+    {
+        return $this->belongsToMany(Cuisine::class, 'cuisine_store');
+    }
+
+    /**
      * @return HasMany
      */
     public function itemCampaigns(): HasMany

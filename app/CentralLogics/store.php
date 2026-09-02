@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
 
 class StoreLogic
 {
-    public static function get_stores( $zone_id, $filter_data, $type, $store_type, $limit = 10, $offset = 1, $featured=false,$longitude=0,$latitude=0,$filter=null,$rating_count=null,$sort=null,$category_id=null,$max_delivery_time=null)
+    public static function get_stores( $zone_id, $filter_data, $type, $store_type, $limit = 10, $offset = 1, $featured=false,$longitude=0,$latitude=0,$filter=null,$rating_count=null,$sort=null,$category_id=null,$max_delivery_time=null,$cuisine_id=null)
     {
 
         $all_stores_default_status = BusinessSetting::where('key', 'all_stores_default_status')->first()?->value ?? 1;
@@ -160,6 +160,15 @@ class StoreLogic
             $query = $query->when($category_id, function ($query) use ($category_id) {
                 return $query->whereHas('items.category', function ($q) use ($category_id) {
                     return $q->whereId($category_id)->orWhere('parent_id', $category_id);
+                });
+            });
+
+            // Cuisine is a property of the store, not of its menu, so this
+            // filters on the tag rather than on what the store happens to
+            // sell — the only way an Italian restaurant is findable as one.
+            $query = $query->when($cuisine_id, function ($query) use ($cuisine_id) {
+                return $query->whereHas('cuisines', function ($q) use ($cuisine_id) {
+                    return $q->whereIn('cuisines.id', (array) $cuisine_id);
                 });
             });
 

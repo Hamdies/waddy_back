@@ -519,6 +519,11 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
             Route::get('popular', 'CategoryController@get_popular_category_list');
         });
 
+        Route::group(['prefix' => 'cuisine'], function () {
+            Route::get('list', 'CuisineController@get_cuisines');
+            Route::get('stores/{cuisine_id}', 'CuisineController@get_cuisine_stores');
+        });
+
         Route::group(['prefix' => 'common-condition'], function () {
             Route::get('/', 'CommonConditionController@get_conditions');
             Route::get('/list', 'CommonConditionController@getCommonConditionList');
