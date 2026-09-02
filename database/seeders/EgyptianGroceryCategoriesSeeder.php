@@ -44,10 +44,15 @@ class EgyptianGroceryCategoriesSeeder extends Seeder
     private function createCategoryWithSubcategories(array $categoryData, int $moduleId): void
     {
         // Create main category
+        // The key MUST include the name. Keyed on module_id+parent_id alone it
+        // matches the FIRST top-level grocery category every time, so each
+        // iteration overwrites that one row and every subcategory below gets
+        // parented to it instead of to its own parent.
         $mainCategory = Category::updateOrCreate(
             [
                 'module_id' => $moduleId,
                 'parent_id' => 0,
+                'name' => $categoryData['name'],
             ],
             [
                 'name' => $categoryData['name'],
@@ -59,7 +64,9 @@ class EgyptianGroceryCategoriesSeeder extends Seeder
             ]
         );
 
-        // Check if category was found by name instead
+        // A category's displayed name comes from its translation, not the
+        // column, so a row created under a different locale can still be the
+        // one we mean. Prefer a translation match before trusting the insert.
         if (!$mainCategory->wasRecentlyCreated) {
             $existingCategory = Category::where('module_id', $moduleId)
                 ->where('parent_id', 0)
