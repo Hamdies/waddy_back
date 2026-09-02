@@ -89,12 +89,17 @@ try {
     // A store outside the delivery zone polygon is invisible in the app, so
     // this is the check that matters most.
     echo "\n=== ZONE COVERAGE ===\n";
+    // The point must carry the same SRID as the stored polygon, which is 0
+    // here rather than 4326, or ST_Contains refuses to compare them.
     $outside = DB::select("
         SELECT s.id, s.name
         FROM stores s
         JOIN zones z ON z.id = s.zone_id
         WHERE s.latitude IS NOT NULL
-          AND NOT ST_Contains(z.coordinates, ST_GeomFromText(CONCAT('POINT(', s.longitude, ' ', s.latitude, ')'), 4326))
+          AND NOT ST_Contains(
+                ST_GeomFromText(ST_AsText(z.coordinates), 0),
+                ST_GeomFromText(CONCAT('POINT(', s.longitude, ' ', s.latitude, ')'), 0)
+              )
     ");
 
     if (count($outside) === 0) {
