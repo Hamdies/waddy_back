@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Modules\PlacesToVisit\Entities\Place;
 use Modules\PlacesToVisit\Entities\PlaceEvent;
+use Modules\PlacesToVisit\Entities\PlaceReview;
 use Modules\PlacesToVisit\Entities\PlaceVote;
 use Modules\PlacesToVisit\Entities\PlaceVoteReport;
 
@@ -58,72 +59,35 @@ class VotingService
         $existingVote = $weeklyVote; // non-null only when same place
 
         if ($existingVote) {
-            // Update existing vote — don't wipe fields the caller didn't send
-            $updateData = [];
-            if ($rating !== null) {
-                $updateData['rating'] = $rating;
-            }
-            if ($review !== null) {
-                $updateData['review'] = $review;
-            }
-            if ($image !== null) {
-                $updateData['image'] = $image;
-            }
-            if ($updateData !== []) {
-                $existingVote->update($updateData);
-            }
-
-            $this->clearLeaderboardCache();
-            PlaceEvent::log('vote_updated', $userId, $placeId, $existingVote->place?->zone_id);
-
-            // Review/photo added on update still earns its bonus XP once
-            // (XP is deduped per place + period, so this can't double-award)
-            $user = User::find($userId);
-            if ($user) {
-                if ($review && trim($review) !== '') {
-                    PlaceXpService::awardReviewXp($user, $placeId, $period);
-                }
-                if ($image) {
-                    PlaceXpService::awardPhotoReviewXp($user, $placeId, $period);
-                }
-            }
-
+            // Already backing this spot this week. A vote carries no payload
+            // of its own any more — rating, review text and photo all live in
+            // `place_reviews` — so there is nothing to update.
             return [
                 'success' => true,
                 'message' => translate('messages.vote_updated'),
-                'action' => 'updated',
+                'action' => 'unchanged',
                 'vote' => $existingVote,
             ];
         }
 
-        // Create new vote
+        // Create new vote. Deliberately writes no rating/review/image: those
+        // are a review, they are permanent, and they belong to ReviewController.
         $vote = PlaceVote::create([
             'place_id' => $placeId,
             'user_id' => $userId,
             'period' => $period,
-            'rating' => $rating,
-            'review' => $review,
-            'image' => $image,
         ]);
 
         $this->clearLeaderboardCache();
         PlaceEvent::log($switch ? 'vote_switched' : 'vote_created', $userId, $placeId);
         app(PlacePushService::class)->checkLeadChange($placeId);
 
-        // Award XP for vote (deduped per place + period — see PlaceXpService)
+        // Award XP for vote (deduped per place + period — see PlaceXpService).
+        // Review and photo XP are awarded by ReviewController, where the
+        // review actually happens.
         $user = User::find($userId);
         if ($user) {
             PlaceXpService::awardVoteXp($user, $placeId, $period);
-
-            // Bonus XP for writing a review
-            if ($review && trim($review) !== '') {
-                PlaceXpService::awardReviewXp($user, $placeId, $period);
-            }
-
-            // Bonus XP for photo review
-            if ($image) {
-                PlaceXpService::awardPhotoReviewXp($user, $placeId, $period);
-            }
         }
 
         return [
@@ -205,9 +169,14 @@ class VotingService
     /**
      * Report/flag a review with hardened validation
      */
+    /**
+     * Report a review. The parameter keeps its legacy `voteId` name for the
+     * route shape, but identifies a PlaceReview — that is where review text
+     * lives now, and a report is always about text.
+     */
     public function reportVote(int $voteId, int $reporterId, ?string $reason = null): array
     {
-        $vote = PlaceVote::find($voteId);
+        $vote = PlaceReview::find($voteId);
 
         if (!$vote) {
             return ['success' => false, 'message' => translate('messages.review_not_found')];
@@ -250,7 +219,7 @@ class VotingService
      */
     public function flagVote(int $voteId): bool
     {
-        return PlaceVote::where('id', $voteId)->update(['is_flagged' => true]) > 0;
+        return PlaceReview::where('id', $voteId)->update(['is_flagged' => true]) > 0;
     }
 
     /**
@@ -258,7 +227,7 @@ class VotingService
      */
     public function unflagVote(int $voteId): bool
     {
-        return PlaceVote::where('id', $voteId)->update(['is_flagged' => false]) > 0;
+        return PlaceReview::where('id', $voteId)->update(['is_flagged' => false]) > 0;
     }
 
     /**

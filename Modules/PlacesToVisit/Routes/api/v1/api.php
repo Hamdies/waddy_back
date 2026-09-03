@@ -38,7 +38,8 @@ Route::group(['prefix' => 'places'], function () {
     Route::get('zones/{zoneId}/places', 'PlaceZoneController@places');
     
     Route::get('{place}', 'PlaceController@show');
-    Route::get('{place}/reviews', 'VoteController@reviews');
+    // Reviews are permanent and independent of the weekly vote.
+    Route::get('{place}/reviews', 'ReviewController@index');
     
     // ==================== Protected Routes ====================
     
@@ -53,6 +54,11 @@ Route::group(['prefix' => 'places'], function () {
         Route::delete('{place}/vote', 'VoteController@removeVote')->middleware('throttle:30,1');
         Route::get('{place}/vote-status', 'VoteController@status');
         Route::post('votes/{vote}/report', 'VoteController@report')->middleware('throttle:10,1');
+
+        // Review — separate verb, separate row, separate lifetime from voting.
+        Route::post('{place}/review', 'ReviewController@store')->middleware('throttle:30,1');
+        Route::delete('{place}/review', 'ReviewController@destroy')->middleware('throttle:30,1');
+        Route::get('{place}/my-review', 'ReviewController@mine');
 
         // Favorites
         Route::get('favorites/my', 'PlaceFavoriteController@index');

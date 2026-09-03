@@ -8,7 +8,6 @@ use Illuminate\Http\Request;
 use Modules\PlacesToVisit\Entities\Place;
 use Modules\PlacesToVisit\Entities\PlaceVote;
 use Modules\PlacesToVisit\Services\VotingService;
-use App\CentralLogics\Helpers;
 
 class VoteController extends Controller
 {
@@ -22,11 +21,11 @@ class VoteController extends Controller
      */
     public function vote(Request $request, Place $place): JsonResponse
     {
-        // Older app builds send the review text as `comment`
-        if (!$request->filled('review') && $request->filled('comment')) {
-            $request->merge(['review' => $request->comment]);
-        }
-
+        // A vote is now just a vote. Rating / review text / photo are a
+        // REVIEW and belong to ReviewController — they are permanent, while a
+        // vote expires with the weekly round. Older builds may still post
+        // those fields; they are accepted and ignored rather than rejected,
+        // so an un-updated app can still vote.
         $request->validate([
             'rating' => 'nullable|integer|min:1|max:5',
             'review' => 'nullable|string|max:1000',
@@ -41,17 +40,9 @@ class VoteController extends Controller
             ], 404);
         }
 
-        $imagePath = null;
-        if ($request->hasFile('image')) {
-            $imagePath = Helpers::upload('place_reviews/', 'png', $request->file('image'));
-        }
-
         $result = $this->votingService->vote(
             placeId: $place->id,
             userId: auth()->id(),
-            rating: $request->rating,
-            review: $request->review,
-            image: $imagePath,
             switch: $request->boolean('switch')
         );
 
@@ -97,14 +88,27 @@ class VoteController extends Controller
         $vote = $this->votingService->getUserVote($place->id, $userId);
         $weeklyVote = $this->votingService->getWeeklyVote($userId);
 
+        // The caller's review, if any — a separate row with its own lifetime.
+        // Reported here too so a client can render both states from one call.
+        $review = \Modules\PlacesToVisit\Entities\PlaceReview::where('place_id', $place->id)
+            ->where('user_id', $userId)
+            ->first();
+
         return response()->json([
             'success' => true,
             'has_voted' => $vote !== null,
+            'has_reviewed' => $review !== null,
             'vote' => $vote ? [
-                'rating' => $vote->rating,
-                'review' => $vote->review,
-                'image' => $vote->image_url,
+                'rating' => $review?->rating,
+                'review' => $review?->review,
+                'image' => $review?->image_url,
                 'created_at' => $vote->created_at,
+            ] : null,
+            'review' => $review ? [
+                'rating' => $review->rating,
+                'review' => $review->review,
+                'image' => $review->image_url,
+                'created_at' => $review->created_at,
             ] : null,
             // Where this week's single vote currently sits (any place)
             'weekly_vote' => $weeklyVote ? [
@@ -118,6 +122,10 @@ class VoteController extends Controller
     /**
      * Report/flag a review (hardened)
      * POST /api/v1/places/votes/{vote}/report
+     *
+     * The route keeps its legacy `votes/{id}` shape so existing clients keep
+     * working, but the id now identifies a PlaceReview — reports are about
+     * what somebody wrote, and writing lives in `place_reviews`.
      */
     public function report(Request $request, int $voteId): JsonResponse
     {
@@ -137,47 +145,4 @@ class VoteController extends Controller
         ], $result['success'] ? 200 : ($result['message'] === translate('messages.review_not_found') ? 404 : 422));
     }
 
-    /**
-     * Get reviews for a place with pagination
-     * GET /api/v1/places/{place}/reviews
-     */
-    public function reviews(Request $request, Place $place): JsonResponse
-    {
-        // Reviews are PERMANENT, not per-round.
-        //
-        // This used to default to the current period, so every review on every
-        // spot disappeared from the app each Monday when the race rolled over
-        // — the rows were never deleted, they were simply filtered out, and
-        // "What locals say" emptied itself weekly. A review is a standing
-        // statement about a place, not a move in this week's game.
-        //
-        // An explicit ?period= still narrows to one round for callers that
-        // want it (admin, a round recap); absent, all reviews are returned.
-        $period = $request->period;
-
-        // App sends `offset` as the page number; Laravel expects `page`
-        $page = (int) ($request->page ?? $request->offset ?? 1);
-
-        $reviews = $place->votes()
-            ->when($period, fn($q) => $q->where('period', $period))
-            ->notFlagged()
-            ->withReview()
-            ->with('user:id,f_name,l_name,image')
-            ->latest()
-            ->paginate($request->per_page ?? 15, ['id', 'user_id', 'rating', 'review', 'image', 'created_at'], 'page', $page);
-
-        return response()->json([
-            'success' => true,
-            'period' => $period,
-            'data' => $reviews->items(),
-            'total_size' => $reviews->total(),
-            'offset' => $reviews->currentPage(),
-            'meta' => [
-                'current_page' => $reviews->currentPage(),
-                'last_page' => $reviews->lastPage(),
-                'per_page' => $reviews->perPage(),
-                'total' => $reviews->total(),
-            ],
-        ]);
-    }
 }

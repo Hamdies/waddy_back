@@ -87,6 +87,14 @@ class Place extends Model
         return $this->hasMany(PlaceVote::class);
     }
 
+    /**
+     * Permanent reviews — no period. See PlaceReview.
+     */
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(PlaceReview::class);
+    }
+
     public function offers(): HasMany
     {
         return $this->hasMany(PlaceOffer::class);
@@ -219,8 +227,8 @@ class Place extends Model
      */
     public function getAverageRatingForPeriod(?string $period = null): ?float
     {
-        return $this->votes()
-            ->when($period, fn($q) => $q->where('period', $period))
+        return $this->reviews()
+            ->notFlagged()
             ->whereNotNull('rating')
             ->avg('rating');
     }
@@ -261,10 +269,18 @@ class Place extends Model
         $period = $period ?? \Modules\PlacesToVisit\Services\RaceClock::period();
         
         // Vote COUNT is the weekly race and stays scoped to the period.
-        // Average RATING is lifetime — see getAverageRatingForPeriod().
+        //
+        // Average RATING now comes from the permanent `place_reviews` table,
+        // but is still exposed as `votes_avg_rating`: a dozen call sites
+        // (leaderboard ordering, trending, winners, favourites, the admin
+        // list) read that name, and the alias keeps the rating source a
+        // single-file change instead of a rename spread across all of them.
         return $query
             ->withCount(['votes' => fn($q) => $q->where('period', $period)])
-            ->withAvg(['votes' => fn($q) => $q->whereNotNull('rating')], 'rating');
+            ->withAvg(
+                ['reviews as votes_avg_rating' => fn($q) => $q->where('is_flagged', false)->whereNotNull('rating')],
+                'rating'
+            );
     }
 
     public function scopeNearby($query, float $lat, float $lng, float $radiusKm = 10)
