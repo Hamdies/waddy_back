@@ -203,7 +203,10 @@ class MaadiContentSeeder extends Seeder
                 'add_ons' => json_encode([]),
                 'attributes' => json_encode([]),
                 'choice_options' => json_encode([]),
-                'images' => json_encode([]),
+                // images is cast to array on the model, so Eloquent encodes
+                // it itself. Passing an encoded string here would store "[]"
+                // rather than [], and the admin edit page foreaches over it.
+                'images' => [],
             ],
         );
 
