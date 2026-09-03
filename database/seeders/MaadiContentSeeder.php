@@ -116,7 +116,7 @@ class MaadiContentSeeder extends Seeder
         );
 
         $this->setStoreTranslation($store, $data['name_ar']);
-        $this->setSchedule($store, $data['opens'] ?? '09:00:00', $data['closes'] ?? '23:59:00');
+        $this->setSchedule($store);
 
         if (!empty($data['cuisines'])) {
             $cuisineIds = Cuisine::withoutGlobalScope('translate')
@@ -148,13 +148,20 @@ class MaadiContentSeeder extends Seeder
     /**
      * A store with no schedule rows reads as permanently closed, because the
      * open flag is computed from them.
+     *
+     * Every store is scheduled 00:00-23:59 rather than to its real hours. The
+     * open flag compares `opening_time < now AND closing_time > now`, which
+     * cannot express a range that crosses midnight, so a restaurant closing at
+     * 02:00 would read as closed all day. Each venue's actual hours are kept
+     * in the data below and can be applied once that comparison understands
+     * overnight ranges the way Place::isOpenNow() already does.
      */
-    private function setSchedule(Store $store, string $opens, string $closes): void
+    private function setSchedule(Store $store): void
     {
         foreach (range(0, 6) as $day) {
             StoreSchedule::updateOrCreate(
                 ['store_id' => $store->id, 'day' => $day],
-                ['opening_time' => $opens, 'closing_time' => $closes],
+                ['opening_time' => '00:00:00', 'closing_time' => '23:59:00'],
             );
         }
     }
