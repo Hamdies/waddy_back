@@ -149,14 +149,16 @@ class PlaceController extends Controller
         // Get voting stats
         $place->loadCount(['votes' => fn($q) => $q->where('period', $period)]);
         $place->loadCount('favorites');
+        // Rating and reviews are LIFETIME; only the vote count is the weekly
+        // race. Scoping these to the period blanked a spot's whole history
+        // every Monday — stars reset to "—" and every review disappeared,
+        // even though none of the rows had gone anywhere.
         $avgRating = $place->votes()
-            ->where('period', $period)
             ->whereNotNull('rating')
             ->avg('rating');
 
         // Get reviews (non-flagged) — first page
         $reviews = $place->votes()
-            ->where('period', $period)
             ->notFlagged()
             ->withReview()
             ->with('user:id,f_name,l_name,image')

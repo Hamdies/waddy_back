@@ -143,13 +143,23 @@ class VoteController extends Controller
      */
     public function reviews(Request $request, Place $place): JsonResponse
     {
-        $period = $request->period ?? \Modules\PlacesToVisit\Services\RaceClock::period();
+        // Reviews are PERMANENT, not per-round.
+        //
+        // This used to default to the current period, so every review on every
+        // spot disappeared from the app each Monday when the race rolled over
+        // — the rows were never deleted, they were simply filtered out, and
+        // "What locals say" emptied itself weekly. A review is a standing
+        // statement about a place, not a move in this week's game.
+        //
+        // An explicit ?period= still narrows to one round for callers that
+        // want it (admin, a round recap); absent, all reviews are returned.
+        $period = $request->period;
 
         // App sends `offset` as the page number; Laravel expects `page`
         $page = (int) ($request->page ?? $request->offset ?? 1);
 
         $reviews = $place->votes()
-            ->where('period', $period)
+            ->when($period, fn($q) => $q->where('period', $period))
             ->notFlagged()
             ->withReview()
             ->with('user:id,f_name,l_name,image')

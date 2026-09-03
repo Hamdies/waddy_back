@@ -207,11 +207,20 @@ class Place extends Model
         return $this->votes()->where('period', $period)->count();
     }
 
+    /**
+     * Lifetime average rating.
+     *
+     * Deliberately NOT period-scoped. Votes are a weekly race and reset with
+     * the round, but a rating is a standing judgement about the place itself:
+     * scoping it to the current period wiped every star each Monday and left
+     * a long-established spot showing "no rating" for the first days of every
+     * week. The $period argument is retained for callers that genuinely want
+     * a single round's average.
+     */
     public function getAverageRatingForPeriod(?string $period = null): ?float
     {
-        $period = $period ?? \Modules\PlacesToVisit\Services\RaceClock::period();
         return $this->votes()
-            ->where('period', $period)
+            ->when($period, fn($q) => $q->where('period', $period))
             ->whereNotNull('rating')
             ->avg('rating');
     }
@@ -251,9 +260,11 @@ class Place extends Model
     {
         $period = $period ?? \Modules\PlacesToVisit\Services\RaceClock::period();
         
+        // Vote COUNT is the weekly race and stays scoped to the period.
+        // Average RATING is lifetime — see getAverageRatingForPeriod().
         return $query
             ->withCount(['votes' => fn($q) => $q->where('period', $period)])
-            ->withAvg(['votes' => fn($q) => $q->where('period', $period)->whereNotNull('rating')], 'rating');
+            ->withAvg(['votes' => fn($q) => $q->whereNotNull('rating')], 'rating');
     }
 
     public function scopeNearby($query, float $lat, float $lng, float $radiusKm = 10)
