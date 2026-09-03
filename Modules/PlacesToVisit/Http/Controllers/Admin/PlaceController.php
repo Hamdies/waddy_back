@@ -255,7 +255,7 @@ class PlaceController extends Controller
         
         // Delete gallery images
         foreach ($place->images as $img) {
-            Helpers::check_and_delete('places/', $img->image);
+            Helpers::check_and_delete('places/', $img->raw_image);
         }
         
         $place->delete();
@@ -266,7 +266,7 @@ class PlaceController extends Controller
 
     public function deleteImage(PlaceImage $image): RedirectResponse
     {
-        Helpers::check_and_delete('places/', $image->image);
+        Helpers::check_and_delete('places/', $image->raw_image);
         $image->delete();
 
         \Toastr::success(translate('messages.image_deleted_successfully'));

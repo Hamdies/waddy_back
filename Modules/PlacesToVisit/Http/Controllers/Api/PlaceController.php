@@ -175,6 +175,14 @@ class PlaceController extends Controller
             $isFavorited = $place->isUserFavorite($userId);
         }
 
+        // Rank within the place's own category — the number the details screen
+        // labels "#N IN CAFES". Null is a real answer: LeaderboardService gates
+        // entry on config('placestovisit.min_votes_for_leaderboard'), so a spot
+        // below that threshold is genuinely unranked rather than missing data.
+        $rank = $this->leaderboardService
+            ->getTopPlaces($period, $place->category_id)
+            ->firstWhere('id', $place->id)['rank'] ?? null;
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -196,9 +204,25 @@ class PlaceController extends Controller
                 'is_favorited' => $isFavorited,
                 'favorites_count' => $place->favorites_count,
                 'category' => $place->category,
-                'zone' => $place->zone?->display_name,
+                // The zone RELATION, matching index(). This used to send
+                // `$place->zone?->display_name` — a bare string — while index()
+                // sent the object. Clients that parse a zone object (the
+                // customer app does, and discards a string) resolved every
+                // detail view's zone to null and fell back to the raw street
+                // address in the hero.
+                'zone' => $place->zone,
                 'tags' => $place->tags,
                 'offers' => $place->offers,
+                'rank' => $rank,
+                // Vote/rating stats at the TOP level, matching the keys
+                // index() produces via withCount/withAvg. They were previously
+                // only nested under `stats`, so a client reading the list
+                // contract saw 0 votes and no rating on every place it opened.
+                // `stats` is kept below for anything already reading it.
+                'votes_count' => $place->votes_count,
+                'votes_avg_rating' => round($avgRating ?? 0, 1),
+                'avg_rating' => round($avgRating ?? 0, 1),
+                'rating' => round($avgRating ?? 0, 1),
                 'titles_count' => \Modules\PlacesToVisit\Entities\PlaceWinner::titleCount($place->id),
                 'is_current_champion' => \Modules\PlacesToVisit\Entities\PlaceWinner::query()
                     ->where('place_id', $place->id)
