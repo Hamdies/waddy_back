@@ -412,6 +412,15 @@
                 @endif
                 <!-- End Category -->
 
+                <!-- Cuisines -->
+                <li class="nav-item {{ Request::is('admin/cuisine*') ? 'active' : '' }}">
+                    <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.cuisine.index') }}" title="{{ translate('messages.cuisine') }}">
+                        <i class="tio-restaurant nav-icon"></i>
+                        <span class="text-truncate">{{ translate('messages.cuisine') }}</span>
+                    </a>
+                </li>
+                <!-- End Cuisines -->
+
                 <!-- Attributes -->
                 {{-- @if (\App\CentralLogics\Helpers::module_permission_check('attribute'))
                 <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/attribute*') ? 'active' : '' }}">

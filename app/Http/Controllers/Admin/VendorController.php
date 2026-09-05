@@ -294,6 +294,16 @@ class VendorController extends Controller
         $store->tin_certificate_image = $request->has('tin_certificate_image') ? Helpers::update('store/', $store->tin_certificate_image, $extension, $request->file('tin_certificate_image')) : $store->tin_certificate_image;
         $store->delivery_time = $request->minimum_delivery_time .'-'. $request->maximum_delivery_time.' '.$request->delivery_time_type;
         $store->save();
+
+        // Cuisines only apply to food stores; the field is absent from the form
+        // for every other module, and a missing key must not wipe the pivot.
+        if ($request->has('cuisine_ids')) {
+            // The form posts an empty hidden value so that clearing every chip
+            // still submits the key; filter it back out before syncing.
+            $cuisineIds = array_filter((array) $request->input('cuisine_ids', []), 'is_numeric');
+            $store->cuisines()->sync($cuisineIds);
+        }
+
         $default_lang = str_replace('_', '-', app()->getLocale());
         foreach($request->lang as $index=>$key)
         {

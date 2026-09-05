@@ -76,6 +76,17 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             });
         });
 
+        // Cuisines are global rather than module-scoped, so this group carries
+        // no module middleware: the same list serves every food zone.
+        Route::group(['prefix' => 'cuisine', 'as' => 'cuisine.'], function () {
+            Route::get('/', 'CuisineController@index')->name('index');
+            Route::post('/', 'CuisineController@store')->name('store');
+            Route::get('edit/{id}', 'CuisineController@edit')->name('edit');
+            Route::post('update/{id}', 'CuisineController@update')->name('update');
+            Route::get('status/{id}/{status}', 'CuisineController@status')->name('status');
+            Route::delete('delete/{id}', 'CuisineController@destroy')->name('delete');
+        });
+
         Route::group(['prefix' => 'attribute', 'as' => 'attribute.', 'middleware' => ['module:attribute']], function () {
             Route::get(Attribute::INDEX[URI], [AttributeController::class, 'index'])->name('add-new');
             Route::post(Attribute::ADD[URI], [AttributeController::class, 'add'])->name('store');

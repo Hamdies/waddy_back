@@ -247,6 +247,27 @@
                                             @endforeach
                                         </select>
                                     </div>
+                                    @if($store->module?->module_type == 'food')
+                                    <div class="form-group">
+                                        <label class="input-label" for="cuisine_ids">{{translate('messages.cuisines')}}
+                                            <span class="form-label-secondary" data-toggle="tooltip" data-placement="right"
+                                                  data-original-title="{{translate('messages.what_this_restaurant_serves')}}">
+                                                <img src="{{asset('/public/assets/admin/img/info-circle.svg')}}" alt="{{translate('messages.cuisines')}}">
+                                            </span>
+                                        </label>
+                                        {{-- Always submitted, so clearing every chip syncs to an empty
+                                             pivot instead of leaving the old cuisines in place. --}}
+                                        <input type="hidden" name="cuisine_ids[]" value="">
+                                        <select name="cuisine_ids[]" id="cuisine_ids" multiple
+                                                data-placeholder="{{translate('messages.select_cuisines')}}"
+                                                class="form-control js-select2-custom">
+                                            @php($selectedCuisines = $store->cuisines()->pluck('cuisines.id')->toArray())
+                                            @foreach(\App\Models\Cuisine::active()->orderBy('name')->get() as $cuisine)
+                                                <option value="{{$cuisine->id}}" {{in_array($cuisine->id, $selectedCuisines) ? 'selected' : ''}}>{{$cuisine->name}}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    @endif
                                     <div class="form-group">
                                         <label class="input-label" for="latitude">{{translate('messages.latitude')}}
                                             <span
