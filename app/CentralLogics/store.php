@@ -41,7 +41,7 @@ class StoreLogic
             ->withCount(['items','campaigns','reviews','orders'])
             ->with(['discount'=>function($q){
                 return $q->validate();
-            }])
+            }, 'cuisines:id,name'])
             ->whereHas('module',function($query){
                 return  $query->active();
             })
@@ -261,7 +261,7 @@ class StoreLogic
             ->withCount(['items','campaigns'])
             ->with(['discount'=>function($q){
                 return $q->validate();
-            }])
+            }, 'cuisines:id,name'])
             ->when(config('module.current_module_data'), function($query)use($zone_id){
                 $query->whereHas('zone.modules', function($query){
                     $query->where('modules.id', config('module.current_module_data')['id']);
@@ -339,7 +339,7 @@ class StoreLogic
             ->withCount(['items','campaigns'])
             ->with(['discount'=>function($q){
                 return $q->validate();
-            }])
+            }, 'cuisines:id,name'])
             ->when(config('module.current_module_data'), function($query)use($zone_id){
                 $query->whereHas('zone.modules', function($query){
                     $query->where('modules.id', config('module.current_module_data')['id']);
@@ -424,7 +424,7 @@ class StoreLogic
             ->withCount(['items','campaigns'])
             ->with(['discount'=>function($q){
                 return $q->validate();
-            }])
+            }, 'cuisines:id,name'])
             ->when(config('module.current_module_data'), function($query)use($zone_id){
                 return   $query->whereHas('zone.modules', function($query){
                     return $query->where('modules.id', config('module.current_module_data')['id']);
@@ -521,7 +521,7 @@ class StoreLogic
             ->withCount(['items','campaigns'])
             ->with(['discount'=>function($q){
                 return $q->validate();
-            }])
+            }, 'cuisines:id,name'])
             ->when(config('module.current_module_data'), function($query)use($zone_id){
                 $query->whereHas('zone.modules', function($query){
                     $query->where('modules.id', config('module.current_module_data')['id']);
@@ -547,7 +547,7 @@ class StoreLogic
     {
         return Store::withOpen($longitude??0,$latitude??0)->with(['discount'=>function($q){
             return $q->validate();
-        }, 'campaigns', 'schedules','activeCoupons','store_sub'])
+        }, 'campaigns', 'schedules','activeCoupons','store_sub', 'cuisines:id,name'])
             ->withCount(['items','campaigns','reviews_comments'])
             ->when(config('module.current_module_data'), function($query){
                 $query->module(config('module.current_module_data')['id']);
@@ -598,7 +598,7 @@ class StoreLogic
         })
         ->withCount(['items','campaigns'])->with(['discount'=>function($q){
             return $q->validate();
-        }])->weekday()
+        }, 'cuisines:id,name'])->weekday()
         ->where(function ($q) use ($key) {
             foreach ($key as $value) {
                 $q->orWhere('name', 'like', "%{$value}%");
