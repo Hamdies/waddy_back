@@ -158,6 +158,13 @@
     "use strict";
         $('#campaign-form').on('submit', function (e) {
             e.preventDefault();
+            // CKEditor writes back to its <textarea> only on a native submit;
+            // sync explicitly before building FormData by hand.
+            if (typeof CKEDITOR !== 'undefined') {
+                for (let name in CKEDITOR.instances) {
+                    CKEDITOR.instances[name].updateElement();
+                }
+            }
             var formData = new FormData(this);
             $.ajaxSetup({
                 headers: {

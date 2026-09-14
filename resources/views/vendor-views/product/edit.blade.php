@@ -843,6 +843,13 @@
         }
 
         $('#product_form').on('submit', function () {
+            // CKEditor writes back to its <textarea> only on a native submit;
+            // sync explicitly before building FormData by hand.
+            if (typeof CKEDITOR !== 'undefined') {
+                for (let name in CKEDITOR.instances) {
+                    CKEDITOR.instances[name].updateElement();
+                }
+            }
             let formData = new FormData(this);
             $.ajaxSetup({
                 headers: {

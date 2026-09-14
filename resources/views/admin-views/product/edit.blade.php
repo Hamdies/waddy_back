@@ -1414,7 +1414,15 @@
      //    });
 
     $('#product_form').on('submit', function() {
-        console.log('working');
+        // CKEditor keeps its content in its own instance and only writes back to
+        // the underlying <textarea> on a native submit. This handler builds
+        // FormData by hand, so without an explicit sync every description[]
+        // posts empty and `description.0` fails validation.
+        if (typeof CKEDITOR !== 'undefined') {
+            for (let name in CKEDITOR.instances) {
+                CKEDITOR.instances[name].updateElement();
+            }
+        }
         let formData = new FormData(this);
         $.ajaxSetup({
             headers: {
