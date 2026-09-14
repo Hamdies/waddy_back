@@ -25,11 +25,17 @@ class CategoryService
 
     public function getAddData($request, string|null|Object $parentCategory): array
     {
+        $parentId = $request->parent_id == null ? 0 : $request->parent_id;
+
         return [
             'name' => $request->name[array_search('default', $request->lang)],
             'image' => $this->upload('category/', 'png', $request->file('image')),
-            'parent_id' => $request->parent_id == null ? 0 : $request->parent_id,
-            'position' => $request->position,
+            'parent_id' => $parentId,
+            // `position` is a depth flag (0 = category, 1 = sub-category), not a
+            // sort order. Deriving it from parent_id keeps the two in step; a
+            // posted value once let sort orders land here and broke the API's
+            // `where(position = 0)` category list.
+            'position' => $parentId ? 1 : 0,
             'module_id' => isset($request->parent_id) ? $parentCategory['module_id'] : Config::get('module.current_module_id')
         ];
     }
