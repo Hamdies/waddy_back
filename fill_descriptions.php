@@ -1,4 +1,14 @@
 <?php
+/**
+ * One-off backfill: item descriptions (EN + AR).
+ *
+ * Run from the project root:  php fill_descriptions.php
+ * Boots the framework itself, so it does not depend on tinker's parser.
+ */
+require __DIR__ . '/vendor/autoload.php';
+$app = require_once __DIR__ . '/bootstrap/app.php';
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+
 $rows = [
   220 => ['Vine-ripened tomatoes, picked fresh and packed the same day.','طماطم طازة متشمسة، متقطفة ومتعبأة في نفس اليوم.'],
   221 => ['Sweet ripe bananas, perfect for smoothies or a quick snack.','موز ناضج وحلو، مثالي للسموذي أو سناك سريع.'],
