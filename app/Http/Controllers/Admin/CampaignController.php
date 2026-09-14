@@ -794,10 +794,12 @@ class CampaignController extends Controller
         {
             $campaign = ItemCampaign::withoutGlobalScope('translate')->findOrFail($campaign);
             $temp = $campaign->category;
-            if($temp?->position)
+            // See ItemController::edit — trust parent_id, not position, so a
+            // top-level category is not read as an orphaned sub-category.
+            if($temp?->parent_id)
             {
                 $sub_category = $temp;
-                $category = $temp->parent;
+                $category = $temp->parent ?? $temp;
             }
             else
             {

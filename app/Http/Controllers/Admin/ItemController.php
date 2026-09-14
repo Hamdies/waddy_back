@@ -410,9 +410,13 @@ class ItemController extends Controller
             return back();
         }
         $temp = $product->category;
-        if ($temp?->position) {
+        // `position` is the depth flag (0 = category, 1 = sub-category), but bad
+        // rows carry a sort order here. Trust parent_id, which is authoritative,
+        // so a top-level category is never mistaken for an orphaned child and
+        // silently dropped from the edit form.
+        if ($temp?->parent_id) {
             $sub_category = $temp;
-            $category = $temp->parent;
+            $category = $temp->parent ?? $temp;
         } else {
             $category = $temp;
             $sub_category = null;
