@@ -150,8 +150,18 @@ class StoreLogic
             $query = $query->when($filter_data=='take_away', function($q){
                 return $q->takeaway();
             });
+            // Featured is an editorial list, so it is served in the editor's
+            // own order. The client paints 1..10 on these, and a ranking that
+            // is really "whatever the query returned" is the numerals making a
+            // promise the data cannot keep.
+            //
+            // NULLs last, explicitly: MySQL sorts NULL first ascending, so an
+            // unranked featured store would otherwise outrank every ranked
+            // one. Ordering before the trailing `orderBy('open')` makes
+            // position primary and open-now the tiebreak between equal ranks.
             $query = $query->when($featured, function($query){
-                return $query->featured();
+                return $query->featured()
+                    ->orderByRaw('featured_order IS NULL, featured_order ASC');
             });
             $query = $query->when($filter && in_array('fast_delivery',$filter) , function($q) {
                 return $q->orderBy('open', 'desc')->orderBy('min_delivery_time');

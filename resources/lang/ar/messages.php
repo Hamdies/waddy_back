@@ -5614,4 +5614,5 @@
   'select_cuisines' => 'اختر المطابخ',
   'what_this_restaurant_serves' => 'نوع المأكولات التي يقدمها المطعم. يتصفح العملاء المطاعم حسب المطبخ.',
   'higher_priority_shows_first' => 'الأولوية الأعلى تظهر أولاً في التطبيق',
+  'rank_on_the_featured_chart' => 'الترتيب في قائمة المميزة',
 );

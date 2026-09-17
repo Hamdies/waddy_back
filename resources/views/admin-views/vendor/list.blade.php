@@ -206,12 +206,33 @@
                                 {{$store->zone?$store->zone->name:translate('messages.zone_deleted')}}
                             </td>
                             <td>
-                                <label class="toggle-switch toggle-switch-sm" for="featuredCheckbox{{$store->id}}">
-                                    <input type="checkbox" data-url="{{route('admin.store.featured',[$store->id,$store->featured?0:1])}}" class="toggle-switch-input redirect-url" id="featuredCheckbox{{$store->id}}" {{$store->featured?'checked':''}}>
-                                    <span class="toggle-switch-label">
-                                        <span class="toggle-switch-indicator"></span>
-                                    </span>
-                                </label>
+                                <div class="d-flex align-items-center">
+                                    <label class="toggle-switch toggle-switch-sm mb-0" for="featuredCheckbox{{$store->id}}">
+                                        <input type="checkbox" data-url="{{route('admin.store.featured',[$store->id,$store->featured?0:1])}}" class="toggle-switch-input redirect-url" id="featuredCheckbox{{$store->id}}" {{$store->featured?'checked':''}}>
+                                        <span class="toggle-switch-label">
+                                            <span class="toggle-switch-indicator"></span>
+                                        </span>
+                                    </label>
+
+                                    {{-- The rank behind the numerals the app paints on these stores.
+                                         Only offered once the store is actually featured: a position
+                                         on a chart it is not on has nothing to mean. Blank = featured
+                                         but unranked, which sorts after every ranked store. --}}
+                                    @if($store->featured)
+                                        <form action="{{route('admin.store.featured_order',[$store->id])}}" method="post" class="d-flex align-items-center ml-2 mb-0">
+                                            @csrf
+                                            <input type="number" name="featured_order" min="1" max="999"
+                                                   value="{{$store->featured_order}}"
+                                                   class="form-control form-control-sm text-center"
+                                                   style="width: 62px;"
+                                                   title="{{translate('messages.rank_on_the_featured_chart')}}"
+                                                   placeholder="—">
+                                            <button type="submit" class="btn btn-sm btn-outline-primary ml-1" title="{{translate('messages.save')}}">
+                                                <i class="tio-save"></i>
+                                            </button>
+                                        </form>
+                                    @endif
+                                </div>
                             </td>
 
                             <td>

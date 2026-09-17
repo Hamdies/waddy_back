@@ -132,6 +132,7 @@ class Store extends Model
         'pickup_zone_id',
         'order_place_to_schedule_interval',
         'featured',
+        'featured_order',
         'per_km_shipping_charge',
         'prescription_order',
         'slug',
@@ -181,6 +182,7 @@ class Store extends Model
         'non_veg'=>'integer',
         'order_place_to_schedule_interval'=>'integer',
         'featured'=>'integer',
+        'featured_order'=>'integer',
         'items_count'=>'integer',
         'prescription_order'=>'boolean',
         'announcement'=>'integer',
@@ -701,9 +703,21 @@ class Store extends Model
     {
         $query->selectRaw('*, IF(((select count(*) from `store_schedule` where `stores`.`id` = `store_schedule`.`store_id` and `store_schedule`.`day` = '.now()->dayOfWeek.' and `store_schedule`.`opening_time` < "'.now()->format('H:i:s').'" and `store_schedule`.`closing_time` >"'.now()->format('H:i:s').'") > 0), true, false) as open,ST_Distance_Sphere(point(longitude, latitude),point('.$longitude.', '.$latitude.')) as distance');
     }
+    /**
+     * Adds the `open`, `distance` and `min_delivery_time` aliases.
+     *
+     * `delivery_time` is written as "30-45 min" by the admin panel but as a
+     * bare "30-45" by the seeders, and the unit-less form used to fall to the
+     * ELSE branch and come back as 9999. Nothing shows that in a response —
+     * the alias is only ever read by a filter or an ORDER BY — so every
+     * seeded store silently failed `max_delivery_time` (get-stores returned
+     * 0 rows for any cap) and `filter=fast_delivery` ordered on a constant.
+     * A leading digit is now parsed as minutes; genuinely unparseable values
+     * still sort last.
+     */
     public function scopeWithOpenWithDeliveryTime($query, $longitude, $latitude): void
     {
-        $query->selectRaw('*, IF(((select count(*) from `store_schedule` where `stores`.`id` = `store_schedule`.`store_id` and `store_schedule`.`day` = '.now()->dayOfWeek.' and `store_schedule`.`opening_time` < "'.now()->format('H:i:s').'" and `store_schedule`.`closing_time` >"'.now()->format('H:i:s').'") > 0), true, false) as open,ST_Distance_Sphere(point(longitude, latitude),point('.$longitude.', '.$latitude.')) as distance, CASE WHEN delivery_time IS NULL THEN 9999  WHEN delivery_time LIKE  "%hours%" THEN CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(delivery_time, "-", 1), " ", 1) AS UNSIGNED) * 60 WHEN delivery_time LIKE "%min%" OR delivery_time LIKE "%minute%" THEN CAST(SUBSTRING_INDEX(delivery_time, "-", 1) AS UNSIGNED) ELSE 9999 END AS min_delivery_time');
+        $query->selectRaw('*, IF(((select count(*) from `store_schedule` where `stores`.`id` = `store_schedule`.`store_id` and `store_schedule`.`day` = '.now()->dayOfWeek.' and `store_schedule`.`opening_time` < "'.now()->format('H:i:s').'" and `store_schedule`.`closing_time` >"'.now()->format('H:i:s').'") > 0), true, false) as open,ST_Distance_Sphere(point(longitude, latitude),point('.$longitude.', '.$latitude.')) as distance, CASE WHEN delivery_time IS NULL THEN 9999  WHEN delivery_time LIKE  "%hours%" THEN CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(delivery_time, "-", 1), " ", 1) AS UNSIGNED) * 60 WHEN delivery_time LIKE "%min%" OR delivery_time LIKE "%minute%" THEN CAST(SUBSTRING_INDEX(delivery_time, "-", 1) AS UNSIGNED) WHEN delivery_time REGEXP "^[0-9]" THEN CAST(SUBSTRING_INDEX(delivery_time, "-", 1) AS UNSIGNED) ELSE 9999 END AS min_delivery_time');
     }
 
     /**

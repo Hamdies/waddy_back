@@ -8294,4 +8294,5 @@ Smartly or Earn. ',
   'select_cuisines' => 'Select cuisines',
   'what_this_restaurant_serves' => 'What this restaurant serves. Customers browse restaurants by cuisine.',
   'higher_priority_shows_first' => 'Higher priority appears first in the app',
+  'rank_on_the_featured_chart' => 'Rank on the featured chart',
 );

@@ -1844,7 +1844,37 @@ class VendorController extends Controller
     {
         $store = Store::findOrFail($request->store);
         $store->featured = $request->status;
+        // Un-featuring drops the rank with it: a store that is no longer on
+        // the chart has no position on it, and leaving a stale number behind
+        // is how it silently reappears at #3 the next time someone toggles it
+        // back on.
+        if (!$request->status) {
+            $store->featured_order = null;
+        }
         $store->save();
+        Toastr::success(translate('messages.store_featured_status_updated'));
+        return back();
+    }
+
+    /**
+     * The position a featured store holds on the app's ranked chart.
+     *
+     * The client paints these as 1..10 over the store photos, so this is not
+     * decoration — it is the claim the numerals make. Blank clears the rank:
+     * the store stays featured and sorts after every ranked one.
+     */
+    public function featured_order(Request $request, $store)
+    {
+        $request->validate([
+            'featured_order' => 'nullable|integer|min:1|max:999',
+        ]);
+
+        $store = Store::findOrFail($store);
+        $store->featured_order = $request->filled('featured_order')
+            ? (int) $request->input('featured_order')
+            : null;
+        $store->save();
+
         Toastr::success(translate('messages.store_featured_status_updated'));
         return back();
     }
