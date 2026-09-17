@@ -30,6 +30,15 @@ class BackfillDrawEntrantsCommand extends Command
 
     protected $description = 'Backfill draw entrants (winners only) for periods drawn before the claw replay existed';
 
+    /**
+     * The one period format this system has: ISO year + week, `o-\WW`.
+     *
+     * Matches the route constraint on `places/draw/{period?}` deliberately. A
+     * period this rejects is one the endpoint cannot serve, so backfilling it
+     * would write rows that are unreachable by definition.
+     */
+    protected const PERIOD_PATTERN = '/^\d{4}-W\d{1,2}$/';
+
     public function handle(): int
     {
         $periods = PlacePrize::query()
@@ -42,11 +51,36 @@ class BackfillDrawEntrantsCommand extends Command
             return self::SUCCESS;
         }
 
+        // `place_prizes.period` is an unconstrained varchar(10), and production
+        // contains at least one value that is not an ISO week ("9", 5 prizes).
+        // Those rows are real prizes against a period the endpoint cannot
+        // address, so this refuses to extend the problem into a second table
+        // and names them instead of skipping quietly.
+        [$valid, $malformed] = $periods->partition(
+            fn($p) => preg_match(self::PERIOD_PATTERN, (string) $p) === 1
+        );
+
+        if ($malformed->isNotEmpty()) {
+            $this->newLine();
+            $this->error('Skipping ' . $malformed->count() . ' period(s) that are not ISO weeks:');
+            foreach ($malformed as $bad) {
+                $count = PlacePrize::where('period', $bad)->count();
+                $this->line("  \"{$bad}\" — {$count} prize(s), unreachable at GET places/draw/{$bad}");
+            }
+            $this->warn('These need their period corrected before they can be replayed.');
+            $this->newLine();
+        }
+
+        if ($valid->isEmpty()) {
+            $this->info('No well-formed periods to backfill.');
+            return self::SUCCESS;
+        }
+
         $dryRun = (bool) $this->option('dry-run');
         $written = 0;
         $skipped = 0;
 
-        foreach ($periods as $period) {
+        foreach ($valid as $period) {
             // Never touch a period that already has entrants: it either drew
             // after CLAW-Z1 and is complete, or was backfilled already.
             if (PlaceDrawEntrant::forPeriod($period)->exists()) {

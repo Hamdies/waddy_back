@@ -19,6 +19,19 @@ class WinnerService
     {
         $period = $period ?? $this->lastClosedPeriod();
 
+        // Every caller that passes a period passes it from a `--period` flag,
+        // and `period` is an unconstrained varchar(10) in all three tables it
+        // lands in. A malformed value crowns winners and awards prizes under a
+        // key that `GET places/draw/{period?}` cannot address — production
+        // already holds several. Guarded here rather than per-command so the
+        // cron, the simulator and anything added later all inherit it.
+        if (!preg_match('/^\d{4}-W\d{1,2}$/', $period)) {
+            \Illuminate\Support\Facades\Log::warning(
+                "WinnerService::closePeriod refused malformed period \"{$period}\" (expected YYYY-Www)"
+            );
+            return collect();
+        }
+
         // Never close the running week, and never close twice
         if ($period === \Modules\PlacesToVisit\Services\RaceClock::period() ||
             PlaceWinner::where('period', $period)->exists()) {

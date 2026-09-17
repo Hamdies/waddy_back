@@ -54,6 +54,22 @@ class SimulateWeekCommand extends Command
 
         $period = $this->option('period') ?: RaceClock::lastClosedPeriod();
 
+        // `--period` was passed straight through unvalidated, and `period` is
+        // an unconstrained varchar(10) in every table it reaches. Production
+        // consequently holds votes, winners and prizes under "9", "2026-07"
+        // and half a dozen other bare integers — a hand-typed week number
+        // creating a whole draw in a namespace nothing can address, since
+        // `GET places/draw/{period?}` only matches ISO weeks.
+        //
+        // One malformed run costs a manual cleanup across three tables, so it
+        // is refused here rather than explained later.
+        if (!preg_match('/^\d{4}-W\d{1,2}$/', $period)) {
+            $this->error("\"{$period}\" is not an ISO week.");
+            $this->line('  Expected `YYYY-Www`, e.g. ' . RaceClock::lastClosedPeriod() . '.');
+            $this->line('  A bare week number creates votes and prizes that no endpoint can serve.');
+            return self::FAILURE;
+        }
+
         if ($period === RaceClock::period()) {
             $this->error("{$period} is the running week — it can't be closed. Pick a finished one.");
             return self::FAILURE;

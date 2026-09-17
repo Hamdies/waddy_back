@@ -106,6 +106,14 @@ class DrawController extends Controller
             'user_id' => (int) $entrant->user_id,
             'name' => $this->maskedName($entrant->user),
             'handle' => '',
+            // The faces are the point of the screen: the machine is full of
+            // actual people and the claw picks one up. `image_full_url` is an
+            // appended accessor on User, so it is already absolute.
+            //
+            // Same field `winners/recent` exposes, for the same people, so
+            // this is not a new disclosure — a voter's avatar and masked name
+            // already appear together on the Spots home.
+            'image' => $entrant->user?->image_full_url,
             'votes' => (int) $entrant->votes,
             'rank' => (int) $entrant->rank,
             'is_me' => $viewerId !== null && (int) $entrant->user_id === $viewerId,
