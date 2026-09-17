@@ -26,6 +26,15 @@ Route::group(['prefix' => 'places'], function () {
     // Recent voter-prize winners — social proof strip, no codes exposed
     Route::get('winners/recent', 'WinnerController@recent');
 
+    // The claw-machine replay of a week's voter draw. Declared here, above the
+    // `{place}` patterns below, so "draw" can't be swallowed as a place slug —
+    // the same trap `prizes/my` had to dodge.
+    //
+    // Public: a losing voter and a passer-by both get the machine. Auth is
+    // optional and only adds `is_me` / `my_prize_id`.
+    Route::get('draw/{period?}', 'DrawController@show')
+        ->where('period', '[0-9]{4}-W[0-9]{1,2}');
+
     // KPI events from the app (guests count too; auth attaches user when present)
     Route::post('events', 'PlaceEventController@store')->middleware('throttle:60,1');
     

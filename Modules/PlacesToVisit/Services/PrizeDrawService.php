@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Modules\PlacesToVisit\Entities\Place;
+use Modules\PlacesToVisit\Entities\PlaceDrawEntrant;
 use Modules\PlacesToVisit\Entities\PlacePrize;
 use Modules\PlacesToVisit\Entities\PlaceVote;
 use Modules\PlacesToVisit\Entities\PlaceWinner;
@@ -50,11 +51,16 @@ class PrizeDrawService
             return collect();
         }
 
-        $userIds = $this->eligiblePool($winner);
+        // The full eligible pool, with vote counts, before any cap. This used
+        // to be one query that returned only the capped winners; splitting it
+        // is what makes the losing balls exist at all. See CLAW-Z1.
+        $pool = $this->eligiblePool($winner);
 
-        if ($userIds->isEmpty()) {
+        if ($pool->isEmpty()) {
             return collect();
         }
+
+        $userIds = $this->pickWinners($pool);
 
         $place = Place::find($winner->place_id);
         $expiresAt = RaceClock::now()
@@ -62,7 +68,7 @@ class PrizeDrawService
         $valueCap = $place?->effective_prize_value_cap;
         $currency = config('placestovisit.prize.currency', 'EGP');
 
-        $prizes = DB::transaction(function () use ($userIds, $winner, $expiresAt, $valueCap, $currency) {
+        $prizes = DB::transaction(function () use ($pool, $userIds, $winner, $expiresAt, $valueCap, $currency) {
             $created = collect();
 
             foreach ($userIds as $userId) {
@@ -79,6 +85,10 @@ class PrizeDrawService
                 ]));
             }
 
+            // Same transaction as the prizes: a draw whose entrants failed to
+            // write would be a screen that cannot render its own result.
+            $this->recordEntrants($winner, $pool, $userIds);
+
             return $created;
         });
 
@@ -94,14 +104,18 @@ class PrizeDrawService
     }
 
     /**
-     * Voters of the winning venue that week, minus flagged reviews and minus
-     * anyone still inside their post-win cooldown, capped at the weekly count.
+     * Voters of the winning venue that week, minus flagged votes and minus
+     * anyone still inside their post-win cooldown. **Uncapped** — this is
+     * everyone who was actually in the machine.
      *
-     * @return Collection<int>
+     * Was a single query that applied `limit(winners_per_week)` and returned
+     * the winners directly. The cap now lives in pickWinners() instead, so the
+     * losers survive long enough to be recorded.
+     *
+     * @return Collection<object{user_id:int, votes:int}>
      */
     protected function eligiblePool(PlaceWinner $winner): Collection
     {
-        $limit = max(1, (int) config('placestovisit.prize.winners_per_week', 5));
         $cooldownDays = (int) config('placestovisit.prize.winner_cooldown_days', 30);
 
         $query = PlaceVote::query()
@@ -119,11 +133,98 @@ class PrizeDrawService
             }
         }
 
-        return $query->inRandomOrder()
-            ->limit($limit)
+        $userIds = $query->pluck('user_id')->unique()->values();
+
+        if ($userIds->isEmpty()) {
+            return collect();
+        }
+
+        // Their vote count *that week across all venues*, which is what the
+        // leaderboard means by a voter's score and therefore what the winner
+        // row must show. Counting votes for this one venue would always give
+        // 1 — `place_votes` is unique on (place_id, user_id, period) — and a
+        // list of winners each credited with "1 vote" says nothing.
+        $votes = PlaceVote::query()
+            ->selectRaw('user_id, COUNT(*) as votes')
+            ->where('period', $winner->period)
+            ->where('is_flagged', false)
+            ->whereIn('user_id', $userIds)
+            ->groupBy('user_id')
+            ->pluck('votes', 'user_id');
+
+        return $userIds->map(fn($id) => (object) [
+            'user_id' => (int) $id,
+            'votes' => (int) ($votes[$id] ?? 1),
+        ]);
+    }
+
+    /**
+     * The draw itself: N taken at random from the pool.
+     *
+     * Voting history, rank and timing change nothing — a first-ever voter and
+     * a 30-week regular have identical odds. Kept as its own method so the
+     * randomness has exactly one home and the pool query above stays a pure
+     * read.
+     *
+     * @param  Collection<object>  $pool
+     * @return Collection<int>
+     */
+    protected function pickWinners(Collection $pool): Collection
+    {
+        $limit = max(1, (int) config('placestovisit.prize.winners_per_week', 5));
+
+        return $pool->shuffle()
+            ->take($limit)
             ->pluck('user_id')
-            ->unique()
+            ->map(fn($id) => (int) $id)
             ->values();
+    }
+
+    /**
+     * Persist the machine's contents for the replay screen.
+     *
+     * Only a capped sample of losers is stored: a popular venue can draw from
+     * thousands of voters and the payload must not carry them all. Winners are
+     * stored unconditionally — they are the ones the animation has to pull —
+     * and `total_entrants` records the true pool size so the overflow copy can
+     * state the real number rather than the sampled one.
+     *
+     * @param  Collection<object>  $pool     full eligible pool
+     * @param  Collection<int>     $winnerIds  in pull order
+     */
+    protected function recordEntrants(PlaceWinner $winner, Collection $pool, Collection $winnerIds): void
+    {
+        $maxStored = max(
+            $winnerIds->count(),
+            (int) config('placestovisit.draw.max_entrants', 60)
+        );
+
+        $total = $pool->count();
+        $ranks = $winnerIds->flip(); // user_id => index
+
+        // Winners first, then a random sample of losers to fill the rest.
+        $winnerRows = $pool->filter(fn($e) => $ranks->has((int) $e->user_id));
+        $loserRows = $pool->reject(fn($e) => $ranks->has((int) $e->user_id))
+            ->shuffle()
+            ->take(max(0, $maxStored - $winnerRows->count()));
+
+        $now = now();
+        $rows = $winnerRows->concat($loserRows)->map(fn($e) => [
+            'period' => $winner->period,
+            'place_winner_id' => $winner->id,
+            'place_id' => $winner->place_id,
+            'user_id' => (int) $e->user_id,
+            'votes' => (int) $e->votes,
+            // +1 because rank 0 means "not pulled".
+            'rank' => $ranks->has((int) $e->user_id) ? $ranks[(int) $e->user_id] + 1 : 0,
+            'total_entrants' => $total,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ])->values()->all();
+
+        foreach (array_chunk($rows, 500) as $chunk) {
+            PlaceDrawEntrant::insert($chunk);
+        }
     }
 
     /**

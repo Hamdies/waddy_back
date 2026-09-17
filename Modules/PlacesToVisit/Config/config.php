@@ -70,6 +70,21 @@ return [
         'winner_cooldown_days' => 30,
     ],
 
+    // ==================== The draw replay (claw machine) ====================
+
+    'draw' => [
+        // How many entrants are stored per draw for the replay screen.
+        // Winners are always kept; this caps the *sample of losers* stored
+        // alongside them, because a popular venue can draw from thousands of
+        // voters and the payload must stay small. The true pool size is
+        // recorded separately as `total_entrants`, so the "+N more in the
+        // machine" copy still states the real number.
+        //
+        // The cabinet only ever renders 12 balls, so anything past ~60 buys
+        // nothing but bytes.
+        'max_entrants' => 60,
+    ],
+
     // ==================== Moderation ====================
 
     'report_auto_flag_threshold' => 3, // Number of reports before auto-flagging a review

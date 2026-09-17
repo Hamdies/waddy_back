@@ -3,6 +3,7 @@
 namespace Modules\PlacesToVisit\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Modules\PlacesToVisit\Console\BackfillDrawEntrantsCommand;
 use Modules\PlacesToVisit\Console\CloseWeekCommand;
 use Modules\PlacesToVisit\Console\ExpirePrizesCommand;
 use Modules\PlacesToVisit\Console\FinalHoursPushCommand;
@@ -35,6 +36,7 @@ class PlacesToVisitServiceProvider extends ServiceProvider
             FinalHoursPushCommand::class,
             ExpirePrizesCommand::class,
             SimulateWeekCommand::class,
+            BackfillDrawEntrantsCommand::class,
         ]);
     }
 
