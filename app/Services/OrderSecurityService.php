@@ -9,11 +9,27 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use App\CentralLogics\Helpers;
 
+/**
+ * Order-placement abuse controls.
+ *
+ * Idempotency and the cooldown are real controls: both return a response that
+ * stops the order. The device fingerprint is audit telemetry.
+ *
+ * A client-generated HMAC `order_signature` used to be verified here. It was
+ * removed because it could not work: the client needs the signing secret to
+ * sign, so the secret shipped inside the APK and anyone could forge a valid
+ * signature. It also only ever wrote a log line — a mismatch never blocked an
+ * order — so it documented a protection that did not exist. Order amounts are
+ * protected by the server recomputing `order_amount` in PlaceNewOrder rather
+ * than trusting the client's. If tamper-evidence is wanted later it must be
+ * server-issued: sign a short-lived quote token here, have the client echo it
+ * back, verify it with a secret that never leaves the server. Play Integrity /
+ * App Attest is the tool for proving the caller is a genuine app build.
+ */
 class OrderSecurityService
 {
     const IDEMPOTENCY_TTL_SECONDS = 3600;
     const ORDER_COOLDOWN_SECONDS = 30;
-    const SIGNATURE_WINDOW_SECONDS = 300;
 
     /**
      * Check if the idempotency key has already been used.
@@ -70,67 +86,11 @@ class OrderSecurityService
     }
 
     /**
-     * Verify the HMAC-SHA256 order signature.
-     * Logs warnings only — never blocks the order (rollout phase).
-     */
-    public function verifySignature(Request $request): void
-    {
-        $signature = $request->input('order_signature');
-        $timestamp = $request->input('order_timestamp');
-        $amount = $request->input('order_amount');
-        $zoneId = $request->input('zone_id');
-
-        if (!$signature || !$timestamp) {
-            Log::info('Order placed without security signature', [
-                'user_id' => $request->user?->id,
-                'has_signature' => (bool) $signature,
-                'has_timestamp' => (bool) $timestamp,
-            ]);
-            return;
-        }
-
-        $serverTimeMs = (int) (microtime(true) * 1000);
-        $clientTimeMs = (int) $timestamp;
-        $diffSeconds = abs($serverTimeMs - $clientTimeMs) / 1000;
-
-        if ($diffSeconds > self::SIGNATURE_WINDOW_SECONDS) {
-            Log::warning('Order signature timestamp expired', [
-                'user_id' => $request->user?->id,
-                'diff_seconds' => $diffSeconds,
-                'client_timestamp' => $clientTimeMs,
-            ]);
-        }
-
-        $data = [
-            'amount' => (string) $amount,
-            'timestamp' => (string) $timestamp,
-            'zone_id' => (string) $zoneId,
-        ];
-
-        ksort($data);
-        $filtered = array_filter($data, fn($v) => $v !== null && $v !== '');
-        $payload = http_build_query($filtered, '', '&', PHP_QUERY_RFC3986);
-
-        $secret = config('services.order_security.hmac_secret', 'waddi_order_sec_2026');
-        $expected = hash_hmac('sha256', $payload, $secret);
-
-        if (!hash_equals($expected, $signature)) {
-            Log::warning('Order signature verification failed', [
-                'user_id' => $request->user?->id,
-                'expected' => $expected,
-                'received' => $signature,
-                'payload' => $payload,
-            ]);
-        }
-    }
-
-    /**
      * Store security fields on the order for audit purposes.
      */
     public function storeSecurityFields(Order $order, Request $request): void
     {
         $order->idempotency_key = $request->input('idempotency_key');
         $order->device_fingerprint = $request->input('device_fingerprint');
-        $order->order_timestamp = $request->input('order_timestamp');
     }
 }

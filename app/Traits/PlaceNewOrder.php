@@ -61,8 +61,6 @@ trait PlaceNewOrder
             'voice_instruction' => 'nullable|file|mimes:m4a,mp3,wav,ogg,webm,aac|max:5120',
             'idempotency_key' => 'nullable|uuid',
             'device_fingerprint' => 'nullable|string|size:64',
-            'order_signature' => 'nullable|string|size:64',
-            'order_timestamp' => 'nullable|integer',
         ]);
 
         if ($validator->fails()) {
@@ -80,8 +78,6 @@ trait PlaceNewOrder
         if ($cooldownResult) {
             return $cooldownResult;
         }
-
-        $securityService->verifySignature($request);
 
         try {
             DB::beginTransaction();
