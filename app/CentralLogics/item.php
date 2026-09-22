@@ -3,6 +3,7 @@
 namespace App\CentralLogics;
 
 use App\Models\Item;
+use App\Models\Zone;
 use App\Models\Review;
 use App\Models\Category;
 use App\Models\PriorityList;
@@ -45,6 +46,22 @@ class ProductLogic
             $min = 0.00000001;
         }
 
+        // Mirrors the `zone_served` guard in StoreLogic::get_stores, for the same
+        // reason. An out-of-zone user sends `zoneId: []` (a valid empty array,
+        // not a malformed header), and `whereIn('zones.id', [])` matches nothing
+        // — so the store page they were just allowed to open came back with a
+        // menu of zero items and shimmered forever. There was no error to show:
+        // the request was a 200 with an empty list.
+        //
+        // When the zone does not resolve, drop the zone predicate rather than
+        // applying an empty one. This only widens what is VISIBLE; ordering is
+        // still blocked by the add-to-cart gate and the checkout guard. A
+        // resolved zone filters exactly as before.
+        $decoded_zone_ids = json_decode($zone_id, true);
+        $zone_served = is_array($decoded_zone_ids)
+            && count($decoded_zone_ids) > 0
+            && Zone::whereIn('id', $decoded_zone_ids)->exists();
+
         $query = Item::
         when($category_id != 0, function($q)use($category_id){
             $q->whereHas('category',function($q)use($category_id){
@@ -54,15 +71,19 @@ class ProductLogic
         ->when(isset($product_id), function($q)use($product_id){
             $q->where('id', '!=', $product_id);
         })
-        ->whereHas('module.zones', function($query)use($zone_id){
-            $query->whereIn('zones.id', json_decode($zone_id, true));
+        ->when($zone_served, function($query)use($zone_id){
+            $query->whereHas('module.zones', function($query)use($zone_id){
+                $query->whereIn('zones.id', json_decode($zone_id, true));
+            });
         })
-        ->whereHas('store', function($query)use($zone_id){
+        ->whereHas('store', function($query)use($zone_id, $zone_served){
             $query->when(config('module.current_module_data'), function($query){
                 $query->where('module_id', config('module.current_module_data')['id'])->whereHas('zone.modules',function($query){
                     $query->where('modules.id', config('module.current_module_data')['id']);
                 });
-            })->whereIn('zone_id', json_decode($zone_id, true));
+            })->when($zone_served, function($query)use($zone_id){
+                $query->whereIn('zone_id', json_decode($zone_id, true));
+            });
         })
         ->when($min && $max, function($query)use($min,$max){
             $query->whereBetween('price',[$min,$max]);
@@ -152,15 +173,19 @@ class ProductLogic
         ->when(isset($product_id), function($q)use($product_id){
             $q->where('id', '!=', $product_id);
         })
-        ->whereHas('module.zones', function($query)use($zone_id){
-            $query->whereIn('zones.id', json_decode($zone_id, true));
+        ->when($zone_served, function($query)use($zone_id){
+            $query->whereHas('module.zones', function($query)use($zone_id){
+                $query->whereIn('zones.id', json_decode($zone_id, true));
+            });
         })
-        ->whereHas('store', function($query)use($zone_id){
+        ->whereHas('store', function($query)use($zone_id, $zone_served){
             $query->when(config('module.current_module_data'), function($query){
                 $query->where('module_id', config('module.current_module_data')['id'])->whereHas('zone.modules',function($query){
                     $query->where('modules.id', config('module.current_module_data')['id']);
                 });
-            })->whereIn('zone_id', json_decode($zone_id, true));
+            })->when($zone_served, function($query)use($zone_id){
+                $query->whereIn('zone_id', json_decode($zone_id, true));
+            });
         })
         ->when($min && $max, function($query)use($min,$max){
             $query->whereBetween('price',[$min,$max]);
@@ -416,6 +441,14 @@ class ProductLogic
 
     public static function recommended_items($zone_id,$store_id=null,$limit = null, $offset = null, $type='all', $filter='all')
     {
+        // See get_latest_products: an unresolved zone means drop the zone
+        // predicate, not apply an empty one. Without this the store page's
+        // recommendation rail is empty for every out-of-zone visitor.
+        $decoded_zone_ids = json_decode($zone_id, true);
+        $zone_served = is_array($decoded_zone_ids)
+            && count($decoded_zone_ids) > 0
+            && Zone::whereIn('id', $decoded_zone_ids)->exists();
+
         $data =[];
         if($limit != null && $offset != null)
         {
@@ -423,12 +456,14 @@ class ProductLogic
             when(isset($store_id), function($q)use($store_id){
                 $q->where('store_id', $store_id);
             })
-            ->whereHas('store', function($query)use($zone_id, $store_id){
+            ->whereHas('store', function($query)use($zone_id, $store_id, $zone_served){
                 $query->when(config('module.current_module_data') && $store_id === null, function($query){
                     $query->where('module_id', config('module.current_module_data')['id'])->whereHas('zone.modules',function($query){
                         $query->where('modules.id', config('module.current_module_data')['id']);
                     });
-                })->whereIn('zone_id', json_decode($zone_id, true));
+                })->when($zone_served, function($query)use($zone_id){
+                    $query->whereIn('zone_id', json_decode($zone_id, true));
+                });
             })->active()->type($type)->Recommended()
             ->when($filter == 'new_arrival',function ($qurey){
                 $qurey->latest();
@@ -445,12 +480,14 @@ class ProductLogic
         else{
             $paginator = Item::when(isset($store_id), function($q)use($store_id){
                 $q->where('store_id', $store_id);
-            })->active()->type($type)->whereHas('store', function($query)use($zone_id, $store_id){
+            })->active()->type($type)->whereHas('store', function($query)use($zone_id, $store_id, $zone_served){
                 $query->when(config('module.current_module_data') && $store_id === null, function($query){
                     $query->where('module_id', config('module.current_module_data')['id'])->whereHas('zone.modules',function($query){
                         $query->where('modules.id', config('module.current_module_data')['id']);
                     });
-                })->whereIn('zone_id', json_decode($zone_id, true));
+                })->when($zone_served, function($query)use($zone_id){
+                    $query->whereIn('zone_id', json_decode($zone_id, true));
+                });
             })->Recommended()
             ->when($filter == 'new_arrival',function ($qurey){
                 $qurey->latest();
