@@ -21,6 +21,7 @@ use Illuminate\Support\Carbon;
 use App\Models\CustomerAddress;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\Controller;
 use App\Models\BusinessSetting;
 use Illuminate\Support\Facades\Http;
@@ -57,6 +58,7 @@ class CustomerController extends Controller
             'address' => 'required',
             'longitude' => 'required',
             'latitude' => 'required',
+            'voice_instruction' => 'nullable|file|mimes:m4a,mp3,wav,ogg,webm,aac|max:5120',
         ]);
 
         if ($validator->fails()) {
@@ -81,12 +83,16 @@ class CustomerController extends Controller
             'floor' => $request->floor,
             'road' => $request->road,
             'house' => $request->house,
+            'delivery_instructions' => $request->delivery_instructions,
             'longitude' => $request->longitude,
             'latitude' => $request->latitude,
             'zone_id' => $zone[0]->id,
             'created_at' => now(),
             'updated_at' => now()
         ];
+        if ($request->hasFile('voice_instruction')) {
+            $address['voice_instruction'] = $request->file('voice_instruction')->store('addresses/voice_instructions', 'public');
+        }
         DB::table('customer_addresses')->insert($address);
         return response()->json(['message' => translate('messages.successfully_added'), 'zone_ids' => array_column($zone->toArray(), 'id')], 200);
     }
@@ -99,7 +105,8 @@ class CustomerController extends Controller
             'contact_person_number' => 'required',
             'address' => 'required',
             'longitude' => 'required',
-            'latitude' => 'required'
+            'latitude' => 'required',
+            'voice_instruction' => 'nullable|file|mimes:m4a,mp3,wav,ogg,webm,aac|max:5120',
         ]);
 
         if ($validator->fails()) {
@@ -122,12 +129,24 @@ class CustomerController extends Controller
             'floor' => $request->floor,
             'road' => $request->road,
             'house' => $request->house,
+            'delivery_instructions' => $request->delivery_instructions,
             'longitude' => $request->longitude,
             'latitude' => $request->latitude,
             'zone_id' => $zone[0]->id,
             'created_at' => now(),
             'updated_at' => now()
         ];
+        // A new file replaces the old one; remove_voice_instruction clears it;
+        // neither leaves the saved note alone.
+        $oldVoice = DB::table('customer_addresses')->where('id', $id)->where('user_id', $request->user()->id)->value('voice_instruction');
+        if ($request->hasFile('voice_instruction')) {
+            $address['voice_instruction'] = $request->file('voice_instruction')->store('addresses/voice_instructions', 'public');
+        } elseif ($request->boolean('remove_voice_instruction')) {
+            $address['voice_instruction'] = null;
+        }
+        if ($oldVoice && array_key_exists('voice_instruction', $address)) {
+            Storage::disk('public')->delete($oldVoice);
+        }
         DB::table('customer_addresses')->where('id', $id)->update($address);
         return response()->json(['message' => translate('messages.updated_successfully'), 'zone_id' => $zone[0]->id], 200);
     }

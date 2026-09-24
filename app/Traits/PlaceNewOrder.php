@@ -3,6 +3,8 @@
 namespace App\Traits;
 
 use App\Models\Cart;
+use App\Models\CustomerAddress;
+use Illuminate\Support\Facades\Storage;
 use App\Models\Item;
 use App\Models\User;
 use App\Models\Zone;
@@ -59,6 +61,7 @@ trait PlaceNewOrder
             'password' => $request->create_new_user ? ['required', Password::min(8)] : 'nullable',
             'order_attachment' => $is_prescription ? ['required'] : 'nullable',
             'voice_instruction' => 'nullable|file|mimes:m4a,mp3,wav,ogg,webm,aac|max:5120',
+            'address_id' => 'nullable|integer',
             'idempotency_key' => 'nullable|uuid',
             'device_fingerprint' => 'nullable|string|size:64',
         ]);
@@ -212,6 +215,32 @@ trait PlaceNewOrder
             if ($request->hasFile('voice_instruction')) {
                 $voicePath = $request->file('voice_instruction')->store('orders/voice_instructions', 'public');
                 $order->voice_instruction = $voicePath;
+            }
+
+            // The saved address's own directions travel with the order, so the
+            // rider hears and reads what the customer recorded on the address
+            // details screen. A note recorded at checkout wins over the address
+            // one; written directions are appended to the checkout chips.
+            $savedAddress = ($request->user && $request->address_id && $request->order_type != 'take_away')
+                ? CustomerAddress::where('id', $request->address_id)->where('user_id', $request->user->id)->first()
+                : null;
+            if ($savedAddress) {
+                if (!$order->voice_instruction && $savedAddress->voice_instruction
+                    && Storage::disk('public')->exists($savedAddress->voice_instruction)) {
+                    // A copy, not a shared path: re-recording or deleting the
+                    // address note must not pull audio out of a live order.
+                    $ext = pathinfo($savedAddress->voice_instruction, PATHINFO_EXTENSION) ?: 'aac';
+                    $copy = 'orders/voice_instructions/' . uniqid('addr_', true) . '.' . $ext;
+                    if (Storage::disk('public')->copy($savedAddress->voice_instruction, $copy)) {
+                        $order->voice_instruction = $copy;
+                    }
+                }
+                $directions = trim((string) $savedAddress->delivery_instructions);
+                if ($directions !== '') {
+                    $address['delivery_instructions'] = $directions;
+                    $chips = trim((string) $order->delivery_instruction);
+                    $order->delivery_instruction = $chips === '' ? $directions : $chips . "\n" . $directions;
+                }
             }
 
             $order->order_type = $request['order_type'];
