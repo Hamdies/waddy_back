@@ -239,6 +239,15 @@
                     </ul>
                 </li>
 
+                <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/users/customer/scratch-cards*') ? 'active' : '' }}">
+                    <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.users.customer.scratch.index') }}" title="Scratch cards">
+                        <i class="tio-gift nav-icon"></i>
+                        <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                            Scratch cards
+                        </span>
+                    </a>
+                </li>
+
                 <!-- End Custommer -->
                 <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/users/customer/subscribed') ? 'active' : '' }}">
                     <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.users.customer.subscribed') }}" title="{{translate('subscribed_emails')}}">

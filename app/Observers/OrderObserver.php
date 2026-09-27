@@ -7,6 +7,7 @@ use App\Models\OrderReference;
 use App\Models\User;
 use App\Services\XpService;
 use App\Services\ChallengeService;
+use App\Services\ScratchCardService;
 use Illuminate\Support\Facades\Log;
 
 class OrderObserver
@@ -19,6 +20,13 @@ class OrderObserver
         $OrderReference = new OrderReference();
         $OrderReference->order_id = $order->id;
         $OrderReference->save();
+
+        // A scratch card code spent on this order (SC-05).
+        try {
+            ScratchCardService::markUsed($order);
+        } catch (\Exception $e) {
+            Log::error("Failed to mark scratch card used for order {$order->id}: " . $e->getMessage());
+        }
     }
 
     /**
@@ -39,6 +47,15 @@ class OrderObserver
         // Reverse XP when a previously-earning order is refunded.
         if ($order->order_status === 'refunded') {
             $this->handleOrderRefunded($order);
+        }
+
+        // Give a scratch card back when the order that spent it doesn't go through (SC-05).
+        if (in_array($order->order_status, ['canceled', 'failed', 'refunded'], true)) {
+            try {
+                ScratchCardService::release($order);
+            } catch (\Exception $e) {
+                Log::error("Failed to release scratch card for order {$order->id}: " . $e->getMessage());
+            }
         }
     }
 

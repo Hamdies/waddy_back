@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\Store;
+use App\Services\ScratchCardService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -99,39 +100,67 @@ class CouponController extends Controller
         }
 
         try {
-            $coupon = Coupon::active()->where(['code' => $request['code']])->first();
-            if (isset($coupon)) {
-                $staus = CouponLogic::is_valide($coupon, $request->user()->id ,$request['store_id']);
+            $user = $request->user();
+            // Checked before any lookup, so a locked-out guesser learns nothing (SC-04).
+            if (ScratchCardService::tooManyMisses($user->id, $request->ip())) {
+                return self::cardError('too_many_attempts', 429);
+            }
 
-                switch ($staus) {
-                case 200:
-                    return response()->json($coupon, 200);
-                case 406:
-                    return response()->json([
-                        'errors' => [
-                            ['code' => 'coupon', 'message' => translate('messages.coupon_usage_limit_over')]
-                        ]
-                    ], 406);
-                case 407:
-                    return response()->json([
-                        'errors' => [
-                            ['code' => 'coupon', 'message' => translate('messages.coupon_expire')]
-                        ]
-                    ], 407);
-                case 408:
-                    return response()->json([
-                        'errors' => [
-                            ['code' => 'coupon', 'message' => translate('messages.You_are_not_eligible_for_this_coupon')]
-                        ]
-                    ], 403);
-                default:
+            $coupon = Coupon::active()->where(['code' => $request['code']])->first();
+            if (!isset($coupon)) {
+                // Not a coupon: maybe a printed scratch card code (SC-03).
+                $bound = ScratchCardService::bind((string) $request['code'], $user);
+                if ($bound === null) {
+                    ScratchCardService::recordMiss($user->id, $request->ip());
                     return response()->json([
                         'errors' => [
                             ['code' => 'coupon', 'message' => translate('messages.not_found')]
                         ]
                     ], 404);
                 }
-            } else {
+                if (isset($bound['error'])) {
+                    return self::cardError($bound['error'], 403, $bound['available_on'] ?? null);
+                }
+                $coupon = $bound['coupon'];
+            }
+
+            $staus = CouponLogic::is_valide($coupon, $user->id ,$request['store_id']);
+
+            if (ScratchCardService::cardFor($coupon)) {
+                // A card coupon only ever fails as "used" (spent, or someone
+                // else's) or "expired"; the generic texts would make a real
+                // card feel fake.
+                if (in_array($staus, [406, 408])) {
+                    return self::cardError('card_already_used', 403);
+                }
+                if ($staus === 407) {
+                    return self::cardError('card_expired', 403);
+                }
+                $coupon->setAttribute('scratch_card', true);
+            }
+
+            switch ($staus) {
+            case 200:
+                return response()->json($coupon, 200);
+            case 406:
+                return response()->json([
+                    'errors' => [
+                        ['code' => 'coupon', 'message' => translate('messages.coupon_usage_limit_over')]
+                    ]
+                ], 406);
+            case 407:
+                return response()->json([
+                    'errors' => [
+                        ['code' => 'coupon', 'message' => translate('messages.coupon_expire')]
+                    ]
+                ], 407);
+            case 408:
+                return response()->json([
+                    'errors' => [
+                        ['code' => 'coupon', 'message' => translate('messages.You_are_not_eligible_for_this_coupon')]
+                    ]
+                ], 403);
+            default:
                 return response()->json([
                     'errors' => [
                         ['code' => 'coupon', 'message' => translate('messages.not_found')]
@@ -141,5 +170,26 @@ class CouponController extends Controller
         } catch (\Exception $e) {
             return response()->json(['errors' => $e], 403);
         }
+    }
+
+    /**
+     * A scratch-card refusal. The app picks its own wording from `code`
+     * (card_already_used, card_expired, card_not_active, card_limit,
+     * too_many_attempts); the message is the English fallback.
+     */
+    private static function cardError(string $code, int $status, ?string $availableOn = null)
+    {
+        $messages = [
+            'card_already_used' => 'This card was already used.',
+            'card_expired' => "This card's offer has ended.",
+            'card_not_active' => "This card isn't active yet.",
+            'card_limit' => "You've used the maximum number of Waddy cards for now.",
+            'too_many_attempts' => 'Too many tries. Please wait a bit and try again.',
+        ];
+        $error = ['code' => $code, 'message' => $messages[$code] ?? $code];
+        if ($availableOn !== null) {
+            $error['available_on'] = $availableOn;
+        }
+        return response()->json(['errors' => [$error]], $status);
     }
 }

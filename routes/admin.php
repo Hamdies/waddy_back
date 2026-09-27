@@ -674,6 +674,19 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                         Route::get('monitoring', 'XpController@monitoring')->name('monitoring');
                     });
 
+                    // Physical scratch cards (docs/scratch_card_plan.md, SC-*)
+                    Route::group(['prefix' => 'scratch-cards', 'as' => 'scratch.'], function () {
+                        Route::get('/', 'ScratchCardController@index')->name('index');
+                        Route::post('store', 'ScratchCardController@store')->name('store');
+                        Route::post('settings', 'ScratchCardController@settingsUpdate')->name('settings');
+                        Route::get('{id}', 'ScratchCardController@show')->name('show');
+                        Route::post('{id}/toggle', 'ScratchCardController@toggle')->name('toggle');
+                        Route::post('{id}/extend', 'ScratchCardController@extend')->name('extend');
+                        Route::get('{id}/export', 'ScratchCardController@export')->name('export');
+                        Route::post('{id}/ranges', 'ScratchCardController@rangeStore')->name('ranges.store');
+                        Route::delete('{id}/ranges/{rangeId}', 'ScratchCardController@rangeDelete')->name('ranges.delete');
+                    });
+
                     Route::get('settings', 'CustomerController@settings')->name('settings');
                     Route::post('update-settings', 'CustomerController@update_settings')->name('update-settings');
                     Route::get('export', 'CustomerController@export')->name('export');
