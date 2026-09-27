@@ -29,7 +29,10 @@ class CouponController extends Controller
         // try {
             $coupons = Coupon::with('store:id,name')->active()
             ->when(config('module.current_module_data'), function($query){
-                $query->module(config('module.current_module_data')['id']);
+                // Null module = XP reward coupon, valid in every module.
+                $query->where(function ($q) {
+                    $q->module(config('module.current_module_data')['id'])->orWhereNull('module_id');
+                });
             })
             ->whereDate('expire_date', '>=', date('Y-m-d'))->whereDate('start_date', '<=', date('Y-m-d'))->get();
             foreach($coupons as $key=>$coupon)

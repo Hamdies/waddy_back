@@ -471,16 +471,12 @@ trait PlaceNewOrder
                         ->with('prize')
                         ->first();
                     
-                    if ($userPrize && $userPrize->prize && $userPrize->prize->prize_type === 'free_delivery') {
+                    if ($userPrize) {
                         $orderSubtotal = $product_price + $total_addon_price - $store_discount_amount - $flash_sale_admin_discount_amount - $flash_sale_vendor_discount_amount;
                         $moduleId = (int) $request->header('moduleId');
-                        
-                        // Check all conditions: module, min order, expiry, period limits
-                        $canUsePrize = $userPrize->isUsable()
-                            && $userPrize->prize->isApplicableToModule($moduleId)
-                            && (!$userPrize->prize->min_order_amount || $orderSubtotal >= $userPrize->prize->min_order_amount);
-                        
-                        if ($canUsePrize) {
+
+                        // Same rule xp/checkout-prizes offers by (X-24).
+                        if ($userPrize->canRedeemFreeDelivery($moduleId, $orderSubtotal)) {
                             $order->delivery_charge = 0;
                             $free_delivery_by = 'xp_prize';
                             $xp_prize_id = $userPrize->id;
@@ -642,6 +638,15 @@ trait PlaceNewOrder
                 if ($usedPrize) {
                     $usedPrize->recordUsage($order->id);
                 }
+            }
+
+            // An XP discount prize is spent through its personal coupon; the
+            // coupon is single-use, so spending it uses the prize up.
+            if ($coupon) {
+                \App\Models\UserLevelPrize::where('coupon_id', $coupon->id)
+                    ->whereIn('status', ['unlocked', 'claimed'])
+                    ->first()
+                    ?->markUsed($order->id);
             }
 
             DB::commit();

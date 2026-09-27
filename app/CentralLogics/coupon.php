@@ -38,7 +38,8 @@ class CouponLogic
 
         $module_id = isset($module_id)?$module_id:config('module.current_module_data')['id'];
 
-        if(isset($module_id) && $coupon->module_id != $module_id)
+        // A null coupon module means "any module" (XP reward coupons).
+        if(isset($module_id) && $coupon->module_id !== null && $coupon->module_id != $module_id)
         {
             return 404;
         }
@@ -107,7 +108,8 @@ class CouponLogic
 
         $module_id = isset($module_id)?$module_id:config('module.current_module_data')['id'];
 
-        if(isset($module_id) && $coupon->module_id != $module_id)
+        // A null coupon module means "any module" (XP reward coupons).
+        if(isset($module_id) && $coupon->module_id !== null && $coupon->module_id != $module_id)
         {
             return 404;
         }

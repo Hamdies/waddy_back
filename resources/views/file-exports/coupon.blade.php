@@ -40,7 +40,7 @@
         <td>{{ $loop->index+1}}</td>
         <td>{{ $coupon->title }}</td>
         <td>{{ $coupon->code }}</td>
-        <td>{{ translate($coupon->module->module_name) }}</td>
+        <td>{{ translate($coupon->module?->module_name ?? 'all') }}</td>
         <td>{{ translate($coupon->coupon_type) }}</td>
         <td>{{ $coupon->total_uses }}</td>
         <td>{{ $coupon->min_purchase }}</td>

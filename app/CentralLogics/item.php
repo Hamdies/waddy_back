@@ -1191,7 +1191,9 @@ class ProductLogic
         $data =[];
         if($limit != null && $offset != null)
         {
-            $paginator = Item::where('store_id', $store_id)->whereHas('store', function($query)use($zone_id){
+            // active(): the unpaginated branch below always had it; this one did
+            // not, so a switched-off item could be suggested in the cart.
+            $paginator = Item::where('store_id', $store_id)->active()->whereHas('store', function($query)use($zone_id){
                 $query->when(config('module.current_module_data'), function($query){
                     $query->where('module_id', config('module.current_module_data')['id'])->whereHas('zone.modules',function($query){
                         $query->where('modules.id', config('module.current_module_data')['id']);

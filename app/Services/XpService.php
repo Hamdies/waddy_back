@@ -9,6 +9,8 @@ use App\Models\XpTransaction;
 use App\Models\UserLevelPrize;
 use App\Models\UserStreak;
 use App\Models\XpSetting;
+use App\Models\Coupon;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -326,6 +328,93 @@ class XpService
         }
 
         return $created;
+    }
+
+    /**
+     * Net XP each order actually earned, for the order list: the flat
+     * completion bonus and streak bonus (reference `order`), the per-item
+     * awards (reference `order_detail`), minus any refund reversal
+     * (reference `order_refund`). Two grouped queries for the whole page.
+     *
+     * The app used to show a client-side estimate here, labelled as earned,
+     * computed on an amount that includes delivery and tax (X-23).
+     *
+     * @return array<int, int> order_id => xp (orders with none are absent)
+     */
+    public static function earnedForOrders(int $userId, array $orderIds): array
+    {
+        if (empty($orderIds)) {
+            return [];
+        }
+
+        $byOrder = XpTransaction::where('user_id', $userId)
+            ->whereIn('reference_type', ['order', 'order_refund'])
+            ->whereIn('reference_id', $orderIds)
+            ->groupBy('reference_id')
+            ->selectRaw('reference_id as order_id, SUM(xp_amount) as xp')
+            ->pluck('xp', 'order_id');
+
+        $byItem = DB::table('xp_transactions')
+            ->join('order_details', 'order_details.id', '=', 'xp_transactions.reference_id')
+            ->where('xp_transactions.user_id', $userId)
+            ->where('xp_transactions.reference_type', 'order_detail')
+            ->whereIn('order_details.order_id', $orderIds)
+            ->groupBy('order_details.order_id')
+            ->selectRaw('order_details.order_id as order_id, SUM(xp_transactions.xp_amount) as xp')
+            ->pluck('xp', 'order_id');
+
+        $totals = [];
+        foreach ([$byOrder, $byItem] as $rows) {
+            foreach ($rows as $orderId => $xp) {
+                $totals[(int) $orderId] = ($totals[(int) $orderId] ?? 0) + (int) $xp;
+            }
+        }
+
+        return array_map(fn ($xp) => max(0, $xp), $totals);
+    }
+
+    /**
+     * Mint the personal coupon a claimed discount prize is redeemed with.
+     *
+     * Discounts are fixed amounts, spent through the ordinary coupon flow: the
+     * coupon is visible only to this user (`customer_id`), usable once, carries
+     * the prize's minimum order and expiry, and is admin-funded. A prize limited
+     * to exactly one module binds the coupon to it; otherwise `module_id` is
+     * null, which CouponLogic reads as "any module".
+     *
+     * Call inside the claim transaction, so a failure rolls the claim back.
+     */
+    public static function issueDiscountCoupon(UserLevelPrize $userPrize): Coupon
+    {
+        $prize = $userPrize->prize;
+        $modules = array_values(array_filter((array) ($prize->applicable_modules ?? [])));
+
+        do {
+            $code = 'WADDY-' . strtoupper(Str::random(6));
+        } while (Coupon::where('code', $code)->exists());
+
+        $coupon = Coupon::create([
+            'title' => $prize->title,
+            'code' => $code,
+            'start_date' => now()->toDateString(),
+            'expire_date' => ($userPrize->expires_at ?? now()->addDays($prize->validity_days ?? 30))->toDateString(),
+            'min_purchase' => $prize->min_order_amount ?? 0,
+            'max_discount' => $prize->value,
+            'discount' => $prize->value,
+            'discount_type' => 'amount',
+            'coupon_type' => 'default',
+            'limit' => 1,
+            'status' => 1,
+            'data' => json_encode([]),
+            'total_uses' => 0,
+            'module_id' => count($modules) === 1 ? (int) $modules[0] : null,
+            'created_by' => 'admin',
+            'customer_id' => json_encode([$userPrize->user_id]),
+        ]);
+
+        $userPrize->update(['coupon_id' => $coupon->id]);
+
+        return $coupon;
     }
 
     /**

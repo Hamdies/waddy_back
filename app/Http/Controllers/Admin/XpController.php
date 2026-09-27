@@ -31,7 +31,13 @@ class XpController extends Controller
         $language = \App\Models\BusinessSetting::where('key', 'language')->first();
         $language = $language->value ?? null;
         $defaultLang = str_replace('_', '-', app()->getLocale());
-        $prizeTypes = ['badge', 'free_delivery', 'wallet_credit'];
+        // Discounts are fixed amounts, redeemed as a personal coupon at claim.
+        $prizeTypes = [
+            'badge' => 'Badge',
+            'free_delivery' => 'Free Delivery',
+            'discount' => 'Discount (fixed amount)',
+            'wallet_credit' => 'Wallet Credit',
+        ];
         $modules = \App\Models\Module::active()->get(['id', 'module_name']);
         $periodTypes = ['once' => 'One Time', 'daily' => 'Daily', 'weekly' => 'Weekly', 'monthly' => 'Monthly'];
         return view('admin-views.xp.levels.edit', compact('level', 'language', 'defaultLang', 'prizeTypes', 'modules', 'periodTypes'));
@@ -45,7 +51,7 @@ class XpController extends Controller
             'description.*' => 'nullable|string',
             'badge_image' => 'nullable|image|mimes:png,jpg,jpeg,gif|max:2048',
             'prizes.*.title' => 'nullable|array',
-            'prizes.*.prize_type' => 'nullable|in:badge,free_item,free_delivery,discount,wallet_credit,custom',
+            'prizes.*.prize_type' => 'nullable|in:badge,free_delivery,discount,wallet_credit,custom',
         ]);
 
         $level = Level::findOrFail($id);
@@ -218,7 +224,7 @@ class XpController extends Controller
         $request->validate([
             'level_id' => 'required|exists:levels,id',
             'title' => 'required|string|max:255',
-            'prize_type' => 'required|in:badge,free_item,free_delivery,discount,wallet_credit,custom',
+            'prize_type' => 'required|in:badge,free_delivery,discount,wallet_credit,custom',
             'value' => 'nullable|numeric|min:0',
             'min_order_amount' => 'nullable|numeric|min:0',
             'usage_limit' => 'required|integer|min:1',
@@ -243,7 +249,7 @@ class XpController extends Controller
         $request->validate([
             'level_id' => 'required|exists:levels,id',
             'title' => 'required|string|max:255',
-            'prize_type' => 'required|in:badge,free_item,free_delivery,discount,wallet_credit,custom',
+            'prize_type' => 'required|in:badge,free_delivery,discount,wallet_credit,custom',
         ]);
 
         $prize = LevelPrize::findOrFail($id);

@@ -51,11 +51,39 @@ class UserLevelPrize extends Model
     }
 
     /**
+     * The personal coupon minted when a discount prize is claimed.
+     */
+    public function coupon()
+    {
+        return $this->belongsTo(Coupon::class);
+    }
+
+    /**
      * Check if prize is expired.
      */
     public function isExpired(): bool
     {
         return $this->expires_at && Carbon::now()->gt($this->expires_at);
+    }
+
+    /**
+     * Whether this free-delivery prize can be spent on an order in the given
+     * module with the given subtotal (before coupon and referral discounts).
+     *
+     * The single rule for both `xp/checkout-prizes` and PlaceNewOrder. The
+     * checkout list used to check only expiry and the minimum, so it offered
+     * prizes the order then refused — the app quoted free delivery and the
+     * server charged it (X-24).
+     */
+    public function canRedeemFreeDelivery(?int $moduleId, float $subtotal): bool
+    {
+        $prize = $this->prize;
+
+        return $prize
+            && $prize->prize_type === 'free_delivery'
+            && $this->isUsable()
+            && $prize->isApplicableToModule($moduleId)
+            && (!$prize->min_order_amount || $subtotal >= $prize->min_order_amount);
     }
 
     /**

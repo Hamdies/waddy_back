@@ -165,8 +165,8 @@
                                         </td>
                                         <td>
                                             <select name="prizes[{{$index}}][prize_type]" class="form-control form-control-sm prize-type-select" onchange="toggleValueField(this)">
-                                                @foreach($prizeTypes as $type)
-                                                    <option value="{{$type}}" {{$prize->prize_type == $type ? 'selected' : ''}}>{{ucfirst(str_replace('_', ' ', $type))}}</option>
+                                                @foreach($prizeTypes as $type => $label)
+                                                    <option value="{{$type}}" {{$prize->prize_type == $type ? 'selected' : ''}}>{{$label}}</option>
                                                 @endforeach
                                             </select>
                                         </td>
@@ -204,7 +204,7 @@
                                 </tbody>
                             </table>
                         </div>
-                        <small class="text-muted">{{translate('messages.prize_types_hint')}}: Badge, Free Item, Free Delivery, Discount %, Wallet Credit, Custom</small>
+                        <small class="text-muted">{{translate('messages.prize_types_hint')}}: Badge, Free Delivery, Discount (fixed amount, issued as a personal coupon), Wallet Credit</small>
                     </div>
                 </div>
 
@@ -254,8 +254,8 @@
         // Remove "no prizes" row if exists
         $('#no-prizes-row').remove();
 
-        let typeOptions = prizeTypes.map(type => 
-            `<option value="${type}">${type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</option>`
+        let typeOptions = Object.entries(prizeTypes).map(([type, label]) =>
+            `<option value="${type}">${label}</option>`
         ).join('');
 
         // Build language inputs for title

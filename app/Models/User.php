@@ -192,18 +192,24 @@ class User extends Authenticatable
             ];
         }
 
-        $xpInCurrentLevel = $this->total_xp - $currentLevel->xp_required;
-        $xpNeededForLevel = $nextLevel->xp_required - $currentLevel->xp_required;
-        $progressPercentage = $xpNeededForLevel > 0 
-            ? round(($xpInCurrentLevel / $xpNeededForLevel) * 100) 
+        // Level 0 has no Level row: a refund can take a user below Level 1's
+        // threshold, and dereferencing the missing row 500'd level-details
+        // (X-16). Below Level 1 the floor is 0 XP.
+        $currentRequired = $currentLevel?->xp_required ?? 0;
+        $xpInCurrentLevel = $this->total_xp - $currentRequired;
+        $xpNeededForLevel = $nextLevel->xp_required - $currentRequired;
+        $progressPercentage = $xpNeededForLevel > 0
+            ? round(($xpInCurrentLevel / $xpNeededForLevel) * 100)
             : 0;
 
         return [
             'current_xp' => $this->total_xp,
-            'xp_for_current_level' => $currentLevel->xp_required,
+            'xp_for_current_level' => $currentRequired,
             'xp_for_next_level' => $nextLevel->xp_required,
-            'xp_to_next_level' => $nextLevel->xp_required - $this->total_xp,
-            'progress_percentage' => min(100, $progressPercentage),
+            'xp_to_next_level' => max(0, $nextLevel->xp_required - $this->total_xp),
+            // A new user can sit at level 1 (column default) with less XP
+            // than level 1 needs; that went negative.
+            'progress_percentage' => max(0, min(100, $progressPercentage)),
             'is_max_level' => false,
         ];
     }

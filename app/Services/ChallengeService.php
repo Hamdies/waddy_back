@@ -48,6 +48,14 @@ class ChallengeService
             ->where('status', 'active')
             ->first();
 
+        // The hourly cron is the only other thing that expires rows, so an
+        // "active" one can already be past its deadline (X-18). Expire it here
+        // and fall through to assigning the next.
+        if ($activeDaily && $activeDaily->isExpired()) {
+            $activeDaily->update(['status' => 'expired']);
+            $activeDaily = null;
+        }
+
         if ($activeDaily) {
             return self::formatChallengeResponse($activeDaily);
         }
@@ -100,6 +108,14 @@ class ChallengeService
             ->whereHas('challenge', fn($q) => $q->where('frequency', 'weekly'))
             ->where('status', 'active')
             ->first();
+
+        // The hourly cron is the only other thing that expires rows, so an
+        // "active" one can already be past its deadline (X-18). Expire it here
+        // and fall through to assigning the next.
+        if ($activeWeekly && $activeWeekly->isExpired()) {
+            $activeWeekly->update(['status' => 'expired']);
+            $activeWeekly = null;
+        }
 
         if ($activeWeekly) {
             return self::formatChallengeResponse($activeWeekly);

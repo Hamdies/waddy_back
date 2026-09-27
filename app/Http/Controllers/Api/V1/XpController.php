@@ -291,7 +291,7 @@ class XpController extends Controller
             // Streak data
             $streak = $user->streak;
             $data['streak'] = $streak ? [
-                'current_streak' => $streak->current_streak,
+                'current_streak' => $streak->effectiveStreak(),
                 'longest_streak' => $streak->longest_streak,
                 'streak_bonus_xp' => XpSetting::getInt('streak_bonus_xp', 10),
                 'last_activity_date' => $streak->last_activity_date?->toDateString(),
@@ -312,7 +312,10 @@ class XpController extends Controller
     public function getCheckoutPrizes(Request $request)
     {
         $user = $request->user();
+        // The app sends the subtotal before coupon/referral, which is what
+        // PlaceNewOrder measures the minimum against.
         $orderAmount = (float) $request->query('order_amount', 0);
+        $moduleId = $request->header('moduleId') !== null ? (int) $request->header('moduleId') : null;
 
         $prizes = UserLevelPrize::where('user_id', $user->id)
             ->whereIn('status', ['unlocked', 'claimed'])
@@ -321,17 +324,9 @@ class XpController extends Controller
             })
             ->with('prize.level')
             ->get()
-            ->filter(function($userPrize) use ($orderAmount) {
-                // Filter out expired prizes
-                if ($userPrize->isExpired()) {
-                    return false;
-                }
-                // Filter by min_order_amount if provided
-                if ($orderAmount > 0 && $userPrize->prize->min_order_amount) {
-                    return $orderAmount >= $userPrize->prize->min_order_amount;
-                }
-                return true;
-            })
+            // Offer exactly what the order will honour: expiry, period
+            // limits, module and minimum (X-24).
+            ->filter(fn ($userPrize) => $userPrize->canRedeemFreeDelivery($moduleId, $orderAmount))
             ->values()
             ->map(function($userPrize) {
                 return [
@@ -412,7 +407,7 @@ class XpController extends Controller
         $user = $request->user();
 
         $prizes = UserLevelPrize::where('user_id', $user->id)
-            ->with('prize.level')
+            ->with(['prize.level', 'coupon:id,code'])
             ->get()
             ->map(function ($userPrize) {
                 $prize = $userPrize->prize;
@@ -432,6 +427,7 @@ class XpController extends Controller
                     'unlocked_at' => $userPrize->unlocked_at?->toIso8601String(),
                     'expires_at' => $userPrize->expires_at?->toIso8601String(),
                     'used_at' => $userPrize->used_at?->toIso8601String(),
+                    'coupon_code' => $userPrize->coupon?->code,
                 ];
             });
 
@@ -502,6 +498,16 @@ class XpController extends Controller
                     $userPrize->markUsed();
                 }
 
+                // Discount prizes are redeemed as a personal, single-use,
+                // fixed-amount coupon. A prize with no amount has nothing to
+                // mint, so the claim rolls back instead of consuming it.
+                if ($userPrize->prize->prize_type === 'discount') {
+                    if (!($userPrize->prize->value > 0)) {
+                        throw new \RuntimeException('Discount prize ' . $userPrize->id . ' has no amount');
+                    }
+                    XpService::issueDiscountCoupon($userPrize);
+                }
+
                 return ['prize' => $userPrize];
             });
         } catch (\RuntimeException $e) {
@@ -536,6 +542,7 @@ class XpController extends Controller
                 'type' => $userPrize->prize->prize_type,
                 'value' => $userPrize->prize->value,
                 'status' => $userPrize->status,
+                'coupon_code' => $userPrize->coupon?->code,
             ],
         ], 200);
     }

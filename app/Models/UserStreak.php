@@ -74,12 +74,32 @@ class UserStreak extends Model
     }
 
     /**
+     * The streak as it stands today (app-local).
+     *
+     * `current_streak` is only reset by the user's *next* activity, so a
+     * streak broken days ago still reads as its old length. It is alive only
+     * if the last activity was today or yesterday (X-17).
+     */
+    public function effectiveStreak(): int
+    {
+        if (!$this->last_activity_date || $this->current_streak <= 0) {
+            return 0;
+        }
+
+        $tz = AppClock::timezone();
+        $last = Carbon::parse($this->last_activity_date)->timezone($tz)->startOfDay();
+        $yesterday = AppClock::now()->startOfDay()->subDay();
+
+        return $last->lt($yesterday) ? 0 : (int) $this->current_streak;
+    }
+
+    /**
      * Get streak data for API response.
      */
     public function getStreakData(): array
     {
         return [
-            'current_streak' => $this->current_streak,
+            'current_streak' => $this->effectiveStreak(),
             'longest_streak' => $this->longest_streak,
             'streak_bonus_xp' => XpSetting::getInt('streak_bonus_xp', 10),
             'last_activity_date' => $this->last_activity_date?->toDateString(),

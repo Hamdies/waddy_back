@@ -93,7 +93,16 @@ class OrderController extends Controller
             ->scopedToRequester($request)
             ->whereIn('order_status', ['delivered', 'canceled', 'refund_requested', 'refund_request_canceled', 'refunded', 'failed'])
             ->Notpos()->latest()->paginate($request['limit'], ['*'], 'page', $request['offset']);
-        $orders = array_map(function ($data) {
+        // The real XP each order earned, so the app stops presenting an
+        // estimate as "earned" (X-23).
+        $xpEarned = $request->user
+            ? \App\Services\XpService::earnedForOrders(
+                $request->user->id,
+                collect($paginator->items())->pluck('id')->all()
+            )
+            : [];
+        $orders = array_map(function ($data) use ($xpEarned) {
+            $data['xp_earned'] = $xpEarned[$data['id']] ?? 0;
             $data['delivery_address'] = $data['delivery_address'] ? json_decode($data['delivery_address']) : $data['delivery_address'];
             $data['store'] = $data['store'] ? Helpers::store_data_formatting($data['store']) : $data['store'];
             $data['delivery_man'] = $data['delivery_man'] ? Helpers::deliverymen_data_formatting([$data['delivery_man']]) : $data['delivery_man'];
