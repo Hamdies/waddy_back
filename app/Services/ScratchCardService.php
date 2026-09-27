@@ -67,6 +67,31 @@ class ScratchCardService
         }
     }
 
+    /**
+     * What the app's card teaser needs: are cards going into bags now, and in
+     * which zones. True only with the program on AND a batch switched on and
+     * still within its date; a switched-off program shows no card anywhere
+     * (SC-14). `zone_ids` null means every zone.
+     *
+     * @return array{active: bool, zone_ids: int[]|null}
+     */
+    public static function inBags(): array
+    {
+        if (!self::enabled()) {
+            return ['active' => false, 'zone_ids' => []];
+        }
+        $zones = ScratchBatch::where('active', true)
+            ->whereDate('use_before', '>=', now()->toDateString())
+            ->pluck('zone_id');
+        if ($zones->isEmpty()) {
+            return ['active' => false, 'zone_ids' => []];
+        }
+        return [
+            'active' => true,
+            'zone_ids' => $zones->contains(null) ? null : $zones->unique()->values()->all(),
+        ];
+    }
+
     // ==================== CODES ====================
 
     /** What the customer typed → the stored form: uppercase, letters and digits only. */

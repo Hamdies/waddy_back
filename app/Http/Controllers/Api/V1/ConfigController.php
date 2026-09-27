@@ -314,6 +314,8 @@ class ConfigController extends Controller
             'is_mail_active' =>  (boolean)config('mail.status'),
             'system_tax_type' => $systemTax?->tax_type ?? null,
             'system_tax_include_status' => (int) $systemTax?->is_included,
+            // Whether printed scratch cards are going into bags right now, and where.
+            'scratch_cards' => \App\Services\ScratchCardService::inBags(),
         ]);
     }
 
