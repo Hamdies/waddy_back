@@ -27,9 +27,9 @@ use Illuminate\Support\Str;
  *    empty on purpose — a starter shelf, not a full catalogue.
  * 4. Removes the products an earlier run of this seeder added beyond that
  *    (it used to put 2 in every subcategory, and stocked Adam Supermarket
- *    too). Only rows this seeder created (on/after CATALOGUE_FIRST_RUN) with a
- *    catalogue product name are touched, and never an item that has been
- *    ordered.
+ *    too). Only rows this seeder created (from its first run, found via
+ *    FIRST_RUN_MARKER) with a catalogue product name are touched, and never
+ *    an item that has been ordered.
  *
  * Products are generic Egyptian-supermarket staples at typical prices, not a
  * copy of any store's real stock. Images are left null — upload in admin.
@@ -62,11 +62,19 @@ class SupermarketCatalogueSeeder extends Seeder
     private const STOCKED_SUBS = 2;
 
     /**
-     * When this seeder first ran on the live server. Its own rows are the
-     * ones created from then on; anything older (MaadiContentSeeder's
-     * "Bananas 1kg" at Seoudi, say) predates it and is never deleted here.
+     * A product only this seeder creates, in its FIRST category — so the
+     * earliest row with this name marks when the catalogue first ran.
+     *
+     * The cutoff used to be a hard-coded date (2026-09-29 00:00). The live
+     * server runs on CEST and the first run landed late on the 28th by its
+     * clock, so every catalogue row looked older than the cutoff and the
+     * prune removed nothing. A marker row can't disagree with the server
+     * about what time it was.
      */
-    private const CATALOGUE_FIRST_RUN = '2026-09-29 00:00:00';
+    private const FIRST_RUN_MARKER = 'Siwa Dates 500g';
+
+    /** Slack before the marker: its insert is a few rows into the run. */
+    private const FIRST_RUN_SLACK_MINUTES = 5;
 
     public function run(): void
     {
@@ -176,10 +184,22 @@ class SupermarketCatalogueSeeder extends Seeder
     {
         $keepAt = $stores->pluck('id')->all();
 
+        $firstRun = Item::withoutGlobalScopes()
+            ->where('module_id', $moduleId)
+            ->where('name', self::FIRST_RUN_MARKER)
+            ->min('created_at');
+        if (!$firstRun) {
+            $this->command->warn('No "' . self::FIRST_RUN_MARKER . '" row found — nothing to prune (already pruned: the marker itself is one of the extras).');
+
+            return;
+        }
+        $cutoff = \Illuminate\Support\Carbon::parse($firstRun)->subMinutes(self::FIRST_RUN_SLACK_MINUTES);
+        $this->command->line("Catalogue first ran at {$firstRun}; pruning its rows from {$cutoff}.");
+
         $candidates = Item::withoutGlobalScopes()
             ->where('module_id', $moduleId)
             ->whereIn('name', array_unique($allNames))
-            ->where('created_at', '>=', self::CATALOGUE_FIRST_RUN)
+            ->where('created_at', '>=', $cutoff)
             ->get(['id', 'store_id', 'name']);
 
         $deleted = 0;
