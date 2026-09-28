@@ -20,7 +20,9 @@
         </div>
         <!-- End Page Header -->
 
-        @php($isStoreScope = ($scope ?? 'shared') === 'store')
+        @php
+            $isStoreScope = ($scope ?? 'shared') === 'store';
+        @endphp
         @if (Config::get('module.current_module_type') == 'grocery')
             {{-- Supermarkets share one aisle tree; specialty stores (dairy,
                  butcher, roastery…) own a flat list shown only on their page. --}}

@@ -29,7 +29,12 @@
         @if (Config::get('module.current_module_type') == 'grocery')
             {{-- Supermarket stock (shared aisle tree) vs specialty-store stock
                  (each store's own categories). Other filters are kept. --}}
-            @php($productScope = request('scope'))
+            {{-- Block form on purpose: an inline @php(...) above the page's
+                 later @php/@endphp block gets paired with that @endphp by Blade,
+                 swallowing everything between them (500: unexpected end of file). --}}
+            @php
+                $productScope = request('scope');
+            @endphp
             <ul class="nav nav-tabs mb-3 border-0">
                 <li class="nav-item">
                     <a class="nav-link {{ $productScope ? '' : 'active' }}"
