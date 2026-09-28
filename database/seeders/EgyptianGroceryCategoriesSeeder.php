@@ -108,7 +108,10 @@ class EgyptianGroceryCategoriesSeeder extends Seeder
                     ],
                     [
                         'image' => $subData['image'] ?? '',
-                        'position' => $index,
+                        // position is the main(0)/sub(1) flag the API filters
+                        // on, not a sort index — an index here made every first
+                        // subcategory show up as a main category.
+                        'position' => 1,
                         'priority' => 0,
                         'status' => 1,
                         'featured' => 0,
