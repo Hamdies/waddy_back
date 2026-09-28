@@ -24,6 +24,7 @@ use App\Traits\HasImageVariants;
  * @property int $status
  * @property int $featured
  * @property int $module_id
+ * @property int|null $store_id  set = owned by that (specialty) store, NULL = module-wide
  * @property int $products_count
  * @property int $childes_count
  * @property mixed $translations
@@ -48,6 +49,7 @@ class Category extends Model
         'status',
         'featured',
         'module_id',
+        'store_id',
         'products_count',
         'childes_count',
     ];
@@ -59,6 +61,7 @@ class Category extends Model
         'status' => 'integer',
         'featured' => 'integer',
         'module_id' => 'integer',
+        'store_id' => 'integer',
         'products_count' => 'integer',
         'childes_count' => 'integer',
     ];
@@ -82,6 +85,27 @@ class Category extends Model
     public function scopeModule($query, $module_id)
     {
         return $query->where('module_id', $module_id);
+    }
+
+    /**
+     * Module-wide categories only — the shared (supermarket) tree. Every
+     * customer-facing category LIST uses this, so a specialty store's own
+     * "Milk"/"Cheese" never leak into the aisles or the home strip.
+     */
+    public function scopeShared($query)
+    {
+        return $query->whereNull('categories.store_id');
+    }
+
+    /** Categories owned by one specialty store. */
+    public function scopeOwnedBy($query, $storeId)
+    {
+        return $query->where('categories.store_id', $storeId);
+    }
+
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(Store::class);
     }
 
     public function scopeActive($query)

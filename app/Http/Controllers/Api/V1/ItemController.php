@@ -242,6 +242,7 @@ class ItemController extends Controller
         $categories = Category::withCount(['products','childes'])->with(['childes' => function($query)  {
             $query->withCount(['products','childes']);
         }])
+        ->shared()
         ->where(['position'=>0,'status'=>1])
         ->when(config('module.current_module_data'), function($query){
             $query->module(config('module.current_module_data')['id']);

@@ -871,6 +871,9 @@
             let route = '{{url('/')}}/admin/store/get-addons?data[]=0&store_id='+$(this).val();
             let id = 'add_on';
             getRestaurantData(route, id);
+            // The category list depends on the store (own list vs shared tree).
+            $('#category_id').val(null).trigger('change');
+            $('#sub-categories').val(null).trigger('change');
         });
 
         function modulChange(id) {
@@ -1038,6 +1041,8 @@
                         q: params.term, // search term
                         page: params.page,
                         module_id:{{Config::get('module.current_module_id')}},
+                        // A specialty store gets its own categories back.
+                        store_id: $('#store_id').val(),
                     };
                 },
                 processResults: function(data) {

@@ -25,7 +25,10 @@ class CategoryService
 
     public function getAddData($request, string|null|Object $parentCategory): array
     {
-        $parentId = $request->parent_id == null ? 0 : $request->parent_id;
+        // A store-owned category is always a flat, top-level one: specialty
+        // stores list their products under text tabs, with no sub-categories.
+        $storeId = $request->filled('store_id') ? (int) $request->store_id : null;
+        $parentId = ($storeId || $request->parent_id == null) ? 0 : $request->parent_id;
 
         return [
             'name' => $request->name[array_search('default', $request->lang)],
@@ -36,7 +39,8 @@ class CategoryService
             // posted value once let sort orders land here and broke the API's
             // `where(position = 0)` category list.
             'position' => $parentId ? 1 : 0,
-            'module_id' => isset($request->parent_id) ? $parentCategory['module_id'] : Config::get('module.current_module_id')
+            'module_id' => (!$storeId && isset($request->parent_id)) ? $parentCategory['module_id'] : Config::get('module.current_module_id'),
+            'store_id' => $storeId,
         ];
     }
 

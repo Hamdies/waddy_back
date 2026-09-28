@@ -1302,7 +1302,9 @@
                 return {
                     q: params.term, // search term
                     page: params.page,
-                    module_id: module_id
+                    module_id: module_id,
+                    // A specialty store gets its own categories back.
+                    store_id: $('#store_id').val(),
                 };
             },
             processResults: function(data) {

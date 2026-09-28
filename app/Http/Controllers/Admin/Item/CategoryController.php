@@ -52,24 +52,55 @@ class CategoryController extends BaseController
 
     private function getCategoryView(Request $request): View
     {
-        $categories = $this->categoryRepo->getListWhere(
-            searchValue: $request['search'],
-            filters: ['position' => $request['position']],
+        // Two lists on the main-category page: the shared (supermarket) tree,
+        // and categories owned by one specialty store. `store_id => null` is
+        // turned into `whereNull` by the query builder.
+        $scope = $request['scope'] === 'store' ? 'store' : 'shared';
+
+        if ($scope === 'store') {
+            $key = explode(' ', (string) $request['search']);
+            $categories = \App\Models\Category::with(['module', 'store'])
+                ->where('position', 0)
+                ->whereNotNull('store_id')
+                ->module(\Illuminate\Support\Facades\Config::get('module.current_module_id'))
+                ->when($request['search'], function ($query) use ($key) {
+                    $query->where(function ($query) use ($key) {
+                        foreach ($key as $value) {
+                            $query->orWhere('name', 'like', "%{$value}%");
+                        }
+                    });
+                })
+                ->latest()->paginate(config('default_pagination'));
+        } else {
+            $categories = $this->categoryRepo->getListWhere(
+                searchValue: $request['search'],
+                filters: ['position' => $request['position'], 'store_id' => null],
+                relations: ['module'],
+                dataLimit: config('default_pagination')
+            );
+        }
+
+        // Parents offered on the sub-category page: shared tree only — store
+        // categories are flat and never take children.
+        $mainCategories = $this->categoryRepo->getMainList(
+            filters: ['position' => 0, 'store_id' => null],
             relations: ['module'],
-            dataLimit: config('default_pagination')
         );
 
-        $mainCategories = $this->categoryRepo->getMainList(
-            filters: ['position' => 0],
-            relations: ['module'],
-        );
+        // Specialty stores = this module's stores not tagged "Supermarkets".
+        $specialtyStores = $scope === 'store'
+            ? \App\Models\Store::withoutGlobalScope('translate')
+                ->where('module_id', \Illuminate\Support\Facades\Config::get('module.current_module_id'))
+                ->whereNotIn('id', Helpers::supermarketStoreIds())
+                ->orderBy('name')->get(['id', 'name'])
+            : collect();
 
         $language = getWebConfig('language');
         $taxData = Helpers::getTaxSystemType();
         $categoryWiseTax = $taxData['categoryWiseTax'];
         $taxVats = $taxData['taxVats'];
 
-        return view($this->categoryService->getViewByPosition($request['position']), compact('categories','language','mainCategories','categoryWiseTax','taxVats'));
+        return view($this->categoryService->getViewByPosition($request['position']), compact('categories','language','mainCategories','categoryWiseTax','taxVats','scope','specialtyStores'));
     }
 
     public function add(CategoryAddRequest $request): RedirectResponse
@@ -165,7 +196,10 @@ class CategoryController extends BaseController
 
 
         Toastr::success( $category['position'] == 0 ?    translate('messages.category_updated_successfully') : translate('messages.Sub_category_updated_successfully'));
-        return redirect()->route('admin.category.add',['position' => $mainCategory->position]);
+        return redirect()->route('admin.category.add', array_filter([
+            'position' => $mainCategory->position,
+            'scope' => $mainCategory->store_id ? 'store' : null,
+        ], fn ($v) => $v !== null));
     }
 
     public function delete(Request $request): RedirectResponse

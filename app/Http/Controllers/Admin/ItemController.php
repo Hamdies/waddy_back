@@ -970,9 +970,19 @@ class ItemController extends Controller
     public function get_categories(Request $request)
     {
         $key = explode(' ', $request['q']);
+
+        // A specialty store (grocery store not tagged "Supermarkets") files
+        // products under its OWN flat categories; everyone else picks from
+        // the shared tree. Without a store chosen, offer the shared tree.
+        $storeId = is_numeric($request->store_id) ? (int) $request->store_id : null;
+        $ownCategories = $storeId
+            && !in_array($storeId, Helpers::supermarketStoreIds(), true)
+            && Category::where('store_id', $storeId)->exists();
+
         $cat = Category::when(isset($request->module_id), function ($query) use ($request) {
             $query->where('module_id', $request->module_id);
         })
+            ->when($ownCategories, fn ($query) => $query->where('store_id', $storeId), fn ($query) => $query->whereNull('store_id'))
             ->when($request->sub_category, function ($query) {
                 $query->where('position', '>', '0');
             })
@@ -1071,6 +1081,9 @@ class ItemController extends Controller
             ->when(is_numeric($store_id), function ($query) use ($store_id) {
                 return $query->where('store_id', $store_id);
             })
+            // Grocery product tabs: supermarket stock vs specialty-store stock.
+            ->when($request->query('scope') === 'supermarket', fn ($query) => $query->whereIn('store_id', Helpers::supermarketStoreIds()))
+            ->when($request->query('scope') === 'store', fn ($query) => $query->whereNotIn('store_id', Helpers::supermarketStoreIds()))
             ->when(is_numeric($sub_category_id), function ($query) use ($sub_category_id) {
                 return $query->where('category_id', $sub_category_id);
             })

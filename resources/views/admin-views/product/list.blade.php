@@ -25,6 +25,26 @@
 
         </div>
         <!-- End Page Header -->
+
+        @if (Config::get('module.current_module_type') == 'grocery')
+            {{-- Supermarket stock (shared aisle tree) vs specialty-store stock
+                 (each store's own categories). Other filters are kept. --}}
+            @php($productScope = request('scope'))
+            <ul class="nav nav-tabs mb-3 border-0">
+                <li class="nav-item">
+                    <a class="nav-link {{ $productScope ? '' : 'active' }}"
+                        href="{{ url()->current() . '?' . http_build_query(array_merge(request()->except(['scope', 'page']), [])) }}">{{ translate('messages.all') }}</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ $productScope === 'supermarket' ? 'active' : '' }}"
+                        href="{{ url()->current() . '?' . http_build_query(array_merge(request()->except(['scope', 'page']), ['scope' => 'supermarket'])) }}">{{ translate('messages.supermarket_products') }}</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ $productScope === 'store' ? 'active' : '' }}"
+                        href="{{ url()->current() . '?' . http_build_query(array_merge(request()->except(['scope', 'page']), ['scope' => 'store'])) }}">{{ translate('messages.store_products') }}</a>
+                </li>
+            </ul>
+        @endif
         <!-- Card -->
 
         @php

@@ -20,6 +20,22 @@
         </div>
         <!-- End Page Header -->
 
+        @php($isStoreScope = ($scope ?? 'shared') === 'store')
+        @if (Config::get('module.current_module_type') == 'grocery')
+            {{-- Supermarkets share one aisle tree; specialty stores (dairy,
+                 butcher, roastery…) own a flat list shown only on their page. --}}
+            <ul class="nav nav-tabs mb-3 border-0">
+                <li class="nav-item">
+                    <a class="nav-link {{ $isStoreScope ? '' : 'active' }}"
+                        href="{{ route('admin.category.add', ['position' => 0]) }}">{{ translate('messages.supermarket_categories') }}</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ $isStoreScope ? 'active' : '' }}"
+                        href="{{ route('admin.category.add', ['position' => 0, 'scope' => 'store']) }}">{{ translate('messages.store_categories') }}</a>
+                </li>
+            </ul>
+        @endif
+
         <div class="card">
             <div class="card-body">
                 <form
@@ -80,6 +96,20 @@
                             @endif
                             <input name="position" value="0" class="initial-hidden">
 
+                            @if ($isStoreScope)
+                                <div class="form-group">
+                                    <label class="input-label" for="store_id">{{ translate('messages.store') }}
+                                        <span class="form-label-secondary text-danger"> *</span></label>
+                                    <select name="store_id" id="store_id" class="form-control js-select2-custom" required>
+                                        <option value="" disabled {{ old('store_id') ? '' : 'selected' }}>{{ translate('messages.select_store') }}</option>
+                                        @foreach ($specialtyStores as $specialtyStore)
+                                            <option value="{{ $specialtyStore->id }}" {{ old('store_id') == $specialtyStore->id ? 'selected' : '' }}>{{ $specialtyStore->getRawOriginal('name') }}</option>
+                                        @endforeach
+                                    </select>
+                                    <small class="text-muted">{{ translate('messages.store_category_hint') }}</small>
+                                </div>
+                            @endif
+
                             @if ($categoryWiseTax)
                                 <span class="mb-2 d-block title-clr fw-normal">{{ translate('Select Tax Rate') }}</span>
                                 <select name="tax_ids[]" id="tax__rate" class="form-control js-select2-custom"
@@ -95,7 +125,7 @@
                         <div class="col-md-6">
                             <div class="h-100 d-flex align-items-center flex-column">
                                 <label class="mb-3 text-center">{{ translate('messages.image') }} <small
-                                        class="text-danger">* ( {{ translate('messages.ratio') }} 1:1)</small></label>
+                                        class="text-danger">{{ $isStoreScope ? '' : '*' }} ( {{ translate('messages.ratio') }} 1:1)</small></label>
                                 <label class="text-center my-auto position-relative d-inline-block">
                                     <img class="img--176 border" id="viewer"
                                         @if (isset($category)) src="{{ asset('storage/app/public/category') }}/{{ $category['image'] }}"
@@ -139,6 +169,9 @@
                                 placeholder="{{ translate('messages.search_categories') }}"
                                 aria-label="{{ translate('messages.ex_:_categories') }}">
                             <input type="hidden" name="position" value="0">
+                            @if ($isStoreScope)
+                                <input type="hidden" name="scope" value="store">
+                            @endif
                             <button type="submit" class="btn btn--secondary min-height-45"><i
                                     class="tio-search"></i></button>
                         </div>
@@ -197,6 +230,9 @@
                                 <th class="border-0">{{ translate('sl') }}</th>
                                 <th class="border-0">{{ translate('messages.id') }}</th>
                                 <th class="border-0 w--1">{{ translate('messages.name') }}</th>
+                                @if ($isStoreScope)
+                                    <th class="border-0">{{ translate('messages.store') }}</th>
+                                @endif
                                 <th class="border-0 text-center">{{ translate('messages.status') }}</th>
                                 <th class="border-0 text-center">{{ translate('messages.featured') }}</th>
                                 @if ($categoryWiseTax)
@@ -217,6 +253,9 @@
                                             {{ Str::limit($category['name'], 20, '...') }}
                                         </span>
                                     </td>
+                                    @if ($isStoreScope)
+                                        <td>{{ $category->store?->getRawOriginal('name') ?? '-' }}</td>
+                                    @endif
                                     <td>
                                         <label class="toggle-switch toggle-switch-sm"
                                             for="stocksCheckbox{{ $category->id }}">

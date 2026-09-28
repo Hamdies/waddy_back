@@ -162,7 +162,7 @@ class StoreController extends Controller
 
             $store = Helpers::store_data_formatting($store);
             $store['category_ids'] = array_map('intval', $category_ids->pluck('categories')->toArray());
-            $store['category_details'] = Category::whereIn('id',$store['category_ids'])->get();
+            $store['category_details'] = Category::whereIn('id',$store['category_ids'])->orderByDesc('priority')->orderBy('id')->get();
             $store['price_range']  = Item::withoutGlobalScopes()->where('store_id', $store->id)
             ->select(DB::raw('MIN(price) AS min_price, MAX(price) AS max_price'))
             ->get(['min_price','max_price'])->toArray();

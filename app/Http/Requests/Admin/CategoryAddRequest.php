@@ -31,7 +31,12 @@ class CategoryAddRequest extends FormRequest
         return [
             'name' => 'required|max:100',
             'name.0' => 'required',
-            'image' => 'required_if:position,==,0',
+            // A store category is a text tab on a specialty store's page, so it
+            // needs no artwork; shared main categories still do.
+            'image' => \Illuminate\Validation\Rule::requiredIf(
+                fn () => (int) $this->input('position') === 0 && !$this->filled('store_id')
+            ),
+            'store_id' => 'nullable|integer|exists:stores,id',
         ];
     }
 

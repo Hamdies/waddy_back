@@ -5623,4 +5623,9 @@
   'store_type_updated_successfully' => 'تم تحديث نوع المتجر بنجاح',
   'store_type_deleted_successfully' => 'تم حذف نوع المتجر بنجاح',
   'store_type_status_updated' => 'تم تحديث حالة نوع المتجر',
+  'supermarket_categories' => 'أقسام السوبر ماركت',
+  'store_categories' => 'أقسام المتاجر',
+  'store_category_hint' => 'يظهر فقط في صفحة هذا المتجر كتبويب، بدون أقسام فرعية.',
+  'supermarket_products' => 'منتجات السوبر ماركت',
+  'store_products' => 'منتجات المتاجر',
 );

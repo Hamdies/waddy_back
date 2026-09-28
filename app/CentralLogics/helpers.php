@@ -910,8 +910,33 @@ class Helpers
         return is_array($value) ? $value : [];
     }
 
+    /**
+     * Ids of stores tagged with the "Supermarkets" store type.
+     *
+     * Grocery stores come in two shapes: supermarkets browse the shared aisle
+     * tree; every other grocery store (dairy, butcher, roastery…) is a
+     * specialty shop with its own flat category list and a menu-style page.
+     * The app picks the page from `is_supermarket`. One query per request,
+     * however many stores are formatted.
+     */
+    public static function supermarketStoreIds(): array
+    {
+        static $ids = null;
+        if ($ids === null) {
+            $ids = DB::table('cuisine_store')
+                ->join('cuisines', 'cuisines.id', '=', 'cuisine_store.cuisine_id')
+                ->where('cuisines.name', 'Supermarkets')
+                ->pluck('cuisine_store.store_id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+        }
+
+        return $ids;
+    }
+
     public static function store_data_formatting($data, $multi_data = false)
     {
+        $supermarkets = self::supermarketStoreIds();
         $storage = [];
         if ($multi_data == true) {
             // storeConfig and module were both lazy-loaded per row inside the
@@ -943,6 +968,7 @@ class Helpers
                 }
                 $item['self_delivery_system'] = (int) $item->sub_self_delivery;
                 $item['current_opening_time'] = self::getNextOpeningTime($item['schedules']) ?? 'closed';
+                $item['is_supermarket'] = in_array((int) $item['id'], $supermarkets, true);
                 unset($item['items_count']);
                 unset($item['campaigns_count']);
                 unset($item['storeConfig']);
@@ -972,6 +998,7 @@ class Helpers
             $data['total_items'] = $data['items_count'];
             $data['total_campaigns'] = $data['campaigns_count'];
             $data['current_opening_time'] = self::getNextOpeningTime($data['schedules']) ?? 'closed';
+            $data['is_supermarket'] = in_array((int) $data['id'], $supermarkets, true);
             unset($data['items_count']);
             unset($data['campaigns_count']);
             unset($data['campaigns']);

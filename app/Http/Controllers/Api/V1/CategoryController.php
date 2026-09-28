@@ -57,7 +57,8 @@ class CategoryController extends Controller
               $categories= $categories->select('id','name','image','slug');
             }
 
-             $categories= $categories->where(['position'=>0,'status'=>1])
+             // shared(): a specialty store's own categories are not aisles.
+             $categories= $categories->shared()->where(['position'=>0,'status'=>1])
             ->when(config('module.current_module_data'), function($query){
                 $query->module(config('module.current_module_data')['id']);
             })
@@ -295,7 +296,7 @@ class CategoryController extends Controller
         $categories= Category::when(config('module.current_module_data'), function($query){
             $query->module(config('module.current_module_data')['id']);
         })
-        ->whereIn('id',$get_popular_category_ids->toArray())->where(['position'=>0,'status'=>1])->take(20)->get();
+        ->whereIn('id',$get_popular_category_ids->toArray())->shared()->where(['position'=>0,'status'=>1])->take(20)->get();
         return response()->json($categories, 200);
     }
 }

@@ -159,6 +159,7 @@ class SupermarketCatalogueSeeder extends Seeder
             $stale = Category::withoutGlobalScope('translate')
                 ->where('module_id', $moduleId)
                 ->where('parent_id', 0)
+                ->whereNull('store_id') // specialty stores' own lists are not stale
                 ->whereNotIn('name', array_keys($tree))
                 ->pluck('name');
             if ($stale->isNotEmpty()) {
@@ -226,7 +227,7 @@ class SupermarketCatalogueSeeder extends Seeder
     private function category(int $moduleId, int $parentId, string $name, string $ar, int $position, int $priority): Category
     {
         $category = Category::withoutGlobalScope('translate')->updateOrCreate(
-            ['module_id' => $moduleId, 'parent_id' => $parentId, 'name' => $name],
+            ['module_id' => $moduleId, 'store_id' => null, 'parent_id' => $parentId, 'name' => $name],
             ['position' => $position, 'priority' => $priority, 'status' => 1],
         );
 
