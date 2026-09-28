@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * What a restaurant IS, as opposed to what it happens to sell.
  *
  * @property int $id
+ * @property int|null $module_id
  * @property string $name
  * @property string|null $image
  * @property bool $status
@@ -24,6 +25,7 @@ class Cuisine extends Model
     protected $with = ['translations'];
 
     protected $fillable = [
+        'module_id',
         'name',
         'image',
         'status',
@@ -32,6 +34,7 @@ class Cuisine extends Model
 
     protected $casts = [
         'id' => 'integer',
+        'module_id' => 'integer',
         'status' => 'boolean',
         'priority' => 'integer',
     ];
@@ -73,6 +76,25 @@ class Cuisine extends Model
     public function scopeActive($query)
     {
         return $query->where('status', true);
+    }
+
+    /**
+     * Store types belonging to one module, plus any left global (NULL).
+     * A null [$moduleId] applies no filter — admin screens and callers with no
+     * module context see every row.
+     */
+    public function scopeForModule($query, $moduleId)
+    {
+        return $query->when($moduleId, function ($query) use ($moduleId) {
+            $query->where(function ($query) use ($moduleId) {
+                $query->where('module_id', $moduleId)->orWhereNull('module_id');
+            });
+        });
+    }
+
+    public function module()
+    {
+        return $this->belongsTo(Module::class);
     }
 
     protected static function booted(): ?Builder

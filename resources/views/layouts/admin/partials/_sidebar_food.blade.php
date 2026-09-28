@@ -412,14 +412,14 @@
                 @endif
                 <!-- End Category -->
 
-                <!-- Cuisines -->
+                <!-- Store types (cuisines table; food + grocery) -->
                 <li class="nav-item {{ Request::is('admin/cuisine*') ? 'active' : '' }}">
-                    <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.cuisine.index') }}" title="{{ translate('messages.cuisine') }}">
+                    <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.cuisine.index') }}" title="{{ translate('messages.store_types') }}">
                         <i class="tio-restaurant nav-icon"></i>
-                        <span class="text-truncate">{{ translate('messages.cuisine') }}</span>
+                        <span class="text-truncate">{{ translate('messages.store_types') }}</span>
                     </a>
                 </li>
-                <!-- End Cuisines -->
+                <!-- End Store types -->
 
                 <!-- Attributes -->
                 {{-- @if (\App\CentralLogics\Helpers::module_permission_check('attribute'))

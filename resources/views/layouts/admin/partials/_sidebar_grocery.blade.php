@@ -423,6 +423,17 @@
                 @endif
                 <!-- End Category -->
 
+                <!-- Store types — what a store IS (Supermarkets, Roasteries), not
+                     the aisles inside it. Same cuisines table as food, scoped by
+                     module_id; the page lists both modules' rows with a Module column. -->
+                <li class="nav-item {{ Request::is('admin/cuisine*') ? 'active' : '' }}">
+                    <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.cuisine.index') }}" title="{{ translate('messages.store_types') }}">
+                        <i class="tio-shop nav-icon"></i>
+                        <span class="text-truncate">{{ translate('messages.store_types') }}</span>
+                    </a>
+                </li>
+                <!-- End Store types -->
+
                 <!-- Attributes -->
                 @if (\App\CentralLogics\Helpers::module_permission_check('attribute'))
                 <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/attribute*') ? 'active' : '' }}">

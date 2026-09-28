@@ -8,10 +8,12 @@ use App\Models\Cuisine;
 use App\Models\Translation;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
- * Cuisines are global, not module-scoped: "Italian" means the same thing to
- * every restaurant, so unlike categories there is no module_id to filter on.
+ * Cuisines are module-scoped store types: "Pizza" for the food home,
+ * "Supermarkets" / "Dairy" for the grocery home. A NULL module_id shows in
+ * every module. Names are unique per module, not globally.
  */
 class CuisineController extends Controller
 {
@@ -26,6 +28,7 @@ class CuisineController extends Controller
                     $query->where('name', 'like', "%{$key}%");
                 }
             })
+            ->with('module')
             ->orderByDesc('priority')
             ->orderBy('name')
             ->paginate(config('default_pagination'))
@@ -38,7 +41,8 @@ class CuisineController extends Controller
     {
         $request->validate([
             'name' => 'required|array',
-            'name.0' => 'required|unique:cuisines,name',
+            'name.0' => ['required', Rule::unique('cuisines', 'name')->where(fn ($q) => $request->module_id ? $q->where('module_id', $request->module_id) : $q->whereNull('module_id'))],
+            'module_id' => 'nullable|exists:modules,id',
             'name.*' => 'max:191',
             'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'priority' => 'nullable|integer|min:0',
@@ -52,12 +56,13 @@ class CuisineController extends Controller
             ? Helpers::upload('cuisine/', 'png', $request->file('image'))
             : null;
         $cuisine->priority = $request->priority ?? 0;
+        $cuisine->module_id = $request->module_id ?: null;
         $cuisine->status = 1;
         $cuisine->save();
 
         $this->saveTranslations($request, $cuisine, insert: true);
 
-        Toastr::success(translate('messages.cuisine_added_successfully'));
+        Toastr::success(translate('messages.store_type_added_successfully'));
 
         return back();
     }
@@ -73,7 +78,8 @@ class CuisineController extends Controller
     {
         $request->validate([
             'name' => 'required|array',
-            'name.0' => 'required|unique:cuisines,name,' . $id,
+            'name.0' => ['required', Rule::unique('cuisines', 'name')->ignore($id)->where(fn ($q) => $request->module_id ? $q->where('module_id', $request->module_id) : $q->whereNull('module_id'))],
+            'module_id' => 'nullable|exists:modules,id',
             'name.*' => 'max:191',
             'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'priority' => 'nullable|integer|min:0',
@@ -87,11 +93,12 @@ class CuisineController extends Controller
             $cuisine->image = Helpers::update('cuisine/', $cuisine->image, 'png', $request->file('image'));
         }
         $cuisine->priority = $request->priority ?? 0;
+        $cuisine->module_id = $request->module_id ?: null;
         $cuisine->save();
 
         $this->saveTranslations($request, $cuisine, insert: false);
 
-        Toastr::success(translate('messages.cuisine_updated_successfully'));
+        Toastr::success(translate('messages.store_type_updated_successfully'));
 
         return redirect()->route('admin.cuisine.index');
     }
@@ -102,7 +109,7 @@ class CuisineController extends Controller
         $cuisine->status = $status;
         $cuisine->save();
 
-        Toastr::success(translate('messages.cuisine_status_updated'));
+        Toastr::success(translate('messages.store_type_status_updated'));
 
         return back();
     }
@@ -120,7 +127,7 @@ class CuisineController extends Controller
         $cuisine->translations()->delete();
         $cuisine->delete();
 
-        Toastr::success(translate('messages.cuisine_deleted_successfully'));
+        Toastr::success(translate('messages.store_type_deleted_successfully'));
 
         return back();
     }

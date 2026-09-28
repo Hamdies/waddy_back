@@ -1,6 +1,6 @@
 @extends('layouts.admin.app')
 
-@section('title',translate('messages.cuisine_update'))
+@section('title',translate('messages.store_type_update'))
 
 @section('content')
     <div class="content container-fluid">
@@ -9,7 +9,7 @@
                 <span class="page-header-icon">
                     <i class="tio-restaurant"></i>
                 </span>
-                <span>{{translate('messages.cuisine_update')}}</span>
+                <span>{{translate('messages.store_type_update')}}</span>
             </h1>
         </div>
 
@@ -69,6 +69,17 @@
                                     <input type="hidden" name="lang[]" value="default">
                                 </div>
                             @endif
+                            <div class="form-group">
+                                <label class="input-label">{{translate('messages.module')}}</label>
+                                {{-- Which home shows this type: a food cuisine (Pizza) or a
+                                     grocery store type (Supermarkets, Dairy). Blank = every module. --}}
+                                <select name="module_id" class="form-control">
+                                    <option value="">{{translate('messages.all')}}</option>
+                                    @foreach(\App\Models\Module::whereIn('module_type', ['food', 'grocery'])->get() as $module)
+                                        <option value="{{$module->id}}" {{ $cuisine->module_id == $module->id ? 'selected' : '' }}>{{$module->module_name}}</option>
+                                    @endforeach
+                                </select>
+                            </div>
                             <div class="form-group">
                                 <label class="input-label">{{translate('messages.priority')}}</label>
                                 <input type="number" min="0" name="priority" value="{{$cuisine->priority}}" class="form-control">

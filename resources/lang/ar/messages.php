@@ -5615,4 +5615,12 @@
   'what_this_restaurant_serves' => 'نوع المأكولات التي يقدمها المطعم. يتصفح العملاء المطاعم حسب المطبخ.',
   'higher_priority_shows_first' => 'الأولوية الأعلى تظهر أولاً في التطبيق',
   'rank_on_the_featured_chart' => 'الترتيب في قائمة المميزة',
+  'store_types' => 'أنواع المتاجر',
+  'store_type_list' => 'قائمة أنواع المتاجر',
+  'add_store_type' => 'إضافة نوع متجر',
+  'store_type_update' => 'تعديل نوع المتجر',
+  'store_type_added_successfully' => 'تمت إضافة نوع المتجر بنجاح',
+  'store_type_updated_successfully' => 'تم تحديث نوع المتجر بنجاح',
+  'store_type_deleted_successfully' => 'تم حذف نوع المتجر بنجاح',
+  'store_type_status_updated' => 'تم تحديث حالة نوع المتجر',
 );

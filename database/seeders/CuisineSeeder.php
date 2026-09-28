@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Cuisine;
+use App\Models\Module;
 use App\Models\Translation;
 use Illuminate\Database\Seeder;
 
@@ -60,14 +61,22 @@ class CuisineSeeder extends Seeder
 
     public function run(): void
     {
+        // Cuisines are module-scoped since 2026_09_28_000001: these are the
+        // food module's. Keyed on name + module so a grocery store type that
+        // happens to share a name is never overwritten.
+        $foodModuleId = Module::where('module_type', 'food')->value('id');
+
         foreach (self::CUISINES as $name => [$arabic, $priority]) {
             $cuisine = Cuisine::withoutGlobalScope('translate')
-                ->firstWhere('name', $name);
+                ->where('name', $name)
+                ->where(fn ($q) => $q->where('module_id', $foodModuleId)->orWhereNull('module_id'))
+                ->first();
 
             if ($cuisine) {
-                $cuisine->forceFill(['priority' => $priority, 'status' => 1])->save();
+                $cuisine->forceFill(['priority' => $priority, 'status' => 1, 'module_id' => $foodModuleId])->save();
             } else {
                 $cuisine = Cuisine::create([
+                    'module_id' => $foodModuleId,
                     'name' => $name,
                     'status' => 1,
                     'priority' => $priority,

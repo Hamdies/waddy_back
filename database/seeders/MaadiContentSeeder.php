@@ -68,7 +68,7 @@ class MaadiContentSeeder extends Seeder
 
     // ==================== Stores ====================
 
-    private function createStore(array $data, int $moduleId, int $zoneId): void
+    protected function createStore(array $data, int $moduleId, int $zoneId): Store
     {
         $vendor = Vendor::updateOrCreate(
             ['phone' => $data['vendor_phone']],
@@ -96,14 +96,16 @@ class MaadiContentSeeder extends Seeder
                 'zone_id' => $zoneId,
                 'minimum_order' => $data['minimum_order'] ?? 50,
                 'delivery_time' => $data['delivery_time'] ?? '30-45',
-                'minimum_shipping_charge' => 15,
+                // Overridable so seeded catalogues can differ; identical fees on
+                // every row make the app's fee comparison invisible.
+                'minimum_shipping_charge' => $data['shipping_charge'] ?? 15,
                 'per_km_shipping_charge' => 5,
                 'maximum_shipping_charge' => 60,
                 'status' => 1,
                 'active' => 1,
                 'delivery' => 1,
                 'take_away' => 1,
-                'free_delivery' => 0,
+                'free_delivery' => $data['free_delivery'] ?? 0,
                 'schedule_order' => 1,
                 'item_section' => 1,
                 'reviews_section' => 1,
@@ -119,8 +121,11 @@ class MaadiContentSeeder extends Seeder
         $this->setSchedule($store);
 
         if (!empty($data['cuisines'])) {
+            // Scoped to the store's module: cuisines double as grocery store
+            // types, and a name must resolve to this module's row.
             $cuisineIds = Cuisine::withoutGlobalScope('translate')
                 ->whereIn('name', $data['cuisines'])
+                ->forModule($moduleId)
                 ->pluck('id')
                 ->all();
 
@@ -130,9 +135,11 @@ class MaadiContentSeeder extends Seeder
         foreach ($data['items'] as $item) {
             $this->createItem($store, $item, $moduleId);
         }
+
+        return $store;
     }
 
-    private function setStoreTranslation(Store $store, string $arabic): void
+    protected function setStoreTranslation(Store $store, string $arabic): void
     {
         Translation::updateOrCreate(
             [
@@ -156,7 +163,7 @@ class MaadiContentSeeder extends Seeder
      * in the data below and can be applied once that comparison understands
      * overnight ranges the way Place::isOpenNow() already does.
      */
-    private function setSchedule(Store $store): void
+    protected function setSchedule(Store $store): void
     {
         foreach (range(0, 6) as $day) {
             StoreSchedule::updateOrCreate(
@@ -166,7 +173,7 @@ class MaadiContentSeeder extends Seeder
         }
     }
 
-    private function createItem(Store $store, array $data, int $moduleId): void
+    protected function createItem(Store $store, array $data, int $moduleId): void
     {
         $category = Category::withoutGlobalScope('translate')
             ->where('module_id', $moduleId)
@@ -197,6 +204,8 @@ class MaadiContentSeeder extends Seeder
                     ['id' => (string) $category->id, 'position' => 1],
                 ]),
                 'price' => $data['price'],
+                'discount' => $data['discount'] ?? 0,
+                'discount_type' => $data['discount_type'] ?? 'percent',
                 'module_id' => $moduleId,
                 'store_id' => $store->id,
                 'unit_id' => $unitId,

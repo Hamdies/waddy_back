@@ -295,8 +295,9 @@ class VendorController extends Controller
         $store->delivery_time = $request->minimum_delivery_time .'-'. $request->maximum_delivery_time.' '.$request->delivery_time_type;
         $store->save();
 
-        // Cuisines only apply to food stores; the field is absent from the form
-        // for every other module, and a missing key must not wipe the pivot.
+        // Cuisines (store types) apply to food and grocery stores; the field is
+        // absent from the form for every other module, and a missing key must
+        // not wipe the pivot.
         if ($request->has('cuisine_ids')) {
             // The form posts an empty hidden value so that clearing every chip
             // still submits the key; filter it back out before syncing.

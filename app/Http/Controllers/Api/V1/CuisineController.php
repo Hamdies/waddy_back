@@ -12,14 +12,16 @@ use Illuminate\Http\Request;
 class CuisineController extends Controller
 {
     /**
-     * The cuisine filter list.
+     * The store-type filter list for the requesting module — cuisines on the
+     * food home, Supermarkets/Dairy/… on the grocery home.
      */
-    public function get_cuisines(): JsonResponse
+    public function get_cuisines(Request $request): JsonResponse
     {
         $cuisines = Cuisine::active()
+            ->forModule($request->header('moduleId'))
             ->orderByDesc('priority')
             ->orderBy('name')
-            ->get(['id', 'name', 'image', 'priority']);
+            ->get(['id', 'module_id', 'name', 'image', 'priority']);
 
         return response()->json($cuisines, 200);
     }

@@ -1,6 +1,6 @@
 @extends('layouts.admin.app')
 
-@section('title',translate('messages.cuisine'))
+@section('title',translate('messages.store_types'))
 
 @section('content')
     <div class="content container-fluid">
@@ -10,7 +10,7 @@
                     <i class="tio-restaurant"></i>
                 </span>
                 <span>
-                    {{translate('messages.cuisine')}}
+                    {{translate('messages.store_types')}}
                 </span>
             </h1>
         </div>
@@ -66,6 +66,17 @@
                                 </div>
                             @endif
                             <div class="form-group">
+                                <label class="input-label">{{translate('messages.module')}}</label>
+                                {{-- Which home shows this type: a food cuisine (Pizza) or a
+                                     grocery store type (Supermarkets, Dairy). Blank = every module. --}}
+                                <select name="module_id" class="form-control">
+                                    <option value="">{{translate('messages.all')}}</option>
+                                    @foreach(\App\Models\Module::whereIn('module_type', ['food', 'grocery'])->get() as $module)
+                                        <option value="{{$module->id}}" {{ old('module_id') == $module->id ? 'selected' : '' }}>{{$module->module_name}}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="form-group">
                                 <label class="input-label">{{translate('messages.priority')}}</label>
                                 <input type="number" min="0" name="priority" value="0" class="form-control">
                                 <small class="text-muted">{{translate('messages.higher_priority_shows_first')}}</small>
@@ -93,7 +104,7 @@
                         <div class="col-12">
                             <div class="btn--container justify-content-end">
                                 <button type="reset" id="reset_btn" class="btn btn--reset">{{translate('messages.reset')}}</button>
-                                <button type="submit" class="btn btn--primary">{{translate('messages.add_cuisine')}}</button>
+                                <button type="submit" class="btn btn--primary">{{translate('messages.add_store_type')}}</button>
                             </div>
                         </div>
                     </div>
@@ -105,7 +116,7 @@
             <div class="card-header py-2 border-0">
                 <div class="search--button-wrapper">
                     <h5 class="card-title">
-                        {{translate('messages.cuisine_list')}}
+                        {{translate('messages.store_type_list')}}
                         <span class="badge badge-soft-dark ml-2">{{$cuisines->total()}}</span>
                     </h5>
                     <form action="{{route('admin.cuisine.index')}}" method="GET" class="search-form">
@@ -127,8 +138,9 @@
                                 <th class="border-0">{{translate('messages.id')}}</th>
                                 <th class="border-0">{{translate('messages.image')}}</th>
                                 <th class="border-0">{{translate('messages.name')}}</th>
+                                <th class="border-0">{{translate('messages.module')}}</th>
                                 <th class="border-0 text-center">{{translate('messages.priority')}}</th>
-                                <th class="border-0 text-center">{{translate('messages.restaurants')}}</th>
+                                <th class="border-0 text-center">{{translate('messages.stores')}}</th>
                                 <th class="border-0">{{translate('messages.status')}}</th>
                                 <th class="border-0 text-center">{{translate('messages.action')}}</th>
                             </tr>
@@ -147,6 +159,7 @@
                                         {{Str::limit($cuisine->getRawOriginal('name'), 25,'...')}}
                                     </span>
                                 </td>
+                                <td>{{$cuisine->module?->module_name ?? translate('messages.all')}}</td>
                                 <td class="text-center">{{$cuisine->priority}}</td>
                                 <td class="text-center">{{$cuisine->stores_count ?? $cuisine->stores()->count()}}</td>
                                 <td>

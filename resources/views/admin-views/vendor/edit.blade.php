@@ -247,9 +247,9 @@
                                             @endforeach
                                         </select>
                                     </div>
-                                    @if($store->module?->module_type == 'food')
+                                    @if(in_array($store->module?->module_type, ['food', 'grocery']))
                                     <div class="form-group">
-                                        <label class="input-label" for="cuisine_ids">{{translate('messages.cuisines')}}
+                                        <label class="input-label" for="cuisine_ids">{{$store->module?->module_type == 'grocery' ? translate('messages.store_types') : translate('messages.cuisines')}}
                                             <span class="form-label-secondary" data-toggle="tooltip" data-placement="right"
                                                   data-original-title="{{translate('messages.what_this_restaurant_serves')}}">
                                                 <img src="{{asset('/public/assets/admin/img/info-circle.svg')}}" alt="{{translate('messages.cuisines')}}">
@@ -262,7 +262,7 @@
                                                 data-placeholder="{{translate('messages.select_cuisines')}}"
                                                 class="form-control js-select2-custom">
                                             @php($selectedCuisines = $store->cuisines()->pluck('cuisines.id')->toArray())
-                                            @foreach(\App\Models\Cuisine::active()->orderBy('name')->get() as $cuisine)
+                                            @foreach(\App\Models\Cuisine::active()->forModule($store->module_id)->orderBy('name')->get() as $cuisine)
                                                 <option value="{{$cuisine->id}}" {{in_array($cuisine->id, $selectedCuisines) ? 'selected' : ''}}>{{$cuisine->name}}</option>
                                             @endforeach
                                         </select>
