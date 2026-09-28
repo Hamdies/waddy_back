@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Category;
-use App\Models\Cuisine;
 use App\Models\Item;
 use App\Models\Module;
 use App\Models\Store;
@@ -22,8 +21,15 @@ use Illuminate\Support\Str;
  *    ("Fresh Milk", "Fresh Fruits", …) got position 0 — which is how the API
  *    identifies a MAIN category — and surfaced in the app as one. Any row with
  *    a parent is a subcategory, so it is set to position 1.
- * 3. Adds 2 products per subcategory to every grocery store tagged with the
- *    "Supermarkets" store type (Seoudi, Metro, Gourmet, Adam, …).
+ * 3. Stocks the three supermarkets (Seoudi, Metro, Gourmet — by owner email,
+ *    so admin renames don't lose them) with 2 products per MAIN category:
+ *    one each in its first two subcategories. The other subcategories stay
+ *    empty on purpose — a starter shelf, not a full catalogue.
+ * 4. Removes the products an earlier run of this seeder added beyond that
+ *    (it used to put 2 in every subcategory, and stocked Adam Supermarket
+ *    too). Only rows this seeder created (on/after CATALOGUE_FIRST_RUN) with a
+ *    catalogue product name are touched, and never an item that has been
+ *    ordered.
  *
  * Products are generic Egyptian-supermarket staples at typical prices, not a
  * copy of any store's real stock. Images are left null — upload in admin.
@@ -40,10 +46,28 @@ use Illuminate\Support\Str;
  * longer in the tree are deleted, but only once empty.
  *
  * Idempotent: categories key on module + parent + name, items on store + name.
+ * Re-running also re-prunes, so the catalogue converges on the kept set.
  *   php artisan db:seed --class=SupermarketCatalogueSeeder --force
  */
 class SupermarketCatalogueSeeder extends Seeder
 {
+    /** Owner emails of the stores that carry this catalogue. */
+    private const SUPERMARKET_EMAILS = [
+        'seoudi.maadi@waddyapp.com',
+        'metro.degla@waddyapp.com',
+        'gourmet.maadi@waddyapp.com',
+    ];
+
+    /** Subcategories per main category that get a product. */
+    private const STOCKED_SUBS = 2;
+
+    /**
+     * When this seeder first ran on the live server. Its own rows are the
+     * ones created from then on; anything older (MaadiContentSeeder's
+     * "Bananas 1kg" at Seoudi, say) predates it and is never deleted here.
+     */
+    private const CATALOGUE_FIRST_RUN = '2026-09-29 00:00:00';
+
     public function run(): void
     {
         $moduleId = Module::where('module_type', 'grocery')->value('id');
@@ -54,8 +78,8 @@ class SupermarketCatalogueSeeder extends Seeder
         }
 
         $stores = $this->supermarkets($moduleId);
-        if ($stores->isEmpty()) {
-            $this->command->warn('No store is tagged "Supermarkets" — categories only, no products.');
+        if ($stores->count() < count(self::SUPERMARKET_EMAILS)) {
+            $this->command->warn('Found ' . $stores->count() . ' of ' . count(self::SUPERMARKET_EMAILS) . ' supermarkets: ' . $stores->map(fn ($s) => $s->getRawOriginal('name'))->join(', '));
         }
 
         DB::transaction(function () use ($moduleId, $stores) {
@@ -70,16 +94,26 @@ class SupermarketCatalogueSeeder extends Seeder
             $itemCount = 0;
 
             $removed = [];
+            $keepNames = [];
+            $allNames = [];
 
             foreach ($tree as $name => [$ar, $subs]) {
                 $parent = $this->category($moduleId, 0, $name, $ar, 0, $priority--);
 
                 $subPriority = count($subs);
+                $subIndex = 0;
                 foreach ($subs as $subName => [$subAr, $products]) {
                     $sub = $this->category($moduleId, $parent->id, $subName, $subAr, 1, $subPriority--);
 
-                    foreach ($stores as $store) {
-                        foreach ($products as [$pName, $pAr, $price]) {
+                    foreach ($products as [$pName]) {
+                        $allNames[] = $pName;
+                    }
+
+                    // One product, and only in the first STOCKED_SUBS subs.
+                    if ($subIndex++ < self::STOCKED_SUBS) {
+                        [$pName, $pAr, $price] = $products[0];
+                        $keepNames[] = $pName;
+                        foreach ($stores as $store) {
                             $this->item($store, $parent, $sub, $pName, $pAr, $price, $moduleId);
                             $itemCount++;
                         }
@@ -110,6 +144,8 @@ class SupermarketCatalogueSeeder extends Seeder
                 $this->command->line('Removed empty old subcategories: ' . implode(', ', $removed));
             }
 
+            $this->pruneExtraProducts($moduleId, $stores, $allNames, $keepNames);
+
             $this->command->info('Seeded ' . count($tree) . " categories and {$itemCount} products across {$stores->count()} supermarkets.");
 
             $stale = Category::withoutGlobalScope('translate')
@@ -125,17 +161,46 @@ class SupermarketCatalogueSeeder extends Seeder
 
     private function supermarkets(int $moduleId)
     {
-        $typeId = Cuisine::withoutGlobalScope('translate')
+        return Store::withoutGlobalScope('translate')
             ->where('module_id', $moduleId)
-            ->where('name', 'Supermarkets')
-            ->value('id');
+            ->whereHas('vendor', fn ($q) => $q->whereIn('email', self::SUPERMARKET_EMAILS))
+            ->get();
+    }
 
-        return $typeId
-            ? Store::withoutGlobalScope('translate')
-                ->where('module_id', $moduleId)
-                ->whereHas('cuisines', fn ($q) => $q->where('cuisines.id', $typeId))
-                ->get()
-            : collect();
+    /**
+     * Deletes this seeder's own earlier products that are no longer wanted:
+     * every catalogue item at a store outside the three supermarkets, and at
+     * the three, every catalogue item beyond the kept 2-per-category set.
+     */
+    private function pruneExtraProducts(int $moduleId, $stores, array $allNames, array $keepNames): void
+    {
+        $keepAt = $stores->pluck('id')->all();
+
+        $candidates = Item::withoutGlobalScopes()
+            ->where('module_id', $moduleId)
+            ->whereIn('name', array_unique($allNames))
+            ->where('created_at', '>=', self::CATALOGUE_FIRST_RUN)
+            ->get(['id', 'store_id', 'name']);
+
+        $deleted = 0;
+        $ordered = 0;
+        foreach ($candidates as $item) {
+            if (in_array((int) $item->store_id, $keepAt) && in_array($item->getRawOriginal('name'), $keepNames, true)) {
+                continue;
+            }
+            if (DB::table('order_details')->where('item_id', $item->id)->exists()) {
+                $ordered++;
+
+                continue;
+            }
+            Translation::where('translationable_type', Item::class)
+                ->where('translationable_id', $item->id)
+                ->delete();
+            Item::withoutGlobalScopes()->where('id', $item->id)->delete();
+            $deleted++;
+        }
+
+        $this->command->line("Removed {$deleted} extra catalogue products" . ($ordered ? " (kept {$ordered} that have orders)" : '') . '.');
     }
 
     private function category(int $moduleId, int $parentId, string $name, string $ar, int $position, int $priority): Category
