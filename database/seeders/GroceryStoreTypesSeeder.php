@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Cuisine;
-use App\Models\Discount;
 use App\Models\Module;
 use App\Models\Store;
 use App\Models\Translation;
@@ -11,25 +10,28 @@ use App\Models\Zone;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Grocery store types plus a test catalogue that exercises them.
+ * Grocery store types, plus real Maadi/Degla shops to fill each one.
  *
  * Store types (Supermarkets, Roasteries, …) are what a store IS — they live in
  * the cuisines table scoped to the grocery module (migration
  * 2026_09_28_000001) and drive the grocery home's strip. Item categories
  * (Fresh Milk, Frozen) are the aisles inside a store and are untouched here.
  *
- * The stores are TEST DATA with invented names — unlike MaadiContentSeeder,
- * which is hand-checked against real businesses. They exist so every control
- * on the grocery home has something to show: each type has stores, delivery
- * times straddle the 30-minute chip, fees differ, some stores deliver free,
- * and some carry a store discount (the offer collar) or discounted items (the
- * Offers chip).
+ * The stores are REAL businesses. Name, street address and phone are taken
+ * from their FindInEgypt listings (checked 2026-09-28). Two things are NOT
+ * from a source and should be corrected in admin:
+ *   - coordinates are street-level estimates, not pinned locations;
+ *   - the product lists are plausible for each kind of shop, not their actual
+ *     stock or prices.
+ * No discounts or free delivery are seeded: on a live catalogue those read as
+ * a promotion the shop is offering, and none of these shops has agreed to one.
+ * Delivery time and fee are Waddy's own settings and vary between stores.
  *
  * Idempotent: types key on name + module, stores on phone, items on
  * store + name. Images are left null — upload type/store art in admin.
  *
- * Run after `php artisan migrate` and after EgyptianGroceryCategoriesSeeder:
- *   php artisan db:seed --class=GroceryStoreTypesSeeder
+ * Run after `php artisan migrate`:
+ *   php artisan db:seed --class=GroceryStoreTypesSeeder --force
  */
 class GroceryStoreTypesSeeder extends MaadiContentSeeder
 {
@@ -44,11 +46,15 @@ class GroceryStoreTypesSeeder extends MaadiContentSeeder
         'Global & organic' => ['عالمي وأورجانيك', 70],
     ];
 
-    /** Real stores already seeded by MaadiContentSeeder, tagged by name. */
+    /**
+     * Real stores already in the catalogue, matched by name PREFIX: the
+     * seeder names them "Metro Market Degla", but admins rename them ("Metro
+     * Market"), and every branch of a chain should carry the chain's types.
+     */
     private const EXISTING_STORE_TYPES = [
-        'Seoudi Market Maadi' => ['Supermarkets', 'Fresh produce'],
-        'Metro Market Degla' => ['Supermarkets'],
-        'Gourmet Egypt Maadi' => ['Supermarkets', 'Global & organic'],
+        'Seoudi Market' => ['Supermarkets', 'Fresh produce'],
+        'Metro Market' => ['Supermarkets'],
+        'Gourmet Egypt' => ['Supermarkets', 'Global & organic'],
     ];
 
     public function run(): void
@@ -67,8 +73,7 @@ class GroceryStoreTypesSeeder extends MaadiContentSeeder
             $this->tagExistingStores($grocery->id);
 
             foreach ($this->stores() as $data) {
-                $store = $this->createStore($data, $grocery->id, $zone->id);
-                $this->setStoreDiscount($store, $data['store_discount'] ?? null);
+                $this->createStore($data, $grocery->id, $zone->id);
             }
         });
 
@@ -97,14 +102,14 @@ class GroceryStoreTypesSeeder extends MaadiContentSeeder
 
     private function tagExistingStores(int $moduleId): void
     {
-        foreach (self::EXISTING_STORE_TYPES as $storeName => $types) {
-            $store = Store::withoutGlobalScope('translate')
+        foreach (self::EXISTING_STORE_TYPES as $prefix => $types) {
+            $stores = Store::withoutGlobalScope('translate')
                 ->where('module_id', $moduleId)
-                ->where('name', $storeName)
-                ->first();
+                ->where('name', 'like', $prefix . '%')
+                ->get();
 
-            if (!$store) {
-                $this->command->warn("Store '{$storeName}' not found, not tagged.");
+            if ($stores->isEmpty()) {
+                $this->command->warn("No store named '{$prefix}…' found, not tagged.");
 
                 continue;
             }
@@ -115,49 +120,29 @@ class GroceryStoreTypesSeeder extends MaadiContentSeeder
                 ->pluck('id')
                 ->all();
 
-            // syncWithoutDetaching: an admin may already have tagged these.
-            $store->cuisines()->syncWithoutDetaching($ids);
+            foreach ($stores as $store) {
+                // syncWithoutDetaching: an admin may already have tagged these.
+                $store->cuisines()->syncWithoutDetaching($ids);
+                $this->command->line("Tagged {$store->name}: " . implode(', ', $types));
+            }
         }
-    }
-
-    /** A running percent-off store discount, or none (clears a stale one). */
-    private function setStoreDiscount(Store $store, ?int $percent): void
-    {
-        if (!$percent) {
-            Discount::where('store_id', $store->id)->delete();
-
-            return;
-        }
-
-        Discount::updateOrCreate(
-            ['store_id' => $store->id],
-            [
-                'start_date' => now()->subDay()->toDateString(),
-                'end_date' => now()->addMonths(3)->toDateString(),
-                'start_time' => '00:00:00',
-                'end_time' => '23:59:00',
-                'min_purchase' => 100,
-                'max_discount' => 100,
-                'discount' => $percent,
-                'discount_type' => 'percent',
-            ],
-        );
     }
 
     // ==================== Data ====================
 
     /**
-     * Shared vendor/contact fields, so each store below reads as its catalogue.
-     * Phones are in an unused +2010990xxxxx block — the stores' natural key.
+     * Contact fields. The vendor account shares the store's listed phone —
+     * these accounts exist so each store has an owner, not so anyone signs in
+     * as them yet (MaadiContentSeeder gives them a random password).
      */
-    private function base(int $n, string $slug, float $lat, float $lng, string $address): array
+    private function contact(string $phone, string $slug, float $lat, float $lng, string $address): array
     {
         return [
-            'phone' => sprintf('+201099%06d', 100 + $n * 2),
-            'vendor_phone' => sprintf('+201099%06d', 101 + $n * 2),
-            'vendor_f_name' => 'Test',
-            'vendor_l_name' => 'Vendor ' . $n,
-            'vendor_email' => "{$slug}@test.waddyapp.com",
+            'phone' => $phone,
+            'vendor_phone' => $phone,
+            'vendor_f_name' => 'Store',
+            'vendor_l_name' => 'Owner',
+            'vendor_email' => "{$slug}@waddyapp.com",
             'lat' => $lat,
             'lng' => $lng,
             'address' => $address,
@@ -168,36 +153,34 @@ class GroceryStoreTypesSeeder extends MaadiContentSeeder
     {
         return [
             // ── Supermarkets ──
-            $this->base(1, 'degla-mini-market', 29.9612, 31.2765, 'Road 233, Degla, Maadi') + [
-                'name' => 'Degla Mini Market',
-                'name_ar' => 'دجلة ميني ماركت',
+            $this->contact('+20225161788', 'kimo-market-degla', 29.9627, 31.2803, '1 Road 210, Victoria Square, Degla, Maadi') + [
+                'name' => 'Kimo Market',
+                'name_ar' => 'كيمو ماركت',
                 'cuisines' => ['Supermarkets'],
-                'delivery_time' => '10-20 min',
-                'shipping_charge' => 10,
-                'minimum_order' => 50,
+                'delivery_time' => '15-25 min',
+                'shipping_charge' => 15,
+                'minimum_order' => 75,
                 'items' => [
                     ['name' => 'Juhayna Skimmed Milk 1L', 'name_ar' => 'جهينة لبن خالي الدسم ١ لتر', 'category' => 'Fresh Milk', 'price' => 40, 'unit' => 'ltr'],
                     ['name' => 'Farm Eggs 15pcs', 'name_ar' => 'بيض مزارع ١٥ حبة', 'category' => 'Eggs', 'price' => 78],
-                    ['name' => 'Rice 1kg', 'name_ar' => 'أرز ١ كجم', 'category' => 'Rice', 'price' => 38, 'unit' => 'kg'],
+                    ['name' => 'Egyptian Rice 1kg', 'name_ar' => 'أرز مصري ١ كجم', 'category' => 'Rice', 'price' => 38, 'unit' => 'kg'],
                     ['name' => 'Spaghetti 400g', 'name_ar' => 'اسباجتي ٤٠٠ جم', 'category' => 'Pasta & Noodles', 'price' => 22],
                     ['name' => 'Sunflower Oil 750ml', 'name_ar' => 'زيت عباد الشمس ٧٥٠ مل', 'category' => 'Cooking Oil', 'price' => 72],
                     ['name' => 'White Sugar 1kg', 'name_ar' => 'سكر أبيض ١ كجم', 'category' => 'Sugar & Sweeteners', 'price' => 36, 'unit' => 'kg'],
-                    ['name' => 'Tuna Chunks 185g', 'name_ar' => 'تونة قطع ١٨٥ جم', 'category' => 'Canned Foods', 'price' => 55, 'discount' => 10],
+                    ['name' => 'Tuna Chunks 185g', 'name_ar' => 'تونة قطع ١٨٥ جم', 'category' => 'Canned Foods', 'price' => 55],
                     ['name' => 'Potato Chips Salt 90g', 'name_ar' => 'شيبسي ملح ٩٠ جم', 'category' => 'Chips & Crisps', 'price' => 15],
                     ['name' => 'Mineral Water 600ml', 'name_ar' => 'مياه معدنية ٦٠٠ مل', 'category' => 'Water', 'price' => 7],
                     ['name' => 'Dishwashing Liquid 1L', 'name_ar' => 'سائل غسيل أطباق ١ لتر', 'category' => 'Cleaning Supplies', 'price' => 45],
                     ['name' => 'Toilet Paper 6 Rolls', 'name_ar' => 'ورق تواليت ٦ رول', 'category' => 'Paper Products', 'price' => 60],
                 ],
             ],
-            $this->base(2, 'road-9-supermarket', 29.9608, 31.2582, 'Road 9, Maadi') + [
-                'name' => 'Road 9 Supermarket',
-                'name_ar' => 'سوبر ماركت شارع ٩',
-                'cuisines' => ['Supermarkets', 'Fresh produce'],
+            $this->contact('+20225210180', 'adam-supermarket-degla', 29.9556, 31.2762, '8 Road 231, off Road 213, Degla, Maadi') + [
+                'name' => 'Adam Supermarket',
+                'name_ar' => 'آدم سوبر ماركت',
+                'cuisines' => ['Supermarkets'],
                 'delivery_time' => '20-35 min',
-                'shipping_charge' => 0,
-                'free_delivery' => 1,
-                'minimum_order' => 150,
-                'store_discount' => 15,
+                'shipping_charge' => 10,
+                'minimum_order' => 100,
                 'items' => [
                     ['name' => 'Cucumbers 1kg', 'name_ar' => 'خيار ١ كجم', 'category' => 'Fresh Vegetables', 'price' => 20, 'unit' => 'kg', 'veg' => 1],
                     ['name' => 'Oranges 1kg', 'name_ar' => 'برتقال ١ كجم', 'category' => 'Fresh Fruits', 'price' => 30, 'unit' => 'kg', 'veg' => 1],
@@ -214,162 +197,178 @@ class GroceryStoreTypesSeeder extends MaadiContentSeeder
             ],
 
             // ── Fresh produce ──
-            $this->base(3, 'maadi-fresh-market', 29.9585, 31.2630, 'Road 82, Maadi') + [
-                'name' => 'Maadi Fresh Market',
-                'name_ar' => 'سوق المعادي الطازج',
+            $this->contact('+201004806961', 'natural-garden-degla', 29.9577, 31.2788, '15 El Shorta Buildings, Road 233, Degla, Maadi') + [
+                'name' => 'Natural Garden',
+                'name_ar' => 'ناتشورال جاردن',
                 'cuisines' => ['Fresh produce'],
                 'delivery_time' => '15-25 min',
-                'shipping_charge' => 15,
+                'shipping_charge' => 10,
                 'minimum_order' => 60,
                 'items' => [
                     ['name' => 'Tomatoes 1kg', 'name_ar' => 'طماطم ١ كجم', 'category' => 'Fresh Vegetables', 'price' => 22, 'unit' => 'kg', 'veg' => 1],
                     ['name' => 'Potatoes 1kg', 'name_ar' => 'بطاطس ١ كجم', 'category' => 'Fresh Vegetables', 'price' => 18, 'unit' => 'kg', 'veg' => 1],
                     ['name' => 'Red Apples 1kg', 'name_ar' => 'تفاح أحمر ١ كجم', 'category' => 'Fresh Fruits', 'price' => 80, 'unit' => 'kg', 'veg' => 1],
-                    ['name' => 'Bananas 1kg', 'name_ar' => 'موز ١ كجم', 'category' => 'Fresh Fruits', 'price' => 42, 'unit' => 'kg', 'veg' => 1, 'discount' => 15],
+                    ['name' => 'Bananas 1kg', 'name_ar' => 'موز ١ كجم', 'category' => 'Fresh Fruits', 'price' => 42, 'unit' => 'kg', 'veg' => 1],
                     ['name' => 'Parsley Bunch', 'name_ar' => 'حزمة بقدونس', 'category' => 'Herbs & Greens', 'price' => 5, 'veg' => 1],
                     ['name' => 'Fresh Mint Bunch', 'name_ar' => 'حزمة نعناع', 'category' => 'Herbs & Greens', 'price' => 5, 'veg' => 1],
+                ],
+            ],
+            $this->contact('+201221693274', 'el-baraka-vegetables-degla', 29.9574, 31.2792, '3 El Shorta Buildings, Road 233, Degla, Maadi') + [
+                'name' => 'El Baraka For Vegetables',
+                'name_ar' => 'البركة للخضروات',
+                'cuisines' => ['Fresh produce'],
+                'delivery_time' => '10-20 min',
+                'shipping_charge' => 10,
+                'minimum_order' => 50,
+                'items' => [
+                    ['name' => 'Onions 1kg', 'name_ar' => 'بصل ١ كجم', 'category' => 'Fresh Vegetables', 'price' => 15, 'unit' => 'kg', 'veg' => 1],
+                    ['name' => 'Bell Peppers 1kg', 'name_ar' => 'فلفل رومي ١ كجم', 'category' => 'Fresh Vegetables', 'price' => 35, 'unit' => 'kg', 'veg' => 1],
                     ['name' => 'Mangoes 1kg', 'name_ar' => 'مانجو ١ كجم', 'category' => 'Egyptian Fruits', 'price' => 70, 'unit' => 'kg', 'veg' => 1],
                     ['name' => 'Guava 1kg', 'name_ar' => 'جوافة ١ كجم', 'category' => 'Egyptian Fruits', 'price' => 35, 'unit' => 'kg', 'veg' => 1],
+                    ['name' => 'Arugula Bunch', 'name_ar' => 'حزمة جرجير', 'category' => 'Herbs & Greens', 'price' => 5, 'veg' => 1],
                 ],
             ],
 
             // ── Butchers & seafood ──
-            $this->base(4, 'el-sayed-butcher', 29.9631, 31.2701, 'Road 250, Degla, Maadi') + [
-                'name' => 'El Sayed Butcher',
-                'name_ar' => 'جزارة السيد',
+            $this->contact('+201142278888', 'degla-meat', 29.9614, 31.2748, '24 Road 200, Degla, Maadi (beside the Philippines Embassy)') + [
+                'name' => 'Degla Meat',
+                'name_ar' => 'دجلة للحوم',
                 'cuisines' => ['Butchers & seafood'],
                 'delivery_time' => '30-45 min',
                 'shipping_charge' => 20,
                 'minimum_order' => 200,
-                'store_discount' => 10,
                 'items' => [
                     ['name' => 'Beef Steak 1kg', 'name_ar' => 'ستيك بقري ١ كجم', 'category' => 'Fresh Beef', 'price' => 520, 'unit' => 'kg'],
                     ['name' => 'Beef Cubes 1kg', 'name_ar' => 'لحم بقري مكعبات ١ كجم', 'category' => 'Fresh Beef', 'price' => 450, 'unit' => 'kg'],
-                    ['name' => 'Whole Chicken', 'name_ar' => 'فرخة كاملة', 'category' => 'Fresh Chicken', 'price' => 180],
-                    ['name' => 'Chicken Breast 1kg', 'name_ar' => 'صدور فراخ ١ كجم', 'category' => 'Fresh Chicken', 'price' => 260, 'unit' => 'kg'],
                     ['name' => 'Lamb Chops 1kg', 'name_ar' => 'ريش ضاني ١ كجم', 'category' => 'Lamb & Goat', 'price' => 600, 'unit' => 'kg'],
                     ['name' => 'Kofta Mix 1kg', 'name_ar' => 'كفتة ١ كجم', 'category' => 'Kofta & Minced', 'price' => 420, 'unit' => 'kg'],
                     ['name' => 'Minced Beef 500g', 'name_ar' => 'لحم مفروم ٥٠٠ جم', 'category' => 'Kofta & Minced', 'price' => 230],
                 ],
             ],
-            $this->base(5, 'nile-catch-seafood', 29.9567, 31.2655, 'Road 18, Maadi') + [
-                'name' => 'Nile Catch Seafood',
-                'name_ar' => 'نايل كاتش للمأكولات البحرية',
+            $this->contact('+201011246127', 'andria-butchery-degla', 29.9579, 31.2785, '18 El Shorta Buildings, Road 233, Degla, Maadi') + [
+                'name' => 'Andria Butchery',
+                'name_ar' => 'جزارة أندريا',
+                'cuisines' => ['Butchers & seafood'],
+                'delivery_time' => '25-40 min',
+                'shipping_charge' => 15,
+                'minimum_order' => 150,
+                'items' => [
+                    ['name' => 'Whole Chicken', 'name_ar' => 'فرخة كاملة', 'category' => 'Fresh Chicken', 'price' => 180],
+                    ['name' => 'Chicken Breast 1kg', 'name_ar' => 'صدور فراخ ١ كجم', 'category' => 'Fresh Chicken', 'price' => 260, 'unit' => 'kg'],
+                    ['name' => 'Beef Tenderloin 1kg', 'name_ar' => 'فيليه بقري ١ كجم', 'category' => 'Fresh Beef', 'price' => 650, 'unit' => 'kg'],
+                    ['name' => 'Beef Sausage 500g', 'name_ar' => 'سجق بقري ٥٠٠ جم', 'category' => 'Processed Meat', 'price' => 190],
+                ],
+            ],
+            $this->contact('+20225237446', 'el-bahrain-fish-maadi', 29.9703, 31.2507, '8 El Dandarawy St., off Road 9, Hadayek El Maadi') + [
+                'name' => 'El Bahrain Fish',
+                'name_ar' => 'أسماك البحرين',
                 'cuisines' => ['Butchers & seafood'],
                 'delivery_time' => '40-60 min',
                 'shipping_charge' => 25,
-                'minimum_order' => 250,
+                'minimum_order' => 200,
                 'items' => [
                     ['name' => 'Fresh Sea Bass 1kg', 'name_ar' => 'قاروص طازج ١ كجم', 'category' => 'Fresh Fish', 'price' => 380, 'unit' => 'kg'],
                     ['name' => 'Fresh Mullet 1kg', 'name_ar' => 'بوري طازج ١ كجم', 'category' => 'Fresh Fish', 'price' => 220, 'unit' => 'kg'],
                     ['name' => 'Tilapia 1kg', 'name_ar' => 'بلطي ١ كجم', 'category' => 'Nile Fish', 'price' => 110, 'unit' => 'kg'],
-                    ['name' => 'Jumbo Shrimp 1kg', 'name_ar' => 'جمبري جامبو ١ كجم', 'category' => 'Shrimp & Seafood', 'price' => 750, 'unit' => 'kg', 'discount' => 20],
+                    ['name' => 'Jumbo Shrimp 1kg', 'name_ar' => 'جمبري جامبو ١ كجم', 'category' => 'Shrimp & Seafood', 'price' => 750, 'unit' => 'kg'],
                     ['name' => 'Calamari 1kg', 'name_ar' => 'كاليماري ١ كجم', 'category' => 'Shrimp & Seafood', 'price' => 420, 'unit' => 'kg'],
-                    ['name' => 'Frozen Fish Fillet 1kg', 'name_ar' => 'فيليه سمك مجمد ١ كجم', 'category' => 'Frozen Fish', 'price' => 240, 'unit' => 'kg'],
                 ],
             ],
 
             // ── Dairy ──
-            $this->base(6, 'farm-dairy-degla', 29.9640, 31.2742, 'Road 206, Degla, Maadi') + [
-                'name' => 'Farm Dairy Degla',
-                'name_ar' => 'ألبان المزرعة دجلة',
+            $this->contact('+201272805011', 'dina-farms-degla', 29.9602, 31.2829, 'Road 206, Degla, Maadi (beside Shell)') + [
+                'name' => 'Dina Farms',
+                'name_ar' => 'مزارع دينا',
                 'cuisines' => ['Dairy'],
                 'delivery_time' => '10-25 min',
-                'shipping_charge' => 0,
-                'free_delivery' => 1,
+                'shipping_charge' => 15,
                 'minimum_order' => 80,
                 'items' => [
-                    ['name' => 'Fresh Farm Milk 1L', 'name_ar' => 'لبن مزرعة طازج ١ لتر', 'category' => 'Fresh Milk', 'price' => 45, 'unit' => 'ltr'],
-                    ['name' => 'Buffalo Milk 1L', 'name_ar' => 'لبن جاموسي ١ لتر', 'category' => 'Fresh Milk', 'price' => 55, 'unit' => 'ltr'],
-                    ['name' => 'Natural Yogurt 4pcs', 'name_ar' => 'زبادي طبيعي ٤ علب', 'category' => 'Yogurt & Laban', 'price' => 40],
+                    ['name' => 'Full Cream Milk 1L', 'name_ar' => 'لبن كامل الدسم ١ لتر', 'category' => 'Fresh Milk', 'price' => 45, 'unit' => 'ltr'],
+                    ['name' => 'Low Fat Milk 1L', 'name_ar' => 'لبن قليل الدسم ١ لتر', 'category' => 'Fresh Milk', 'price' => 43, 'unit' => 'ltr'],
+                    ['name' => 'Plain Yogurt 4pcs', 'name_ar' => 'زبادي سادة ٤ علب', 'category' => 'Yogurt & Laban', 'price' => 40],
                     ['name' => 'Feta Cheese 500g', 'name_ar' => 'جبنة فيتا ٥٠٠ جم', 'category' => 'Cheese', 'price' => 75],
-                    ['name' => 'Cheddar Slices 200g', 'name_ar' => 'شرائح شيدر ٢٠٠ جم', 'category' => 'Cheese', 'price' => 85],
                     ['name' => 'Areesh Cheese 500g', 'name_ar' => 'جبنة قريش ٥٠٠ جم', 'category' => 'Egyptian Cheese', 'price' => 50],
-                    ['name' => 'Farm Butter 250g', 'name_ar' => 'زبدة فلاحي ٢٥٠ جم', 'category' => 'Butter & Cream', 'price' => 110],
-                    ['name' => 'Eshta Cream 200g', 'name_ar' => 'قشطة ٢٠٠ جم', 'category' => 'Butter & Cream', 'price' => 60, 'discount' => 10],
+                    ['name' => 'Butter 250g', 'name_ar' => 'زبدة ٢٥٠ جم', 'category' => 'Butter & Cream', 'price' => 110],
+                    ['name' => 'Eshta Cream 200g', 'name_ar' => 'قشطة ٢٠٠ جم', 'category' => 'Butter & Cream', 'price' => 60],
                 ],
             ],
 
             // ── Bakeries & sweets ──
-            $this->base(7, 'baladi-bakery-maadi', 29.9593, 31.2598, 'Road 13, Maadi') + [
-                'name' => 'Baladi Bakery Maadi',
-                'name_ar' => 'مخبز بلدي المعادي',
-                'cuisines' => ['Bakeries & sweets'],
-                'delivery_time' => '10-20 min',
-                'shipping_charge' => 10,
-                'minimum_order' => 30,
-                'items' => [
-                    ['name' => 'Baladi Bread 10pcs', 'name_ar' => 'عيش بلدي ١٠ أرغفة', 'category' => 'Egyptian Baladi Bread', 'price' => 15, 'veg' => 1],
-                    ['name' => 'Shami Bread 5pcs', 'name_ar' => 'عيش شامي ٥ أرغفة', 'category' => 'Bread', 'price' => 20, 'veg' => 1],
-                    ['name' => 'Croissant', 'name_ar' => 'كرواسون', 'category' => 'Pastries', 'price' => 25],
-                    ['name' => 'Cheese Pastry', 'name_ar' => 'فطيرة جبنة', 'category' => 'Pastries', 'price' => 30],
-                    ['name' => 'Feteer Meshaltet', 'name_ar' => 'فطير مشلتت', 'category' => 'Feteer & Pies', 'price' => 120],
-                ],
-            ],
-            $this->base(8, 'sweet-corner-patisserie', 29.9622, 31.2689, 'Road 199, Degla, Maadi') + [
-                'name' => 'Sweet Corner Patisserie',
-                'name_ar' => 'سويت كورنر للحلويات',
+            $this->contact('+20225200909', 'la-poire-degla', 29.9582, 31.2796, '24 Road 233, Degla, Maadi') + [
+                'name' => 'La Poire',
+                'name_ar' => 'لابوار',
                 'cuisines' => ['Bakeries & sweets'],
                 'delivery_time' => '25-40 min',
                 'shipping_charge' => 20,
                 'minimum_order' => 100,
-                'store_discount' => 20,
                 'items' => [
                     ['name' => 'Chocolate Cake', 'name_ar' => 'تورتة شوكولاتة', 'category' => 'Cakes & Desserts', 'price' => 450],
-                    ['name' => 'Basbousa Tray', 'name_ar' => 'صينية بسبوسة', 'category' => 'Cakes & Desserts', 'price' => 180],
-                    ['name' => 'Mini Croissants 12pcs', 'name_ar' => 'ميني كرواسون ١٢ قطعة', 'category' => 'Pastries', 'price' => 150],
-                    ['name' => 'Assorted Chocolates 250g', 'name_ar' => 'شوكولاتة مشكلة ٢٥٠ جم', 'category' => 'Chocolate & Candy', 'price' => 220],
+                    ['name' => 'Mixed Gateaux Box', 'name_ar' => 'علبة جاتوه مشكل', 'category' => 'Cakes & Desserts', 'price' => 280],
+                    ['name' => 'Croissant', 'name_ar' => 'كرواسون', 'category' => 'Pastries', 'price' => 30],
+                    ['name' => 'Petit Four 500g', 'name_ar' => 'بيتي فور ٥٠٠ جم', 'category' => 'Biscuits & Cookies', 'price' => 220],
+                ],
+            ],
+            $this->contact('+20225169009', 'capricci-degla', 29.9591, 31.2771, '9B Road 216, Degla, Maadi (near Victory College)') + [
+                'name' => 'Capricci',
+                'name_ar' => 'كابريتشي',
+                'cuisines' => ['Bakeries & sweets'],
+                'delivery_time' => '20-30 min',
+                'shipping_charge' => 15,
+                'minimum_order' => 80,
+                'items' => [
+                    ['name' => 'Ciabatta Bread', 'name_ar' => 'عيش شاباتا', 'category' => 'Bread', 'price' => 35],
+                    ['name' => 'Focaccia', 'name_ar' => 'فوكاتشا', 'category' => 'Bread', 'price' => 45],
+                    ['name' => 'Tiramisu', 'name_ar' => 'تيراميسو', 'category' => 'Cakes & Desserts', 'price' => 95],
+                    ['name' => 'Cheese Pastry', 'name_ar' => 'فطيرة جبنة', 'category' => 'Pastries', 'price' => 35],
                 ],
             ],
 
             // ── Roasteries ──
-            $this->base(9, 'bean-house-roastery', 29.9601, 31.2720, 'Road 212, Degla, Maadi') + [
-                'name' => 'Bean House Roastery',
-                'name_ar' => 'بين هاوس محمصة',
+            $this->contact('+201156597020', 'sphinx-roastery-degla', 29.9580, 31.2790, '14 Road 233, Degla, Maadi') + [
+                'name' => 'Sphinx Roastery',
+                'name_ar' => 'محمصة سفنكس',
                 'cuisines' => ['Roasteries'],
-                'delivery_time' => '20-30 min',
-                'shipping_charge' => 15,
-                'minimum_order' => 100,
+                'delivery_time' => '15-30 min',
+                'shipping_charge' => 10,
+                'minimum_order' => 80,
                 'items' => [
                     ['name' => 'Turkish Coffee Medium Roast 250g', 'name_ar' => 'بن تركي وسط ٢٥٠ جم', 'category' => 'Tea & Coffee', 'price' => 160],
-                    ['name' => 'Turkish Coffee with Cardamom 250g', 'name_ar' => 'بن تركي محوج ٢٥٠ جم', 'category' => 'Tea & Coffee', 'price' => 175, 'discount' => 10],
+                    ['name' => 'Turkish Coffee with Cardamom 250g', 'name_ar' => 'بن تركي محوج ٢٥٠ جم', 'category' => 'Tea & Coffee', 'price' => 175],
                     ['name' => 'Roasted Cashews 250g', 'name_ar' => 'كاجو محمص ٢٥٠ جم', 'category' => 'Nuts & Seeds', 'price' => 240],
                     ['name' => 'Salted Pistachios 250g', 'name_ar' => 'فستق مملح ٢٥٠ جم', 'category' => 'Nuts & Seeds', 'price' => 290],
                 ],
             ],
-            $this->base(10, 'maadi-roasters-nuts', 29.9575, 31.2611, 'Road 151, Maadi') + [
-                'name' => 'Maadi Roasters & Nuts',
-                'name_ar' => 'محمصة المعادي للمكسرات',
+            $this->contact('+201224889359', 'abou-rayan-roastery-maadi', 29.9658, 31.2952, '12 El Gazaer St., 10th Sector, New Maadi') + [
+                'name' => 'Abou Rayan Roastery',
+                'name_ar' => 'محمصة أبو ريان',
                 'cuisines' => ['Roasteries'],
-                'delivery_time' => '15-30 min',
-                'shipping_charge' => 0,
-                'free_delivery' => 1,
-                'minimum_order' => 80,
+                'delivery_time' => '30-45 min',
+                'shipping_charge' => 20,
+                'minimum_order' => 100,
                 'items' => [
                     ['name' => 'Espresso Beans 500g', 'name_ar' => 'حبوب إسبريسو ٥٠٠ جم', 'category' => 'Tea & Coffee', 'price' => 380],
-                    ['name' => 'Lebsy Black Tea 250g', 'name_ar' => 'شاي أسود ٢٥٠ جم', 'category' => 'Tea & Coffee', 'price' => 70],
-                    ['name' => 'Lb Sunflower Seeds 250g', 'name_ar' => 'لب سوري ٢٥٠ جم', 'category' => 'Nuts & Seeds', 'price' => 65],
+                    ['name' => 'Black Tea 250g', 'name_ar' => 'شاي أسود ٢٥٠ جم', 'category' => 'Tea & Coffee', 'price' => 70],
+                    ['name' => 'Sunflower Seeds 250g', 'name_ar' => 'لب سوري ٢٥٠ جم', 'category' => 'Nuts & Seeds', 'price' => 65],
                     ['name' => 'Mixed Nuts 500g', 'name_ar' => 'مكسرات مشكلة ٥٠٠ جم', 'category' => 'Nuts & Seeds', 'price' => 350],
                     ['name' => 'Dates Stuffed with Almonds 250g', 'name_ar' => 'بلح محشي لوز ٢٥٠ جم', 'category' => 'Egyptian Snacks', 'price' => 140],
                 ],
             ],
 
             // ── Global & organic ──
-            $this->base(11, 'green-basket-organic', 29.9654, 31.2773, 'Road 275, Degla, Maadi') + [
-                'name' => 'Green Basket Organic',
-                'name_ar' => 'جرين باسكت أورجانيك',
-                'cuisines' => ['Global & organic', 'Fresh produce'],
+            $this->contact('+201020155599', 'el-market-degla', 29.9610, 31.2742, '36 Road 200, Degla, Maadi') + [
+                'name' => 'El Market',
+                'name_ar' => 'الماركت',
+                'cuisines' => ['Global & organic'],
                 'delivery_time' => '35-50 min',
                 'shipping_charge' => 25,
                 'minimum_order' => 200,
-                'store_discount' => 25,
                 'items' => [
                     ['name' => 'Organic Baby Spinach 200g', 'name_ar' => 'سبانخ أورجانيك ٢٠٠ جم', 'category' => 'Organic Produce', 'price' => 65, 'veg' => 1],
                     ['name' => 'Organic Carrots 1kg', 'name_ar' => 'جزر أورجانيك ١ كجم', 'category' => 'Organic Produce', 'price' => 45, 'unit' => 'kg', 'veg' => 1],
                     ['name' => 'Quinoa 500g', 'name_ar' => 'كينوا ٥٠٠ جم', 'category' => 'Legumes & Beans', 'price' => 190],
                     ['name' => 'Italian Penne 500g', 'name_ar' => 'بيني إيطالي ٥٠٠ جم', 'category' => 'Pasta & Noodles', 'price' => 85],
                     ['name' => 'Extra Virgin Olive Oil 500ml', 'name_ar' => 'زيت زيتون بكر ممتاز ٥٠٠ مل', 'category' => 'Cooking Oil', 'price' => 320],
-                    ['name' => 'Almond Milk 1L', 'name_ar' => 'حليب لوز ١ لتر', 'category' => 'Fresh Milk', 'price' => 140, 'unit' => 'ltr'],
                     ['name' => 'Dark Chocolate 70% 100g', 'name_ar' => 'شوكولاتة داكنة ٧٠٪ ١٠٠ جم', 'category' => 'Chocolate & Candy', 'price' => 110],
                 ],
             ],
