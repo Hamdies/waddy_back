@@ -252,8 +252,8 @@ class SupermarketCatalogueSeeder extends Seeder
                 'description' => '',
                 'category_id' => $sub->id,
                 'category_ids' => json_encode([
-                    ['id' => (string) $parent->id, 'position' => 0],
-                    ['id' => (string) $sub->id, 'position' => 1],
+                    ['id' => (string) $parent->id, 'position' => 1],
+                    ['id' => (string) $sub->id, 'position' => 2],
                 ]),
                 'price' => $price,
                 'module_id' => $moduleId,

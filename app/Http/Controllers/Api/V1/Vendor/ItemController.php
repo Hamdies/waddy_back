@@ -697,14 +697,14 @@ class ItemController extends Controller
             return response()->json(['message' => translate('your_product_added_for_approval')], 200);
         }
 
-        $p->image = $request->has('image') ? Helpers::update('product/', $p->image, 'png', $request->file('image')) : $p->image;
+        $p->image = $request->has('image') ? Helpers::updateProductImage($p->image, $request->file('image'), $p->id) : $p->image;
 
         $images = $p['images'];
 
         foreach ($p['images'] as $img) {
             if (!in_array($img, json_decode($request->images, true))) {
 
-                Helpers::check_and_delete('product/' , $img);
+                Helpers::deleteProductImageIfUnreferenced($img, $p->id);
 
                 $key = array_search($img, $images);
                 unset($images[$key]);
@@ -808,15 +808,17 @@ class ItemController extends Controller
             $product?->carts()?->delete();
         }
 
+        // Skip the row being deleted; a temp copy's files are often still the live item's.
+        $exceptIds = $request?->temp_product ? [null, $product->id] : [$product->id, null];
 
         if($product->image)
         {
-                Helpers::check_and_delete('product/' , $product['image']);
+                Helpers::deleteProductImageIfUnreferenced($product['image'], ...$exceptIds);
         }
 
         foreach($product->images as $value){
             $value = is_array($value)?$value:['img' => $value, 'storage' => 'public'];
-            Helpers::check_and_delete('product/' , $value['img']);
+            Helpers::deleteProductImageIfUnreferenced($value['img'], ...$exceptIds);
         }
 
         $product?->taxVats()->delete();
@@ -1034,7 +1036,7 @@ class ItemController extends Controller
         if($request->has('image')){
 
             if($old_img){
-                $temp_image_name =   Helpers::update('product/', $old_img, 'png', $request->file('image'));
+                $temp_image_name =   Helpers::updateProductImage($old_img, $request->file('image'), null, $item->id);
             }else{
                 $temp_image_name =   Helpers::upload('product/', 'png', $request->file('image'));
             }

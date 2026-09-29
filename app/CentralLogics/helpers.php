@@ -2352,6 +2352,118 @@ class Helpers
         return true;
     }
 
+    /**
+     * Deletes a product image file only when nothing else still points at it.
+     *
+     * Product files are shared: catalogue listings carry the catalogue's
+     * photo, a pending-approval copy (temp_products) often keeps the live
+     * item's file, and items.catalog_content_backup keeps the pre-link photo
+     * so a backfill rollback can restore it. check_and_delete() on its own
+     * breaks every one of those (CAT-03, CAT-15).
+     *
+     * The row whose image is going away is excluded by id, because at call
+     * time it still holds the old filename. A failed lookup keeps the file:
+     * an orphaned file costs disk, a missing one costs a broken photo.
+     */
+    public static function deleteProductImageIfUnreferenced($image, ?int $exceptItemId = null, ?int $exceptTempProductId = null): bool
+    {
+        $file = is_array($image) ? ($image['img'] ?? null) : $image;
+        if (!is_string($file) || trim($file) === '' || $file === 'def.png') {
+            return false;
+        }
+
+        if (self::productImageIsReferenced($file, $exceptItemId, $exceptTempProductId)) {
+            return false;
+        }
+
+        self::check_and_delete('product/', $file);
+
+        return true;
+    }
+
+    /**
+     * Helpers::update() for product images: uploads the new file, then
+     * removes the old one only if nothing else uses it. A failed upload keeps
+     * the old image instead of leaving the row on def.png.
+     */
+    public static function updateProductImage($oldImage, $newImage, ?int $exceptItemId = null, ?int $exceptTempProductId = null)
+    {
+        if ($newImage == null) {
+            return $oldImage;
+        }
+
+        $imageName = self::upload('product/', 'png', $newImage);
+        if ($imageName === 'def.png') {
+            return $oldImage ?: $imageName;
+        }
+
+        self::deleteProductImageIfUnreferenced($oldImage, $exceptItemId, $exceptTempProductId);
+
+        return $imageName;
+    }
+
+    public static function productImageIsReferenced(string $file, ?int $exceptItemId = null, ?int $exceptTempProductId = null): bool
+    {
+        // Substring match on purpose: `images` is JSON in several historical
+        // shapes (plain strings, {img, storage}, double-encoded). Upload names
+        // are date + uniqid, so a false hit only ever keeps a file.
+        $like = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $file) . '%';
+
+        $sources = [
+            // table, exact-match columns, JSON columns, row to ignore
+            ['items', ['image', 'gift_image'], ['images'], $exceptItemId],
+            ['temp_products', ['image', 'gift_image'], ['images'], $exceptTempProductId],
+            ['catalog_products', ['image'], ['images'], null],
+        ];
+
+        try {
+            foreach ($sources as [$table, $exact, $json, $exceptId]) {
+                $columns = self::existingColumns($table);
+                $exact = array_values(array_intersect($exact, $columns));
+                $json = array_values(array_intersect($json, $columns));
+                if (!$exact && !$json) {
+                    continue;
+                }
+
+                $referenced = DB::table($table)
+                    ->when($exceptId, fn ($query) => $query->where('id', '!=', $exceptId))
+                    ->where(function ($query) use ($exact, $json, $file, $like) {
+                        foreach ($exact as $column) {
+                            $query->orWhere($column, $file);
+                        }
+                        foreach ($json as $column) {
+                            $query->orWhere($column, 'like', $like);
+                        }
+                    })
+                    ->exists();
+
+                if ($referenced) {
+                    return true;
+                }
+            }
+
+            // Not filtered by row: a rollback restores exactly these names,
+            // including onto the row being edited now.
+            if (in_array('catalog_content_backup', self::existingColumns('items'), true)
+                && DB::table('items')->where('catalog_content_backup', 'like', $like)->exists()) {
+                return true;
+            }
+        } catch (\Throwable $e) {
+            info(['product image reference check failed, keeping file', $file, $e->getMessage()]);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private static array $columnListings = [];
+
+    private static function existingColumns(string $table): array
+    {
+        return self::$columnListings[$table] ??= Schema::hasTable($table) ? Schema::getColumnListing($table) : [];
+    }
+
     public static function format_coordiantes($coordinates)
     {
         $data = [];

@@ -50,7 +50,14 @@ class Item extends Model
         'is_gifted' => 'integer',
         'is_ramadan_featured' => 'integer',
         'gift_expiry_date' => 'date',
+        'catalog_product_id' => 'integer',
+        'catalog_linked_at' => 'datetime',
+        'catalog_content_backup' => 'array',
     ];
+
+    // Pre-link content kept only for a backfill rollback; never part of a
+    // payload or an order's item_details snapshot.
+    protected $hidden = ['catalog_content_backup'];
 
     protected $appends = ['unit_type', 'image_full_url', 'images_full_url', 'gift_image_full_url'];
 
@@ -62,6 +69,12 @@ class Item extends Model
     public function carts()
     {
         return $this->morphMany(Cart::class, 'item');
+    }
+
+    /** The master catalogue entry this listing takes its content from; null = unlinked. */
+    public function catalogProduct()
+    {
+        return $this->belongsTo(CatalogProduct::class, 'catalog_product_id');
     }
 
     public function temp_product()

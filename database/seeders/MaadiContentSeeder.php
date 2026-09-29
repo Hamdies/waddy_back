@@ -200,8 +200,8 @@ class MaadiContentSeeder extends Seeder
                 'description' => $data['description'] ?? '',
                 'category_id' => $category->id,
                 'category_ids' => json_encode([
-                    ['id' => (string) ($category->parent_id ?: $category->id), 'position' => 0],
-                    ['id' => (string) $category->id, 'position' => 1],
+                    ['id' => (string) ($category->parent_id ?: $category->id), 'position' => 1],
+                    ['id' => (string) $category->id, 'position' => 2],
                 ]),
                 'price' => $data['price'],
                 'discount' => $data['discount'] ?? 0,

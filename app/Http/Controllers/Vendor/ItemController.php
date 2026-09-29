@@ -754,13 +754,13 @@ class ItemController extends Controller
             $this->store_temp_data(data: $p, request: $request, tag_ids: $tag_ids, nutrition_ids: $nutrition_ids, allergy_ids: $allergy_ids, generic_ids: $generic_ids, update: true, taxIds: $request['tax_ids']);
             return response()->json(['product_approval' => translate('your_product_added_for_approval')], 200);
         } else {
-            $p->image = $request->has('image') ? Helpers::update('product/', $p->image, 'png', $request->file('image')) : $p->image;
+            $p->image = $request->has('image') ? Helpers::updateProductImage($p->image, $request->file('image'), $p->id) : $p->image;
             $images = $p['images'];
 
             foreach ($p->images as $key => $value) {
                 if (in_array(is_array($value) ?   $value['img'] : $value, explode(",", $request->removedImageKeys))) {
                     $value = is_array($value) ? $value : ['img' => $value, 'storage' => 'public'];
-                    Helpers::check_and_delete('product/', $value['img']);
+                    Helpers::deleteProductImageIfUnreferenced($value['img'], $p->id);
                     unset($images[$key]);
                 }
             }
@@ -854,13 +854,16 @@ class ItemController extends Controller
             $product?->carts()?->delete();
         }
 
+        // Skip the row being deleted; a temp copy's files are often still the live item's.
+        $exceptIds = $request?->temp_product ? [null, $product->id] : [$product->id, null];
+
         if ($product->image) {
-            Helpers::check_and_delete('product/', $product['image']);
+            Helpers::deleteProductImageIfUnreferenced($product['image'], ...$exceptIds);
         }
 
         foreach ($product->images as $value) {
             $value = is_array($value) ? $value : ['img' => $value, 'storage' => 'public'];
-            Helpers::check_and_delete('product/', $value['img']);
+            Helpers::deleteProductImageIfUnreferenced($value['img'], ...$exceptIds);
         }
 
         $product->translations()->delete();
@@ -1020,7 +1023,6 @@ class ItemController extends Controller
             Toastr::warning('You cannot delete all images!');
             return back();
         }
-        Helpers::check_and_delete('product/', $request['name']);
         foreach ($item['images'] as $image) {
             if (is_array($image)) {
                 if ($image['img'] != $request['name']) {
@@ -1042,6 +1044,8 @@ class ItemController extends Controller
                 'images' => json_encode($array),
             ]);
         }
+        // After the row is rewritten, so its own main image still counts as a reference.
+        Helpers::deleteProductImageIfUnreferenced($request['name']);
         Toastr::success('Item image removed successfully!');
         return back();
     }
@@ -1120,7 +1124,7 @@ class ItemController extends Controller
                         'image' => $collection['Image'],
                         'images' => $collection['Images'] ?? json_encode([]),
                         'category_id' => $collection['SubCategoryId'] ? $collection['SubCategoryId'] : $collection['CategoryId'],
-                        'category_ids' => json_encode([['id' => $collection['CategoryId'], 'position' => 0], ['id' => $collection['SubCategoryId'], 'position' => 1]]),
+                        'category_ids' => json_encode([['id' => $collection['CategoryId'], 'position' => 1], ['id' => $collection['SubCategoryId'], 'position' => 2]]),
 
                         'unit_id' => is_int($collection['UnitId']) ? $collection['UnitId'] : null,
                         'stock' => is_numeric($collection['Stock']) ? abs($collection['Stock']) : 0,
@@ -1311,7 +1315,7 @@ class ItemController extends Controller
                     'image' => $collection['Image'],
                     'images' => $collection['Images'] ?? json_encode([]),
                     'category_id' => $collection['SubCategoryId'] ? $collection['SubCategoryId'] : $collection['CategoryId'],
-                    'category_ids' => json_encode([['id' => $collection['CategoryId'], 'position' => 0], ['id' => $collection['SubCategoryId'], 'position' => 1]]),
+                    'category_ids' => json_encode([['id' => $collection['CategoryId'], 'position' => 1], ['id' => $collection['SubCategoryId'], 'position' => 2]]),
                     'unit_id' => is_int($collection['UnitId']) ? $collection['UnitId'] : null,
                     'stock' => is_numeric($collection['Stock']) ? abs($collection['Stock']) : 0,
                     'price' => $collection['Price'],
@@ -1727,7 +1731,7 @@ class ItemController extends Controller
         if ($request->has('image')) {
 
             if ($old_img) {
-                $temp_image_name =   Helpers::update('product/', $old_img, 'png', $request->file('image'));
+                $temp_image_name =   Helpers::updateProductImage($old_img, $request->file('image'), null, $temp_item->id);
             } else {
                 $temp_image_name =   Helpers::upload('product/', 'png', $request->file('image'));
             }
