@@ -41,10 +41,9 @@
             </div>
         </div>
         <!-- End Page Header -->
-        @php
-            $catalogProductId = $product->catalog_product_id ?? null;
-            $catalogListingCount = $catalogProductId ? \Illuminate\Support\Facades\DB::table('items')->where('catalog_product_id', $catalogProductId)->count() : 0;
-        @endphp
+        {{-- One-line php directives only here: this file already uses the one-line form above, and a block-form directive would be matched from the first one-line directive, turning everything in between into page text. --}}
+        @php($catalogProductId = $product->catalog_product_id ?? null)
+        @php($catalogListingCount = $catalogProductId ? \Illuminate\Support\Facades\DB::table('items')->where('catalog_product_id', $catalogProductId)->count() : 0)
         @if ($catalogProductId)
             <div class="alert alert-soft-primary d-flex align-items-start __gap-12px mb-3" role="alert">
                 <i class="tio-info-outined mt-1"></i>
