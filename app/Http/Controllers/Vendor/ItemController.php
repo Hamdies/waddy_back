@@ -17,6 +17,7 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Models\FlashSaleItem;
 use App\CentralLogics\Helpers;
+use App\Services\CatalogService;
 use App\Models\CommonCondition;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
@@ -752,6 +753,10 @@ class ItemController extends Controller
         if (Helpers::get_mail_status('product_approval') && ((data_get($product_approval_datas, 'Update_anything_in_product_details', null) == 1) || (data_get($product_approval_datas, 'Update_product_price', null) == 1 && $old_price !=  $request->price) || (data_get($product_approval_datas, 'Update_product_variation', null) == 1 &&  $variation_changed))) {
 
             $this->store_temp_data(data: $p, request: $request, tag_ids: $tag_ids, nutrition_ids: $nutrition_ids, allergy_ids: $allergy_ids, generic_ids: $generic_ids, update: true, taxIds: $request['tax_ids']);
+            if ($p->catalog_product_id) {
+                // Approval will apply price/stock only; say so now rather than let the title silently revert (CAT-12).
+                return response()->json(['product_approval' => translate('messages.catalog_content_managed_pending'), 'content_managed' => true], 200);
+            }
             return response()->json(['product_approval' => translate('your_product_added_for_approval')], 200);
         } else {
             $p->image = $request->has('image') ? Helpers::updateProductImage($p->image, $request->file('image'), $p->id) : $p->image;
@@ -834,6 +839,11 @@ class ItemController extends Controller
 
         Helpers::add_or_update_translations(request: $request, key_data: 'name', name_field: 'name', model_name: 'Item', data_id: $p->id, data_value: $p->name);
         Helpers::add_or_update_translations(request: $request, key_data: 'description', name_field: 'description', model_name: 'Item', data_id: $p->id, data_value: $p->description);
+
+        // Linked listing: price, stock and status saved; name, photos and description stay the catalogue's (CAT-12).
+        if (app(CatalogService::class)->reassertContent($p->id)) {
+            return response()->json(['success' => translate('messages.catalog_content_managed'), 'content_managed' => true], 200);
+        }
 
         return response()->json(['success' => translate('messages.product_updated_successfully')], 200);
     }
@@ -1016,6 +1026,10 @@ class ItemController extends Controller
             $item = TempProduct::find($request['id']);
         } else {
             $item = Item::find($request['id']);
+            if ($item?->catalog_product_id) {
+                Toastr::warning(translate('messages.catalog_content_managed_short'));
+                return back();
+            }
         }
 
         $array = [];
@@ -1410,9 +1424,14 @@ class ItemController extends Controller
                 foreach ($chunk_items as $key => $chunk_item) {
                     //                    DB::table('items')->upsert($chunk_item,['id','module_id'],['name','description','image','images','category_id','category_ids','unit_id','stock','price','discount','discount_type','available_time_starts','available_time_ends','variations','food_variations','add_ons','attributes','store_id','status','veg','recommended', 'updated_at','choice_options']);
                     foreach ($chunk_item as $item) {
-                        if (isset($item['id']) && DB::table('items')->where('id', $item['id'])->exists()) {
-                            DB::table('items')->where('id', $item['id'])->update($item);
-                            Helpers::updateStorageTable(get_class(new Item), $item['id'], $item['image']);
+                        $existing = isset($item['id']) ? DB::table('items')->where('id', $item['id'])->first(['id', 'catalog_product_id']) : null;
+                        if ($existing) {
+                            // A linked listing's content is the catalogue's; the sheet only sets price, stock and the rest.
+                            $row = app(CatalogService::class)->withoutManagedContent($item, $existing->catalog_product_id);
+                            DB::table('items')->where('id', $item['id'])->update($row);
+                            if (!$existing->catalog_product_id) {
+                                Helpers::updateStorageTable(get_class(new Item), $item['id'], $item['image']);
+                            }
                         } else {
                             $insertedId = DB::table('items')->insertGetId($item);
                             Helpers::updateStorageTable(get_class(new Item), $insertedId, $item['image']);

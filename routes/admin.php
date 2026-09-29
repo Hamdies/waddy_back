@@ -98,6 +98,18 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::post('bulk-import', 'ItemController@bulk_import_data');
             Route::get('bulk-export', 'ItemController@bulk_export_index')->name('bulk-export-index');
             Route::post('bulk-export', 'ItemController@bulk_export_data')->name('bulk-export');
+
+            // Master catalogue (docs/catalog_plan.md)
+            Route::group(['prefix' => 'catalog', 'as' => 'catalog.'], function () {
+                Route::get('/', 'CatalogController@index')->name('index');
+                Route::get('create', 'CatalogController@create')->name('create');
+                Route::post('/', 'CatalogController@store')->name('store');
+                Route::get('{id}', 'CatalogController@edit')->whereNumber('id')->name('edit');
+                Route::post('{id}', 'CatalogController@update')->whereNumber('id')->name('update');
+                Route::post('{id}/listings', 'CatalogController@addToStores')->whereNumber('id')->name('add-to-stores');
+                Route::get('{id}/merge', 'CatalogController@mergePreview')->whereNumber('id')->name('merge-preview');
+                Route::post('{id}/merge', 'CatalogController@merge')->whereNumber('id')->name('merge');
+            });
         });
 
         Route::group(['prefix' => 'promotional-banner', 'as' => 'promotional-banner.', 'middleware' => ['module:banner']], function () {

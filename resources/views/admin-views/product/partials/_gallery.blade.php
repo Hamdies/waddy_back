@@ -18,9 +18,16 @@
                             <div class="d-flex align-items-center justify-content-between">
                                 <h4 class="mb-0 ml-4">{{ $item?->getRawOriginal('name') }} </h4>
                                 <div>
-                                    <a target="_blank" href="{{ route('admin.item.edit',['id' => $item->id , 'product_gellary' => true ]) }}" class="btn btn--sm btn-outline-primary">
-                                            {{ translate('messages.use_this_product_info') }}
-                                    </a>
+                                    @if ($item->catalog_product_id)
+                                        {{-- Catalogue product: list it at another store instead of copying the row (CAT-05). --}}
+                                        <a target="_blank" href="{{ route('admin.item.catalog.edit', $item->catalog_product_id) }}" class="btn btn--sm btn--primary">
+                                            {{ translate('messages.catalog_add_to_stores') }}
+                                        </a>
+                                    @else
+                                        <a target="_blank" href="{{ route('admin.item.edit',['id' => $item->id , 'product_gellary' => true ]) }}" class="btn btn--sm btn-outline-primary">
+                                                {{ translate('messages.use_this_product_info') }}
+                                        </a>
+                                    @endif
                                 </div>
                             </div>
                             <table class="table table-borderless table-thead-bordered m-0">

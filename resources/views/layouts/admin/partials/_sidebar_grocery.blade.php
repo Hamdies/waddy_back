@@ -486,6 +486,12 @@
                                 <span class="text-truncate">{{ translate('messages.Low_Stock_List') }}</span>
                             </a>
                         </li>
+                        <li class="nav-item {{ Request::is('admin/item/catalog*') ? 'active' : '' }}">
+                            <a class="nav-link " href="{{ route('admin.item.catalog.index') }}" title="{{ translate('messages.catalogue') }}">
+                                <span class="tio-circle nav-indicator-icon"></span>
+                                <span class="text-truncate">{{ translate('messages.catalogue') }}</span>
+                            </a>
+                        </li>
                         {{-- @if (\App\CentralLogics\Helpers::get_mail_status('product_gallery')) --}}
                         <li class="nav-item {{  Request::is('admin/item/product-gallery') ? 'active' : '' }}">
                             <a class="nav-link " href="{{ route('admin.item.product_gallery') }}" title="{{ translate('messages.Product_Gallery') }}">

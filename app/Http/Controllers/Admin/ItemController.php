@@ -20,6 +20,7 @@ use Illuminate\Support\Str;
 use App\Models\ItemCampaign;
 use Illuminate\Http\Request;
 use App\CentralLogics\Helpers;
+use App\Services\CatalogService;
 use App\Exports\ItemListExport;
 use App\Models\CommonCondition;
 use Illuminate\Validation\Rule;
@@ -824,6 +825,12 @@ class ItemController extends Controller
         Helpers::add_or_update_translations(request: $request, key_data: 'name', name_field: 'name', model_name: 'Item', data_id: $item->id, data_value: $item->name);
         Helpers::add_or_update_translations(request: $request, key_data: 'description', name_field: 'description', model_name: 'Item', data_id: $item->id, data_value: $item->description);
 
+        // A linked listing's content is the catalogue product's: this edit goes to every store that sells it.
+        $sharedBy = app(CatalogService::class)->syncFromListing($item->id);
+        if ($sharedBy > 1) {
+            return response()->json(['success' => translate('messages.catalog_product_updated_for_stores', ['count' => $sharedBy])], 200);
+        }
+
         return response()->json(['success' => translate('messages.product_updated_successfully')], 200);
     }
 
@@ -1171,6 +1178,7 @@ class ItemController extends Controller
             Item::withoutGlobalScope(StoreScope::class)->where('id', $request['id'])->update([
                 'images' => json_encode($array),
             ]);
+            app(CatalogService::class)->syncFromListing((int) $request['id']);
         }
         // After the row is rewritten, so its own main image still counts as a reference.
         Helpers::deleteProductImageIfUnreferenced($request['name']);
@@ -1505,9 +1513,14 @@ class ItemController extends Controller
             foreach ($chunk_items as $key => $chunk_item) {
                 //                DB::table('items')->upsert($chunk_item, ['id', 'module_id'], ['name', 'description', 'image', 'images', 'category_id', 'category_ids', 'unit_id', 'stock', 'price', 'discount', 'discount_type', 'available_time_starts', 'available_time_ends','choice_options', 'variations', 'food_variations', 'add_ons', 'attributes', 'store_id', 'status', 'veg', 'recommended']);
                 foreach ($chunk_item as $item) {
-                    if (isset($item['id']) && DB::table('items')->where('id', $item['id'])->exists()) {
-                        DB::table('items')->where('id', $item['id'])->update($item);
-                        Helpers::updateStorageTable(get_class(new Item), $item['id'], $item['image']);
+                    $existing = isset($item['id']) ? DB::table('items')->where('id', $item['id'])->first(['id', 'catalog_product_id']) : null;
+                    if ($existing) {
+                        // A linked listing's content is the catalogue's; the sheet only sets price, stock and the rest.
+                        $row = app(CatalogService::class)->withoutManagedContent($item, $existing->catalog_product_id);
+                        DB::table('items')->where('id', $item['id'])->update($row);
+                        if (!$existing->catalog_product_id) {
+                            Helpers::updateStorageTable(get_class(new Item), $item['id'], $item['image']);
+                        }
                     } else {
                         $insertedId = DB::table('items')->insertGetId($item);
                         Helpers::updateStorageTable(get_class(new Item), $insertedId, $item['image']);
@@ -2074,6 +2087,9 @@ class ItemController extends Controller
         ]);
 
         $data->delete();
+
+        // Approving a store's edit applies its price/stock; a linked listing's content stays the catalogue's.
+        app(CatalogService::class)->reassertContent($item->id);
 
         try {
 

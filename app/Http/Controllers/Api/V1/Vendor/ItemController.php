@@ -15,6 +15,7 @@ use App\Models\TempProduct;
 use App\Models\Translation;
 use Illuminate\Http\Request;
 use App\CentralLogics\Helpers;
+use App\Services\CatalogService;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use App\Models\PharmacyItemDetails;
@@ -694,6 +695,10 @@ class ItemController extends Controller
         if (Helpers::get_mail_status('product_approval') && ((data_get($product_approval_datas,'Update_anything_in_product_details',null) == 1) || (data_get($product_approval_datas,'Update_product_price',null) == 1 && $old_price !=  $request->price) || ( data_get($product_approval_datas,'Update_product_variation',null) == 1 &&  $variation_changed)) )  {
 
             $this->store_temp_data(data: $p, request: $request,tag_ids: $tag_ids, nutrition_ids: $nutrition_ids, allergy_ids: $allergy_ids, generic_ids: $generic_ids , update: true , taxIds: $taxIds);
+            if ($p->catalog_product_id) {
+                // Approval will apply price/stock only; say so now rather than let the title silently revert (CAT-12).
+                return response()->json(['message' => translate('messages.catalog_content_managed_pending'), 'content_managed' => true], 200);
+            }
             return response()->json(['message' => translate('your_product_added_for_approval')], 200);
         }
 
@@ -781,6 +786,12 @@ class ItemController extends Controller
                     'key' => $item['key']],
                 ['value' => $item['value']]
             );
+        }
+
+        // Linked listing: price, stock and status saved; name, photos and description stay the
+        // catalogue's. The message says so, so old store-app builds show it too (CAT-12).
+        if (app(CatalogService::class)->reassertContent($p->id)) {
+            return response()->json(['message' => translate('messages.catalog_content_managed'), 'content_managed' => true], 200);
         }
 
         return response()->json(['message'=>translate('messages.product_updated_successfully')], 200);

@@ -41,6 +41,16 @@
             </div>
         </div>
         <!-- End Page Header -->
+        @php
+            $catalogProductId = $product->catalog_product_id ?? null;
+            $catalogListingCount = $catalogProductId ? \Illuminate\Support\Facades\DB::table('items')->where('catalog_product_id', $catalogProductId)->count() : 0;
+        @endphp
+        @if ($catalogProductId)
+            <div class="alert alert-soft-primary d-flex align-items-start __gap-12px mb-3" role="alert">
+                <i class="tio-info-outined mt-1"></i>
+                <div>{{ translate('messages.catalog_shared_notice', ['count' => $catalogListingCount]) }}</div>
+            </div>
+        @endif
         <form action="javascript:" method="post" id="product_form" enctype="multipart/form-data">
             @csrf
                 @if (request()->product_gellary  == 1)
