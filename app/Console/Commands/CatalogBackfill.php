@@ -37,6 +37,7 @@ class CatalogBackfill extends Command
                             {--all : Also list single-store groups in the report}
                             {--rollback : Restore backed-up content and unlink}
                             {--product=* : With --rollback, only these catalogue product ids}
+                            {--group=* : With --rollback, only the products made from these group keys}
                             {--force : Skip the confirmation prompt}';
 
     protected $description = 'Create catalogue products from supermarket listings and link them (dry-run first)';
@@ -147,7 +148,7 @@ class CatalogBackfill extends Command
             ->get([
                 'items.id', 'items.store_id', 'items.module_id', 'items.name', 'items.description',
                 'items.image', 'items.images', 'items.unit_id', 'items.category_id', 'items.category_ids',
-                'items.price', 'items.updated_at', 'stores.name as store_name',
+                'items.price', 'items.status', 'items.updated_at', 'stores.name as store_name',
             ]);
     }
 
@@ -235,13 +236,14 @@ class CatalogBackfill extends Command
         return $flags;
     }
 
-    /** Photo > description > most recently updated. */
+    /** Photo > description > switched on > most recently updated. */
     private function pickSource(Collection $members): int
     {
         return $members
             ->sortBy([
                 fn ($a, $b) => $this->hasPhoto($b) <=> $this->hasPhoto($a),
                 fn ($a, $b) => (trim((string) $b->description) !== '') <=> (trim((string) $a->description) !== ''),
+                fn ($a, $b) => ((int) ($b->status ?? 1) === 1) <=> ((int) ($a->status ?? 1) === 1),
                 fn ($a, $b) => strcmp((string) $b->updated_at, (string) $a->updated_at),
             ])
             ->first()
@@ -250,13 +252,18 @@ class CatalogBackfill extends Command
 
     /**
      * One listing per store (CAT-11's unique index). When a store has the
-     * product twice, the richest copy links and the other stays unlinked.
+     * product twice, its switched-on copy links — richest first among those —
+     * and the other stays unlinked. Switch a duplicate off to choose.
      */
     private function perStoreWinners(array $group): array
     {
         return $group['members']
             ->groupBy('store_id')
-            ->map(fn ($sameStore) => $sameStore->firstWhere('id', $this->pickSource($sameStore)))
+            ->map(function ($sameStore) {
+                $candidates = $sameStore->where('status', 1)->whenEmpty(fn () => $sameStore);
+
+                return $sameStore->firstWhere('id', $this->pickSource($candidates));
+            })
             ->values()
             ->all();
     }
@@ -352,6 +359,9 @@ class CatalogBackfill extends Command
             if (!in_array($member->id, $winners, true)) {
                 $marks[] = 'stays unlinked (same store)';
             }
+            if ((int) $member->status !== 1) {
+                $marks[] = 'switched off';
+            }
 
             $this->line(sprintf(
                 '        #%-6d %-22s %8s  unit:%-10s cat:%-5s photo:%-3s desc:%-3s %s%s',
@@ -397,6 +407,20 @@ class CatalogBackfill extends Command
     private function rollback(): int
     {
         $productIds = array_map('intval', $this->listOption('product'));
+
+        $groupKeys = $this->listOption('group');
+        if ($groupKeys) {
+            $fromGroups = CatalogProduct::all()
+                ->filter(fn ($p) => in_array(CatalogMatcher::groupKey($p->module_id, CatalogMatcher::normalize($p->name)), $groupKeys, true))
+                ->pluck('id')
+                ->all();
+            if (!$fromGroups) {
+                $this->warn('No catalogue product matches --group ' . implode(',', $groupKeys) . '; nothing rolled back.');
+
+                return self::SUCCESS;
+            }
+            $productIds = array_merge($productIds, $fromGroups);
+        }
 
         $listings = DB::table('items')
             ->whereNotNull('catalog_product_id')
