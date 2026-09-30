@@ -179,6 +179,7 @@ class OrderNotificationService
         try {
             $liveActivityToken = LiveActivityToken::where('order_id', $order->id)->first();
             if (!$liveActivityToken) {
+                \Log::info("APNs: no Live Activity token stored for order {$order->id}");
                 return false;
             }
 

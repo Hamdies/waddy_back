@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Order;
 use App\Models\LiveActivityToken;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -46,7 +47,14 @@ class LiveActivityService
         $url = $this->getBaseUrl($config) . '/3/device/' . $pushToken;
 
         try {
-            $jwt = $this->generateJwt($config);
+            // Apple rejects providers that mint a new token more often than
+            // every 20 minutes (429 TooManyProviderTokenUpdates) and expires
+            // them after 60; reuse one for 50.
+            $jwt = Cache::remember(
+                'apns_jwt_' . $config['key_id'],
+                now()->addMinutes(50),
+                fn () => $this->generateJwt($config)
+            );
 
             $headers = [
                 'authorization'  => 'bearer ' . $jwt,
@@ -60,6 +68,7 @@ class LiveActivityService
                 ->post($url, $payload);
 
             if ($response->successful()) {
+                Log::info("APNs: Live Activity {$event} sent for order {$order->id} ({$order->order_status})");
                 return true;
             }
 
