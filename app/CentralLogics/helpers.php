@@ -1854,6 +1854,10 @@ class Helpers
 
     public static function send_order_notification($order)
     {
+        // The customer's iOS Live Activity only moves on APNs pushes while the
+        // app is in the background; the FCM push below can't reach it.
+        app(\App\Services\OrderNotificationService::class)->sendLiveActivityUpdate($order);
+
         $push_notification_status = self::getNotificationStatusData('store','store_order_notification','push_notification_status', $order?->store?->id);
 
         try {

@@ -50,7 +50,7 @@ class LiveActivityService
 
             $headers = [
                 'authorization'  => 'bearer ' . $jwt,
-                'apns-topic'     => ($config['bundle_id'] ?? 'com.waddy.app') . '.push-type.liveactivity',
+                'apns-topic'     => ($config['bundle_id'] ?? 'com.hamdiesolutions.waddi') . '.push-type.liveactivity',
                 'apns-push-type' => 'liveactivity',
                 'apns-priority'  => '10',
             ];
@@ -101,6 +101,9 @@ class LiveActivityService
             'title'           => $extendedData['display_title'],
             'subtitle'        => $extendedData['display_subtitle'],
             'step'            => (int) $extendedData['step'],
+            // Unix seconds: the promised arrival while live, the actual one
+            // once delivered. The widget renders "Arrives 10:12 PM" from it.
+            'arrivalAt'       => $this->arrivalAt($order),
         ];
 
         $aps = [
@@ -109,12 +112,30 @@ class LiveActivityService
             'content-state' => $contentState,
         ];
 
-        // For end events, dismiss after 4 hours
+        // Past the promised arrival the widget re-renders as late.
+        if ($event === 'update' && $contentState['arrivalAt']) {
+            $aps['stale-date'] = (int) $contentState['arrivalAt'] + 60;
+        }
+
+        // Delivered stays long enough to be seen after the doorbell; a
+        // cancelled or failed order stays up to 4 hours. Matches the app.
         if ($event === 'end') {
-            $aps['dismissal-date'] = time() + (4 * 3600);
+            $aps['dismissal-date'] = time() + ($order->order_status === 'delivered' ? 30 * 60 : 4 * 3600);
         }
 
         return ['aps' => $aps];
+    }
+
+    private function arrivalAt(Order $order): ?float
+    {
+        if ($order->order_status === 'delivered') {
+            return (float) time();
+        }
+        if (in_array($order->order_status, ['canceled', 'failed', 'refunded', 'refund_requested'])
+            || !$order->estimated_delivery_at) {
+            return null;
+        }
+        return (float) Carbon::parse($order->estimated_delivery_at)->timestamp;
     }
 
     /**

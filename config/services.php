@@ -64,7 +64,7 @@ return [
         'private_key' => env('APNS_PRIVATE_KEY_PATH')
             ? file_get_contents(env('APNS_PRIVATE_KEY_PATH'))
             : null,
-        'bundle_id'   => env('APNS_BUNDLE_ID', 'com.waddy.app'),
+        'bundle_id'   => env('APNS_BUNDLE_ID', 'com.hamdiesolutions.waddi'),
         'environment' => env('APNS_ENVIRONMENT', 'sandbox'),
     ],
 
