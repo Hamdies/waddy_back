@@ -112,10 +112,19 @@ class CategoryController extends Controller
         }
     }
 
-    public function get_childes($id)
+    public function get_childes(Request $request, $id)
     {
         try {
-            $categories = Category::with('parent')->where(['parent_id' => $id,'status'=>1])->orderBy('priority','desc')->get();
+            // With `store_id`, only the sub-categories that store actually has
+            // active items in — a store page's chips must not lead to empty lists.
+            $categories = Category::with('parent')->where(['parent_id' => $id,'status'=>1])
+                ->when($request->query('store_id'), function ($query, $storeId) {
+                    $query->whereIn('id', Item::withoutGlobalScopes()
+                        ->where('store_id', $storeId)
+                        ->where('status', 1)
+                        ->select('category_id'));
+                })
+                ->orderBy('priority','desc')->get();
             return response()->json($categories, 200);
         } catch (\Exception $e) {
             return response()->json([], 200);
