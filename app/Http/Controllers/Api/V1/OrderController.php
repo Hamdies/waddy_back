@@ -561,7 +561,14 @@ class OrderController extends Controller
         $data = Store::withOpen($longitude, $latitude)->wherehas('orders', function ($q) use ($request) {
             $q->where('user_id', $request->user()->id)->where('is_guest', 0)->latest();
         })
-            ->where('module_id', $request->header('moduleId'))
+            // Scoped to the module only when the app is in one. The dashboard
+            // sends no moduleId (it is module-less by design), and
+            // `where('module_id', null)` matched nothing, so its "Order again"
+            // rail was empty on every cold start. With no module, the user's
+            // recent stores across all modules are the right answer.
+            ->when($request->header('moduleId'), function ($q, $moduleId) {
+                $q->where('module_id', $moduleId);
+            })
             ->withcount('items')
             ->with(['itemsForReorder'])
             ->Active()
