@@ -702,6 +702,8 @@ class OrderController extends Controller
             $cart->variation = json_encode($variation);
             $cart->add_on_ids = json_encode($addOnIds);
             $cart->add_on_qtys = json_encode($addOnQtys);
+            // "Ready to eat" last time is "ready to eat" again.
+            $cart->preference = \App\Support\ProducePreference::sanitize($detail->preference);
             $cart->save();
 
             $added[] = [

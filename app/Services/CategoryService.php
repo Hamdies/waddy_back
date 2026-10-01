@@ -47,11 +47,19 @@ class CategoryService
     public function getUpdateData(CategoryUpdateRequest $request, object $object): array
     {
         $slug = Str::slug($request->name[array_search('default', $request->lang)]);
-        return [
+        $data = [
             'slug' => $object->slug ?? "{$slug}{$object->id}",
             'name' => $request->name[array_search('default', $request->lang)],
             'image' => $request->has('image') ? $this->updateAndUpload('category/', $object->image, 'png', $request->file('image')) : $object->image,
         ];
+        // The produce question this category's items ask (ripeness / use).
+        // Only when the form sent the field, so other update paths keep it.
+        if ($request->has('prep_option')) {
+            $data['prep_option'] = \App\Support\ProducePreference::isOption($request->prep_option)
+                ? $request->prep_option
+                : null;
+        }
+        return $data;
     }
 
     public function getImportData(Request $request, bool $toAdd = true): array

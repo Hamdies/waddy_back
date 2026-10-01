@@ -97,6 +97,16 @@ active
                                     @endforeach
                                 </select>
                             @endif
+
+                            <div class="form-group mt-3 mb-0">
+                                <label class="input-label" for="prep_option">{{ translate('messages.shopper_choice') }}</label>
+                                <select name="prep_option" id="prep_option" class="form-control">
+                                    <option value="" {{ $category->prep_option ? '' : 'selected' }}>{{ translate('messages.none') }}</option>
+                                    <option value="ripeness" {{ $category->prep_option === 'ripeness' ? 'selected' : '' }}>{{ translate('messages.prep_option_ripeness') }}</option>
+                                    <option value="use" {{ $category->prep_option === 'use' ? 'selected' : '' }}>{{ translate('messages.prep_option_use') }}</option>
+                                </select>
+                                <small class="text-muted d-block mt-1">{{ translate('messages.prep_option_hint') }}</small>
+                            </div>
                         </div>
                         <div class="col-md-6">
                             @if ($category->position == 0)

@@ -577,6 +577,9 @@
                                                                     {{ $detail['quantity'] }} x
                                                                     {{ \App\CentralLogics\Helpers::format_currency($detail['price']) }}
                                                                 </h6>
+                                                                @if (\App\Support\ProducePreference::label($detail['preference'] ?? null))
+                                                                    <div class="mb-1"><span class="badge badge-soft-success">{{ \App\Support\ProducePreference::label($detail['preference']) }}</span></div>
+                                                                @endif
                                                                 @if ($order->store && $order->store->module->module_type == 'food')
                                                                     @if (isset($detail['variation']) ? json_decode($detail['variation'], true) : [])
                                                                         @foreach (json_decode($detail['variation'], true) as $variation)
@@ -724,6 +727,9 @@
                                                                     {{ $detail['quantity'] }} x
                                                                     {{ \App\CentralLogics\Helpers::format_currency($detail['price']) }}
                                                                 </h6>
+                                                                @if (\App\Support\ProducePreference::label($detail['preference'] ?? null))
+                                                                    <div class="mb-1"><span class="badge badge-soft-success">{{ \App\Support\ProducePreference::label($detail['preference']) }}</span></div>
+                                                                @endif
                                                                 @if ($order->store && $order->store->module->module_type == 'food')
                                                                     @if (isset($detail['variation']) ? json_decode($detail['variation'], true) : [])
                                                                         @foreach (json_decode($detail['variation'], true) as $variation)

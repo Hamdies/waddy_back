@@ -1203,6 +1203,8 @@ trait PlaceNewOrder
 
                     'variant' => json_encode($c['variant']),
                     'variation' => $foodVariation ? json_encode($variations) : json_encode($c['variation']),
+                    // The shopper's produce answer, for whoever picks the order.
+                    'preference' => \App\Support\ProducePreference::sanitize(data_get($c, 'preference')),
                     'add_ons' => json_encode($addon_data['addons']),
 
                     'total_add_on_price' => round($addon_data['total_add_on_price'], config('round_up_to_digit')),
@@ -1379,6 +1381,8 @@ trait PlaceNewOrder
 
                         'variant' => json_encode($c['variant']),
                         'variation' => $foodVariation ? json_encode($variations) : json_encode($c['variations']),
+                        // The shopper's produce answer, for whoever picks the order.
+                        'preference' => \App\Support\ProducePreference::sanitize(data_get($c, 'preference')),
                         'add_ons' => json_encode($addon_data['addons']),
 
                         'total_add_on_price' => round($addon_data['total_add_on_price'], config('round_up_to_digit')),
@@ -1597,6 +1601,8 @@ trait PlaceNewOrder
 
                         'variant' => json_encode($c['variant']),
                         'variation' => $foodVariation ? json_encode($variations) : json_encode($c['variation']),
+                        // The shopper's produce answer, for whoever picks the order.
+                        'preference' => \App\Support\ProducePreference::sanitize(data_get($c, 'preference')),
                         'add_ons' => json_encode($addon_data['addons']),
 
                         'total_add_on_price' => round($addon_data['total_add_on_price'], config('round_up_to_digit')),

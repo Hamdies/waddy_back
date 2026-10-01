@@ -5675,4 +5675,13 @@
   'catalog_merge_other_module' => 'لازم المنتجين يكونوا في نفس القسم الرئيسي.',
   'catalog_merge_flash_sale' => 'المنتج #:id في :store داخل عرض سريع. شيله من العرض الأول.',
   'catalog_merged' => 'تم الدمج: :moved اتنقلوا، :switched_off اتوقفوا؛ واتنقل :carts عنصر سلة و:favourites مفضلة و:reviews تقييم.',
+  'shopper_choice' => 'اختيار العميل',
+  'prep_option_ripeness' => 'درجة النضج (فاكهة): جاهزة للأكل / تنضج خلال 2–3 أيام',
+  'prep_option_use' => 'الاستخدام (خضار): للسلطة / للطبخ',
+  'prep_option_hint' => 'كل منتج في القسم ده هيطلب من العميل يختار قبل الإضافة. مش بيغير السعر أو المخزون.',
+  'preference_ready_to_eat' => 'جاهزة للأكل',
+  'preference_ripe_later' => 'تنضج خلال 2–3 أيام',
+  'preference_salad' => 'للسلطة',
+  'preference_cooking' => 'للطبخ',
+  'preference' => 'الاختيار',
 );

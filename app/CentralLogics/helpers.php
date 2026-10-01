@@ -367,6 +367,7 @@ class Helpers
                     unset($item['end_date']);
                 }
                 $item['recommended'] =(int) $item->recommended;
+                $item['prep_option'] = \App\Support\ProducePreference::forItem($item);
                 $categories = [];
                 foreach (json_decode($item['category_ids']) as $value) {
                     $categories[] = ['id' => (string)$value->id, 'position' => $value->position, 'name'=>self::category_name($value->id)];
@@ -442,6 +443,7 @@ class Helpers
             $data = $storage;
         } else {
             $variations = [];
+            $data['prep_option'] = \App\Support\ProducePreference::forItem($data);
             $categories = [];
             foreach (json_decode($data['category_ids']) as $value) {
                 $categories[] = ['id' => (string)$value->id, 'position' => $value->position, 'name'=>self::category_name($value->id)];
@@ -1152,6 +1154,9 @@ class Helpers
             $item['add_ons'] = json_decode($item['add_ons']);
             $item['variation'] = json_decode($item['variation'], true);
             $item['item_details'] = json_decode($item['item_details'], true);
+            // The produce answer in the request's language, for the store
+            // and customer apps ("Ready to eat"); `preference` stays the code.
+            $item['preference_label'] = \App\Support\ProducePreference::label($item['preference']);
             if ($item['item_id']){
                 $product = \App\Models\Item::where(['id' => $item['item_details']['id']])->first();
                 $item['image_full_url'] = $product?->image_full_url;

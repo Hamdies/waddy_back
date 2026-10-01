@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\Item;
 use App\Models\ItemCampaign;
+use App\Support\ProducePreference;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -75,6 +76,7 @@ class CartController extends Controller
             'model' => 'required|string|in:Item,ItemCampaign',
             'price' => 'required|numeric',
             'quantity' => 'required|integer|min:1',
+            'preference' => 'nullable|string|max:40',
         ]);
 
         if ($validator->fails()) {
@@ -83,20 +85,28 @@ class CartController extends Controller
 
         $user_id = $user ? $user->id : $request['guest_id'];
         $is_guest = $user ? 0 : 1;
+        // Produce answer (ripeness / salad-or-cooking). Not required here: an
+        // app build that predates it must still be able to add fruit.
+        $preference = ProducePreference::sanitize($request->preference);
         $model = $request->model === 'Item' ? Item::class : ItemCampaign::class;
         $cartTypes = $request->model === 'Item'
             ? [Item::class, 'Item']
             : [ItemCampaign::class, 'ItemCampaign'];
         $item = $request->model === 'Item' ? Item::find($request->item_id) : ItemCampaign::find($request->item_id);
 
+        // The same item with the same variation AND the same produce answer
+        // is one line; a different answer ("ripe later" next to "ready to
+        // eat") is a line of its own.
         $cart = Cart::where('item_id', $request->item_id)
             ->whereIn('item_type', $cartTypes)
             ->where('user_id', $user_id)
             ->where('is_guest', $is_guest)
             ->where('module_id', $request->header('moduleId'))
-            ->first();
+            ->get()
+            ->first(fn ($line) => json_decode($line->variation ?? '""', true) == $request->variation
+                && ($line->preference ?: null) === $preference);
 
-        if ($cart && json_decode($cart->variation ?? '""', true) == $request->variation) {
+        if ($cart) {
             return response()->json([
                 'errors' => [
                     ['code' => 'cart_item', 'message' => translate('messages.Item_already_exists')]
@@ -123,6 +133,7 @@ class CartController extends Controller
         $cart->price = $request->price;
         $cart->quantity = $request->quantity;
         $cart->variation = isset($request->variation) ? json_encode($request->variation) : json_encode([]);
+        $cart->preference = $preference;
         $cart->save();
 
         $item->carts()->save($cart);
@@ -176,6 +187,9 @@ class CartController extends Controller
         $cart->price = $request->price;
         $cart->quantity = $request->quantity;
         $cart->variation = isset($request->variation) ? json_encode($request->variation) : $cart->variation;
+        if ($request->has('preference')) {
+            $cart->preference = ProducePreference::sanitize($request->preference);
+        }
         $cart->save();
 
         $carts = $this->formatCartCollection(
