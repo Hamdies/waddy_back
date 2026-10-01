@@ -59,7 +59,7 @@ class GroceryStoreTypesSeeder extends MaadiContentSeeder
 
     public function run(): void
     {
-        $grocery = Module::where('module_type', 'grocery')->first();
+        $grocery = Module::where('module_type', 'grocery')->whereNull('variant')->first();
         $zone = Zone::first();
 
         if (!$grocery || !$zone) {

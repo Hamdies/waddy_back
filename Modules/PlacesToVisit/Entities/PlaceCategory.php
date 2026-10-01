@@ -4,6 +4,7 @@ namespace Modules\PlacesToVisit\Entities;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Modules\PlacesToVisit\Entities\Scopes\SurfaceScope;
 
 class PlaceCategory extends Model
 {
@@ -17,6 +18,12 @@ class PlaceCategory extends Model
     ];
 
     protected $appends = ['localized_name'];
+
+    /** Only `spots` categories outside the admin panel (PET-05). */
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new SurfaceScope());
+    }
 
     public function places(): HasMany
     {

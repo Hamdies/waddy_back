@@ -4,6 +4,7 @@ namespace Modules\PlacesToVisit\Entities;
 
 use App\Models\User;
 use Modules\PlacesToVisit\Entities\PlaceZone;
+use Modules\PlacesToVisit\Entities\Scopes\SurfaceScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -24,6 +25,12 @@ class Place extends Model
     ];
 
     protected $appends = ['title', 'description'];
+
+    /** Clinics and any other non-Spots place stay out of Spots (PET-05). */
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new SurfaceScope());
+    }
 
     // ==================== Image Accessors ====================
 

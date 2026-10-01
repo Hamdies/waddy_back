@@ -41,7 +41,7 @@ class MaadiContentSeeder extends Seeder
 {
     public function run(): void
     {
-        $grocery = Module::where('module_type', 'grocery')->first();
+        $grocery = Module::where('module_type', 'grocery')->whereNull('variant')->first();
         $food = Module::where('module_type', 'food')->first();
         $zone = Zone::first();
 

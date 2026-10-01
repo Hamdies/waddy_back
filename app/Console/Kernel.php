@@ -48,6 +48,16 @@ class Kernel extends ConsoleKernel
         // Voter-prize vouchers: auto-expire after their 7-day window and
         // nudge winners in the last 24h. No reissue, no rollover.
         $schedule->command('placestovisit:expire-prizes')->hourly();
+
+        // Pet lifecycle pushes (PetPushService holds the guardrails: per-pet
+        // off switch, one push per event, 7-day cap on automatic ones).
+        // Morning for the happy ones, early evening for "food running low",
+        // when people are home to reorder. Reminders run hourly so a
+        // reminder set at 3pm fires at 3pm.
+        $schedule->command('pets:pushes birthdays')->dailyAt('10:00')->timezone($raceTz);
+        $schedule->command('pets:pushes life-stage')->dailyAt('10:05')->timezone($raceTz);
+        $schedule->command('pets:pushes replenish')->dailyAt('18:00')->timezone($raceTz);
+        $schedule->command('pets:pushes reminders')->hourly();
     }
 
     /**

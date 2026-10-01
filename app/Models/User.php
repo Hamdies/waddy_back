@@ -115,6 +115,11 @@ class User extends Authenticatable
         return $this->hasMany(CustomerAddress::class);
     }
 
+    public function pets()
+    {
+        return $this->hasMany(UserPet::class);
+    }
+
     public function userinfo()
     {
         return $this->hasOne(UserInfo::class,'user_id', 'id');

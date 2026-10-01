@@ -18,7 +18,7 @@ class EgyptianGroceryCategoriesSeeder extends Seeder
     public function run(): void
     {
         // Find the grocery module
-        $groceryModule = Module::where('module_type', 'grocery')->first();
+        $groceryModule = Module::where('module_type', 'grocery')->whereNull('variant')->first();
 
         if (!$groceryModule) {
             $this->command->error('Grocery module not found! Please create a grocery module first.');

@@ -56,7 +56,7 @@ class GroceryPromosSeeder extends Seeder
 
     public function run(): void
     {
-        $moduleId = Module::where('module_type', 'grocery')->value('id');
+        $moduleId = Module::where('module_type', 'grocery')->whereNull('variant')->value('id');
         $slugs = array_unique(array_merge(
             self::FREE_DELIVERY,
             array_keys(self::STORE_DISCOUNT),

@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\DB;
  * @property int $id
  * @property string $module_name
  * @property string $module_type
+ * @property string|null $variant  a module that runs as `module_type` but is its own product in the customer app (`pets`)
  * @property string|null $thumbnail
  * @property bool $status
  * @property int $stores_count
@@ -41,6 +42,7 @@ class Module extends Model
     protected $fillable = [
         'module_name',
         'module_type',
+        'variant',
         'thumbnail',
         'status',
         'stores_count',

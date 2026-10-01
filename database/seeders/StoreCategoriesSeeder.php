@@ -31,7 +31,7 @@ class StoreCategoriesSeeder extends Seeder
 {
     public function run(): void
     {
-        $moduleId = Module::where('module_type', 'grocery')->value('id');
+        $moduleId = Module::where('module_type', 'grocery')->whereNull('variant')->value('id');
         if (!$moduleId) {
             $this->command->error('Grocery module not found.');
 

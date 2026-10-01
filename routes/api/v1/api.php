@@ -87,6 +87,11 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
 
     // Module
     Route::get('module', 'ModuleController@index');
+
+    // Pets module: nearby vet clinics and the species → needs category tree.
+    // Public, so guests see them too.
+    Route::get('pets/clinics', 'PetController@clinics');
+    Route::get('pets/categories', 'PetController@categories');
     Route::post('newsletter/subscribe','NewsletterController@index');
 
     // Demand capture for un-served areas. Guest-capable (apiGuestCheck fills
@@ -365,6 +370,18 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
                 Route::post('add', 'CustomerController@add_new_address');
                 Route::put('update/{id}', 'CustomerController@update_address');
                 Route::delete('delete', 'CustomerController@delete_address');
+            });
+
+            // The customer's pets (Pets module). Update is POST: the photo
+            // goes multipart, which PHP does not parse on PUT.
+            Route::group(['prefix' => 'pets'], function () {
+                Route::get('list', 'PetController@index');
+                Route::post('add', 'PetController@store');
+                Route::post('update/{id}', 'PetController@update')->whereNumber('id');
+                Route::delete('delete/{id}', 'PetController@destroy')->whereNumber('id');
+                Route::get('usual', 'PetController@usual');
+                Route::post('reminders', 'PetController@setReminder');
+                Route::delete('reminders/{id}', 'PetController@deleteReminder')->whereNumber('id');
             });
 
 
