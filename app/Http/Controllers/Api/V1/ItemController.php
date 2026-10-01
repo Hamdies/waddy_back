@@ -586,15 +586,33 @@ class ItemController extends Controller
             ->pluck('item_id')
             ->all();
 
+        // How each item was bought last time — its variation (the weight)
+        // and produce answer — so "+" can repeat that exact line.
+        $lastLines = DB::table('order_details')
+            ->whereIn('order_id', $orderIds)
+            ->whereIn('item_id', $itemIds)
+            ->orderByDesc('id')
+            ->get(['item_id', 'variation', 'preference'])
+            ->unique('item_id')
+            ->keyBy('item_id');
+
         $items = Item::active()
             ->whereIn('id', $itemIds)
             ->get()
             ->sortBy(fn ($item) => array_search($item->id, $itemIds))
             ->values();
 
+        $products = Helpers::product_data_formatting($items, true, false, app()->getLocale());
+        foreach ($products as $key => $product) {
+            $line = $lastLines[$product['id']] ?? null;
+            $variation = $line ? json_decode($line->variation ?? '[]', true) : [];
+            $products[$key]['last_variation'] = is_array($variation) ? data_get($variation, '0.type') : null;
+            $products[$key]['last_preference'] = \App\Support\ProducePreference::sanitize($line->preference ?? null);
+        }
+
         return response()->json([
             'order_count' => $orderIds->count(),
-            'products' => Helpers::product_data_formatting($items, true, false, app()->getLocale()),
+            'products' => $products,
         ], 200);
     }
 
