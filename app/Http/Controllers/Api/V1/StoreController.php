@@ -154,15 +154,24 @@ class StoreController extends Controller
         {
             $category_ids = DB::table('items')
             ->join('categories', 'items.category_id', '=', 'categories.id')
-            ->selectRaw('categories.position as positions, IF((categories.position = "0"), categories.id, categories.parent_id) as categories')
+            ->selectRaw('categories.position as positions, IF((categories.position = "0"), categories.id, categories.parent_id) as categories, SUM(items.status = 1) as items_count')
             ->where('items.store_id', $store->id)
             ->where('categories.status',1)
             ->groupBy('categories','positions')
             ->get();
 
+            // Active items per main category, for the supermarket page's
+            // "See all 54" and aisle tiles. A main category can arrive on two
+            // rows (its own items and its subcategories'), so the rows sum.
+            $items_count = $category_ids->groupBy('categories')
+                ->map(fn ($rows) => (int) $rows->sum('items_count'));
+
             $store = Helpers::store_data_formatting($store);
             $store['category_ids'] = array_map('intval', $category_ids->pluck('categories')->toArray());
-            $store['category_details'] = Category::whereIn('id',$store['category_ids'])->orderByDesc('priority')->orderBy('id')->get();
+            $store['category_details'] = Category::whereIn('id',$store['category_ids'])->orderByDesc('priority')->orderBy('id')->get()
+                ->each(function ($category) use ($items_count) {
+                    $category->items_count = $items_count[$category->id] ?? 0;
+                });
             $store['price_range']  = Item::withoutGlobalScopes()->where('store_id', $store->id)
             ->select(DB::raw('MIN(price) AS min_price, MAX(price) AS max_price'))
             ->get(['min_price','max_price'])->toArray();

@@ -548,6 +548,56 @@ class ItemController extends Controller
         ], 404);
     }
 
+    /**
+     * The supermarket page's "Buy again" rail: what this customer received in
+     * their last few delivered orders at one store, most recent first.
+     *
+     * `order_count` is how many orders the items came from, so the app can say
+     * "From your last 3 orders here" without inventing the number.
+     */
+    public function get_buy_again(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'store_id' => 'required|integer',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+
+        $orderIds = DB::table('orders')
+            ->where('user_id', $request->user()->id)
+            ->where('is_guest', 0)
+            ->where('store_id', $request->store_id)
+            ->where('order_status', 'delivered')
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->pluck('id');
+
+        if ($orderIds->isEmpty()) {
+            return response()->json(['order_count' => 0, 'products' => []], 200);
+        }
+
+        $itemIds = DB::table('order_details')
+            ->whereIn('order_id', $orderIds)
+            ->whereNotNull('item_id')
+            ->groupBy('item_id')
+            ->orderByRaw('MAX(order_id) DESC')
+            ->limit(12)
+            ->pluck('item_id')
+            ->all();
+
+        $items = Item::active()
+            ->whereIn('id', $itemIds)
+            ->get()
+            ->sortBy(fn ($item) => array_search($item->id, $itemIds))
+            ->values();
+
+        return response()->json([
+            'order_count' => $orderIds->count(),
+            'products' => Helpers::product_data_formatting($items, true, false, app()->getLocale()),
+        ], 200);
+    }
+
     public function get_recommended(Request $request)
     {
         if (!$request->hasHeader('zoneId')) {

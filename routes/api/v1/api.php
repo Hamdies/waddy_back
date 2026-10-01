@@ -467,6 +467,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
             Route::get('details/{id}', 'ItemController@get_product');
             Route::get('related-items/{item_id}', 'ItemController@get_related_products');
             Route::get('related-store-items/{item_id}', 'ItemController@get_related_store_products');
+            Route::get('buy-again', 'ItemController@get_buy_again')->middleware('auth:api');
             Route::get('reviews/{item_id}', 'ItemController@get_product_reviews');
             Route::get('rating/{item_id}', 'ItemController@get_product_rating');
             Route::get('recommended', 'ItemController@get_recommended');
