@@ -8413,4 +8413,5 @@ Smartly or Earn. ',
   'location' => 'Location',
   'cover_image' => 'Cover image',
   'search_location' => 'Search location',
+  'cart_busy_try_again' => 'Busy for a second, please try again',
 );
