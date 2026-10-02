@@ -293,10 +293,13 @@ class Place extends Model
     public function scopeNearby($query, float $lat, float $lng, float $radiusKm = 10)
     {
         // Haversine formula for distance calculation
-        $haversine = "(6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude))))";
+        $haversine = "(6371 * acos(cos(radians(?)) * cos(radians(places.latitude)) * cos(radians(places.longitude) - radians(?)) + sin(radians(?)) * sin(radians(places.latitude))))";
         
         return $query
-            ->selectRaw("*, {$haversine} AS distance", [$lat, $lng, $lat])
+            // `places.*`, not `*`: a bare star is only valid first in the
+            // select list, and withCount()/withAvg() called before this put
+            // their subqueries ahead of it (the pets clinics endpoint 500'd).
+            ->selectRaw("places.*, {$haversine} AS distance", [$lat, $lng, $lat])
             ->having('distance', '<', $radiusKm)
             ->orderBy('distance');
     }
