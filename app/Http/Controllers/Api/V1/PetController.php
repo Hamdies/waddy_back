@@ -364,6 +364,9 @@ class PetController extends Controller
             'image' => $place->image,
             'cover_image' => $place->cover_image,
             'opening_hours' => $place->opening_hours,
+            // What it treats / offers (PET-19): fixed keys, the app owns labels.
+            'species' => array_values($place->clinic_species ?? []),
+            'services' => array_values($place->clinic_services ?? []),
             'today_hours' => $place->opening_hours[$today] ?? null,
             'is_open_now' => $place->isOpenNow(),
             // No number until there are enough reviews to mean something.

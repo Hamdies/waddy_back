@@ -44,7 +44,9 @@ class PlaceController extends Controller
         $categories = PlaceCategory::active()->ordered()->get();
         $tags = PlaceTag::active()->get();
                 $zones = PlaceZone::active()->ordered()->get();
-        return view('placestovisit::admin.places.create', compact('categories', 'tags', 'zones'));
+        $clinicSpecies = Place::CLINIC_SPECIES;
+        $clinicServices = Place::CLINIC_SERVICES;
+        return view('placestovisit::admin.places.create', compact('categories', 'tags', 'zones', 'clinicSpecies', 'clinicServices'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -67,6 +69,10 @@ class PlaceController extends Controller
             'gallery.*' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'tags' => 'nullable|array',
             'tags.*' => 'exists:place_tags,id',
+            'clinic_species' => 'nullable|array',
+            'clinic_species.*' => 'in:' . implode(',', Place::CLINIC_SPECIES),
+            'clinic_services' => 'nullable|array',
+            'clinic_services.*' => 'in:' . implode(',', Place::CLINIC_SERVICES),
         ]);
 
         $imagePath = null;
@@ -89,6 +95,9 @@ class PlaceController extends Controller
             'website' => $request->website,
             'instagram' => $request->instagram,
             'opening_hours' => $request->opening_hours,
+            // Vet clinics only; unticked boxes aren't sent, so absent = none.
+            'clinic_species' => $request->input('clinic_species', []) ?: null,
+            'clinic_services' => $request->input('clinic_services', []) ?: null,
             'image' => $imagePath,
             'cover_image' => $coverImagePath,
             'is_active' => $request->has('is_active'),
@@ -149,7 +158,9 @@ class PlaceController extends Controller
         $translations = $place->translations->keyBy('locale');
         $selectedTags = $place->tags->pluck('id')->toArray();
         
-        return view('placestovisit::admin.places.edit', compact('place', 'categories', 'tags', 'zones', 'translations', 'selectedTags'));
+        $clinicSpecies = Place::CLINIC_SPECIES;
+        $clinicServices = Place::CLINIC_SERVICES;
+        return view('placestovisit::admin.places.edit', compact('place', 'categories', 'tags', 'zones', 'translations', 'selectedTags', 'clinicSpecies', 'clinicServices'));
     }
 
     public function update(Request $request, Place $place): RedirectResponse
@@ -173,6 +184,10 @@ class PlaceController extends Controller
             'tags' => 'nullable|array',
             'tags.*' => 'exists:place_tags,id',
             'prize_value_cap' => 'nullable|numeric|min:0',
+            'clinic_species' => 'nullable|array',
+            'clinic_species.*' => 'in:' . implode(',', Place::CLINIC_SPECIES),
+            'clinic_services' => 'nullable|array',
+            'clinic_services.*' => 'in:' . implode(',', Place::CLINIC_SERVICES),
         ]);
 
         $imagePath = $place->raw_image;
@@ -201,6 +216,9 @@ class PlaceController extends Controller
             'website' => $request->website,
             'instagram' => $request->instagram,
             'opening_hours' => $request->opening_hours,
+            // Vet clinics only; unticked boxes aren't sent, so absent = none.
+            'clinic_species' => $request->input('clinic_species', []) ?: null,
+            'clinic_services' => $request->input('clinic_services', []) ?: null,
             'image' => $imagePath,
             'cover_image' => $coverImagePath,
             'is_active' => $request->has('is_active'),

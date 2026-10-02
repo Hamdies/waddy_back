@@ -22,6 +22,17 @@ class Place extends Model
         'is_active' => 'boolean',
         'is_featured' => 'boolean',
         'opening_hours' => 'array',
+        'clinic_species' => 'array',
+        'clinic_services' => 'array',
+    ];
+
+    /** Animals a vet clinic can tick (keys match the app's pet species). */
+    public const CLINIC_SPECIES = ['cat', 'dog', 'bird', 'fish', 'small'];
+
+    /** Services a vet clinic can tick; the app has a label and icon for each. */
+    public const CLINIC_SERVICES = [
+        'emergency_24h', 'home_visit', 'vaccination', 'surgery', 'dental',
+        'xray', 'lab', 'grooming', 'boarding', 'pharmacy',
     ];
 
     protected $appends = ['title', 'description'];
