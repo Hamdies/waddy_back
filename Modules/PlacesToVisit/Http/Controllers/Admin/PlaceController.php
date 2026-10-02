@@ -44,9 +44,7 @@ class PlaceController extends Controller
         $categories = PlaceCategory::active()->ordered()->get();
         $tags = PlaceTag::active()->get();
                 $zones = PlaceZone::active()->ordered()->get();
-        $clinicSpecies = Place::CLINIC_SPECIES;
-        $clinicServices = Place::CLINIC_SERVICES;
-        return view('placestovisit::admin.places.create', compact('categories', 'tags', 'zones', 'clinicSpecies', 'clinicServices'));
+        return view('placestovisit::admin.places.create', compact('categories', 'tags', 'zones'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -69,16 +67,6 @@ class PlaceController extends Controller
             'gallery.*' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'tags' => 'nullable|array',
             'tags.*' => 'exists:place_tags,id',
-            'clinic_species' => 'nullable|array',
-            'clinic_species.*' => 'in:' . implode(',', Place::CLINIC_SPECIES),
-            'clinic_services' => 'nullable|array',
-            'clinic_services.*' => 'in:' . implode(',', Place::CLINIC_SERVICES),
-            'clinic_service_prices' => 'nullable|array',
-            'clinic_service_prices.*' => 'nullable|numeric|min:0|max:1000000',
-            'clinic_vets' => 'nullable|array|max:' . Place::CLINIC_MAX_VETS,
-            'clinic_vets.*.name' => 'nullable|string|max:80',
-            'clinic_vets.*.role' => 'nullable|string|max:80',
-            'clinic_vets.*.years' => 'nullable|integer|min:0|max:70',
         ]);
 
         $imagePath = null;
@@ -101,11 +89,6 @@ class PlaceController extends Controller
             'website' => $request->website,
             'instagram' => $request->instagram,
             'opening_hours' => $request->opening_hours,
-            // Vet clinics only; unticked boxes aren't sent, so absent = none.
-            'clinic_species' => $request->input('clinic_species', []) ?: null,
-            'clinic_services' => $request->input('clinic_services', []) ?: null,
-            'clinic_service_prices' => $this->clinicPrices($request),
-            'clinic_vets' => $this->clinicVets($request),
             'image' => $imagePath,
             'cover_image' => $coverImagePath,
             'is_active' => $request->has('is_active'),
@@ -166,9 +149,7 @@ class PlaceController extends Controller
         $translations = $place->translations->keyBy('locale');
         $selectedTags = $place->tags->pluck('id')->toArray();
         
-        $clinicSpecies = Place::CLINIC_SPECIES;
-        $clinicServices = Place::CLINIC_SERVICES;
-        return view('placestovisit::admin.places.edit', compact('place', 'categories', 'tags', 'zones', 'translations', 'selectedTags', 'clinicSpecies', 'clinicServices'));
+        return view('placestovisit::admin.places.edit', compact('place', 'categories', 'tags', 'zones', 'translations', 'selectedTags'));
     }
 
     public function update(Request $request, Place $place): RedirectResponse
@@ -192,16 +173,6 @@ class PlaceController extends Controller
             'tags' => 'nullable|array',
             'tags.*' => 'exists:place_tags,id',
             'prize_value_cap' => 'nullable|numeric|min:0',
-            'clinic_species' => 'nullable|array',
-            'clinic_species.*' => 'in:' . implode(',', Place::CLINIC_SPECIES),
-            'clinic_services' => 'nullable|array',
-            'clinic_services.*' => 'in:' . implode(',', Place::CLINIC_SERVICES),
-            'clinic_service_prices' => 'nullable|array',
-            'clinic_service_prices.*' => 'nullable|numeric|min:0|max:1000000',
-            'clinic_vets' => 'nullable|array|max:' . Place::CLINIC_MAX_VETS,
-            'clinic_vets.*.name' => 'nullable|string|max:80',
-            'clinic_vets.*.role' => 'nullable|string|max:80',
-            'clinic_vets.*.years' => 'nullable|integer|min:0|max:70',
         ]);
 
         $imagePath = $place->raw_image;
@@ -230,11 +201,6 @@ class PlaceController extends Controller
             'website' => $request->website,
             'instagram' => $request->instagram,
             'opening_hours' => $request->opening_hours,
-            // Vet clinics only; unticked boxes aren't sent, so absent = none.
-            'clinic_species' => $request->input('clinic_species', []) ?: null,
-            'clinic_services' => $request->input('clinic_services', []) ?: null,
-            'clinic_service_prices' => $this->clinicPrices($request),
-            'clinic_vets' => $this->clinicVets($request),
             'image' => $imagePath,
             'cover_image' => $coverImagePath,
             'is_active' => $request->has('is_active'),
@@ -333,36 +299,5 @@ class PlaceController extends Controller
 
         \Toastr::success(translate('messages.redeem_link_regenerated'));
         return back();
-    }
-
-    /** Starting prices, only for services that are ticked and have one. */
-    private function clinicPrices(Request $request): ?array
-    {
-        $ticked = $request->input('clinic_services', []);
-        $prices = [];
-        foreach ((array) $request->input('clinic_service_prices', []) as $key => $price) {
-            if (in_array($key, $ticked, true) && $price !== null && $price !== '') {
-                $prices[$key] = (float) $price;
-            }
-        }
-        return $prices ?: null;
-    }
-
-    /** Vet rows with a name; empty rows from the fixed form are dropped. */
-    private function clinicVets(Request $request): ?array
-    {
-        $vets = [];
-        foreach ((array) $request->input('clinic_vets', []) as $row) {
-            $name = trim((string) ($row['name'] ?? ''));
-            if ($name === '') {
-                continue;
-            }
-            $vets[] = [
-                'name' => $name,
-                'role' => trim((string) ($row['role'] ?? '')) ?: null,
-                'years' => isset($row['years']) && $row['years'] !== '' ? (int) $row['years'] : null,
-            ];
-        }
-        return $vets ?: null;
     }
 }

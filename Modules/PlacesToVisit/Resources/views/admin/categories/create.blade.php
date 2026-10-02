@@ -41,19 +41,6 @@
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label class="input-label">{{ translate('messages.shown_in') }}</label>
-                            <select name="surface" class="form-control">
-                                <option value="spots" {{ old('surface', 'spots') === 'spots' ? 'selected' : '' }}>{{ translate('messages.waddy_spots') }}</option>
-                                <option value="pets" {{ old('surface', 'spots') === 'pets' ? 'selected' : '' }}>{{ translate('messages.pets_vet_clinics') }}</option>
-                            </select>
-                            <small class="text-muted">{{ translate('messages.surface_hint') }}</small>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-group">
                             <label class="input-label">{{ translate('messages.image') }}</label>
                             <div class="custom-file">
                                 <input type="file" name="image" class="custom-file-input" 

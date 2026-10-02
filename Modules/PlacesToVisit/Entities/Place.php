@@ -22,22 +22,6 @@ class Place extends Model
         'is_active' => 'boolean',
         'is_featured' => 'boolean',
         'opening_hours' => 'array',
-        'clinic_species' => 'array',
-        'clinic_services' => 'array',
-        'clinic_service_prices' => 'array',
-        'clinic_vets' => 'array',
-    ];
-
-    /** How many vets the admin form offers rows for. */
-    public const CLINIC_MAX_VETS = 4;
-
-    /** Animals a vet clinic can tick (keys match the app's pet species). */
-    public const CLINIC_SPECIES = ['cat', 'dog', 'bird', 'fish', 'small'];
-
-    /** Services a vet clinic can tick; the app has a label and icon for each. */
-    public const CLINIC_SERVICES = [
-        'emergency_24h', 'home_visit', 'vaccination', 'surgery', 'dental',
-        'xray', 'lab', 'grooming', 'boarding', 'pharmacy',
     ];
 
     protected $appends = ['title', 'description'];

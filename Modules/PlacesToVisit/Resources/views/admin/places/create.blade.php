@@ -369,8 +369,6 @@
                     </div>
                 </div>
 
-                @include('placestovisit::admin.places._clinic_fields', ['place' => null])
-
                 <!-- Status -->
                 <div class="row">
                     <div class="col-md-6">

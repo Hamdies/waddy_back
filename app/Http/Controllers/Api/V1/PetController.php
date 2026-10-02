@@ -9,12 +9,11 @@ use App\Models\Item;
 use App\Models\Module;
 use App\Models\PetReminder;
 use App\Models\UserPet;
+use App\Models\VetClinic;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use Modules\PlacesToVisit\Entities\Place;
-use Modules\PlacesToVisit\Entities\Scopes\SurfaceScope;
 
 /**
  * The Pets module's own endpoints: the customer's pets and nearby vet clinics.
@@ -313,9 +312,8 @@ class PetController extends Controller
     /**
      * GET /api/v1/pets/clinics?lat=&lng=&radius=
      *
-     * Vet clinics are places in a `surface = pets` category. They are hidden
-     * from every Spots query by `SurfaceScope`; this is the one read that
-     * opts out of it, and it asks for pets categories only.
+     * Nearby vet clinics, nearest first, from the Pets module's own
+     * `vet_clinics` table (apart from Spots since 10-02).
      */
     public function clinics(Request $request): JsonResponse
     {
@@ -324,57 +322,53 @@ class PetController extends Controller
             'lng' => 'required|numeric|between:-180,180',
             'radius' => 'nullable|numeric|min:1|max:50',
         ]);
+        $lat = (float) $request->lat;
+        $lng = (float) $request->lng;
+        $radius = (float) ($request->radius ?? 15);
+        // LEAST(1, …) so rounding can't push acos() past its domain and
+        // return NULL for a clinic sitting exactly at the customer's point.
+        $haversine = '(6371 * acos(LEAST(1, cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))))';
 
-        $clinics = Place::withoutGlobalScope(SurfaceScope::class)
-            ->active()
-            ->whereIn('places.category_id', function ($query) {
-                $query->select('id')->from('place_categories')
-                    ->where('surface', SurfaceScope::PETS)
-                    ->where('is_active', true);
-            })
-            ->with('translations')
-            ->withCount(['reviews as reviews_count' => fn ($q) => $q->where('is_flagged', false)->whereNotNull('rating')])
-            ->withAvg(['reviews as reviews_avg_rating' => fn ($q) => $q->where('is_flagged', false)->whereNotNull('rating')], 'rating')
-            ->nearby((float) $request->lat, (float) $request->lng, (float) ($request->radius ?? 15))
+        $clinics = VetClinic::active()
+            ->select('vet_clinics.*')
+            ->selectRaw("{$haversine} AS distance", [$lat, $lng, $lat])
+            ->having('distance', '<', $radius)
+            ->orderBy('distance')
+            ->orderByDesc('priority')
             ->limit(30)
             ->get()
-            ->map(fn (Place $place) => $this->formatClinic($place))
+            ->map(fn (VetClinic $clinic) => $this->formatClinic($clinic))
             ->values();
 
         return response()->json($clinics);
     }
 
-    private function formatClinic(Place $place): array
+    private function formatClinic(VetClinic $clinic): array
     {
-        $count = (int) $place->reviews_count;
-        $today = strtolower(now()->format('l'));
-
         return [
-            'id' => $place->id,
-            'name' => $place->title,
-            'description' => $place->description,
-            'address' => $place->address,
-            'latitude' => (float) $place->latitude,
-            'longitude' => (float) $place->longitude,
-            'distance_km' => $place->distance !== null ? round((float) $place->distance, 2) : null,
-            'phone' => $place->phone,
-            'whatsapp' => self::whatsappNumber($place->phone),
-            'website' => $place->website,
-            'instagram' => $place->instagram,
-            'image' => $place->image,
-            'cover_image' => $place->cover_image,
-            'opening_hours' => $place->opening_hours,
-            // What it treats / offers (PET-19): fixed keys, the app owns labels.
-            'species' => array_values($place->clinic_species ?? []),
-            'services' => array_values($place->clinic_services ?? []),
-            // Starting price per service (EGP), and the vets (design 03).
-            'service_prices' => (object) ($place->clinic_service_prices ?? []),
-            'vets' => array_values($place->clinic_vets ?? []),
-            'today_hours' => $place->opening_hours[$today] ?? null,
-            'is_open_now' => $place->isOpenNow(),
-            // No number until there are enough reviews to mean something.
-            'rating' => $count >= self::MIN_REVIEWS_FOR_RATING ? round((float) $place->reviews_avg_rating, 1) : null,
-            'reviews_count' => $count,
+            'id' => $clinic->id,
+            'name' => $clinic->localizedName(),
+            'description' => $clinic->localizedDescription(),
+            'address' => $clinic->address,
+            'latitude' => $clinic->latitude,
+            'longitude' => $clinic->longitude,
+            'distance_km' => $clinic->distance !== null ? round((float) $clinic->distance, 2) : null,
+            'phone' => $clinic->phone,
+            'whatsapp' => self::whatsappNumber($clinic->phone),
+            'website' => $clinic->website,
+            'instagram' => $clinic->instagram,
+            'image' => $clinic->logoUrl(),
+            'cover_image' => $clinic->coverUrl(),
+            'opening_hours' => $clinic->opening_hours,
+            'species' => array_values($clinic->species ?? []),
+            'services' => array_values($clinic->services ?? []),
+            'service_prices' => (object) ($clinic->service_prices ?? []),
+            'vets' => array_values($clinic->vets ?? []),
+            'today_hours' => $clinic->todayHours(),
+            'is_open_now' => $clinic->isOpenNow(),
+            // No reviews for clinics yet (PET-18): no number rather than a made-up one.
+            'rating' => null,
+            'reviews_count' => 0,
         ];
     }
 

@@ -23,6 +23,17 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         //dashboard
         Route::get('/', 'DashboardController@dashboard')->name('dashboard');
 
+        // Pets module: vet clinics, their own records apart from Spots.
+        Route::group(['prefix' => 'vet-clinics', 'as' => 'vet-clinic.'], function () {
+            Route::get('/', 'VetClinicController@index')->name('index');
+            Route::get('create', 'VetClinicController@create')->name('create');
+            Route::post('/', 'VetClinicController@store')->name('store');
+            Route::get('{clinic}/edit', 'VetClinicController@edit')->name('edit')->whereNumber('clinic');
+            Route::put('{clinic}', 'VetClinicController@update')->name('update')->whereNumber('clinic');
+            Route::delete('{clinic}', 'VetClinicController@destroy')->name('destroy')->whereNumber('clinic');
+            Route::get('{clinic}/toggle-status', 'VetClinicController@toggleStatus')->name('toggle-status')->whereNumber('clinic');
+        });
+
         Route::get('maintenance-mode', 'SystemController@maintenance_mode')->name('maintenance-mode');
         Route::get('ramadan-mode', 'SystemController@ramadan_mode')->name('ramadan-mode');
         Route::get('landing-page', 'SystemController@landing_page')->name('landing-page');

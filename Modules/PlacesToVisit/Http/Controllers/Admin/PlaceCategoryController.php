@@ -34,7 +34,6 @@ class PlaceCategoryController extends Controller
             'name' => 'required|string|max:100',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'priority' => 'nullable|integer|min:0',
-            'surface' => 'nullable|in:spots,pets',
         ]);
 
         $imagePath = null;
@@ -46,7 +45,6 @@ class PlaceCategoryController extends Controller
             'name' => $request->name,
             'image' => $imagePath,
             'priority' => $request->priority ?? 0,
-            'surface' => $request->surface ?? 'spots',
             'is_active' => $request->has('is_active'),
         ]);
 
@@ -65,7 +63,6 @@ class PlaceCategoryController extends Controller
             'name' => 'required|string|max:100',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'priority' => 'nullable|integer|min:0',
-            'surface' => 'nullable|in:spots,pets',
         ]);
 
         $imagePath = $category->image;
@@ -80,7 +77,6 @@ class PlaceCategoryController extends Controller
             'name' => $request->name,
             'image' => $imagePath,
             'priority' => $request->priority ?? 0,
-            'surface' => $request->surface ?? 'spots',
             'is_active' => $request->has('is_active'),
         ]);
 

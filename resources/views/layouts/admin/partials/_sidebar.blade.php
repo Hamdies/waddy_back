@@ -668,6 +668,20 @@
                 @endif
                 <!-- End Food -->
 
+                    <!-- Pets: vet clinics (only in the Pets module) -->
+                    @if (\App\Models\Module::where('id', \Illuminate\Support\Facades\Config::get('module.current_module_id'))->value('variant') === 'pets')
+                    <li class="nav-item">
+                        <small class="nav-subtitle">{{ translate('messages.pets') }}</small>
+                        <small class="tio-more-horizontal nav-subtitle-replacer"></small>
+                    </li>
+                    <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/vet-clinics*') ? 'active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.vet-clinic.index') }}" title="{{ translate('messages.vet_clinics') }}">
+                            <i class="tio-hospital nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('messages.vet_clinics') }}</span>
+                        </a>
+                    </li>
+                    @endif
+
                     <!-- Store Store -->
                     <li class="nav-item">
                         <small class="nav-subtitle" title="{{ translate('messages.store_section') }}">{{ translate('messages.store_management') }}</small>

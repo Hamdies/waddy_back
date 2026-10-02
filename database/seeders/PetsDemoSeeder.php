@@ -13,9 +13,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-use Modules\PlacesToVisit\Entities\PlaceTranslation;
-use Modules\PlacesToVisit\Entities\PlaceZone;
-use Modules\PlacesToVisit\Entities\Scopes\SurfaceScope;
+use App\Models\VetClinic;
 
 /**
  * Test content for the Pets module: 3 pet shops with products, 5 vet clinics.
@@ -33,7 +31,7 @@ use Modules\PlacesToVisit\Entities\Scopes\SurfaceScope;
  * Admin › Places. Before launch, replace or delete these rows:
  *
  *   php artisan db:seed --class=PetsDemoSeeder --force   (re-run is harmless)
- *   delete: stores with phone LIKE '+2000000001%', places titled '* (demo)'
+ *   delete: stores with phone LIKE '+2000000001%', and the clinics from Admin › Vet clinics
  *
  * The Pets module itself stays as it is (created switched off). Turn it on
  * and enable it for the test zone in Admin › Modules (PET-14).
@@ -274,54 +272,31 @@ class PetsDemoSeeder extends Seeder
 
     // ==================== Clinics ====================
 
+    /**
+     * Demo clinics into `vet_clinics`, only when it is empty: a fresh
+     * environment. Live clinics are renamed and edited in admin, so matching
+     * them by the demo names would add duplicates on every re-run.
+     */
     private function createClinics(): void
     {
-        $categoryId = DB::table('place_categories')
-            ->where('surface', SurfaceScope::PETS)
-            ->where('name', 'Vet clinics')
-            ->value('id');
-        if (!$categoryId) {
-            $this->command->warn('No "Vet clinics" category; skipping clinics.');
+        if (VetClinic::exists()) {
+            $this->command->line('  clinics: vet_clinics already has rows, left as they are');
             return;
         }
-        $zoneId = PlaceZone::value('id');
-
         foreach ($this->clinics() as $data) {
-            $existingId = DB::table('places')
-                ->join('place_translations', 'places.id', '=', 'place_translations.place_id')
-                ->where('place_translations.locale', 'en')
-                ->where('place_translations.title', $data['title'])
-                ->value('places.id');
-
-            $attributes = [
-                'category_id' => $categoryId,
-                'zone_id' => $zoneId,
+            $clinic = VetClinic::create([
+                'name' => $data['title'],
+                'name_ar' => $data['title_ar'],
+                'description' => $data['description'],
+                'description_ar' => $data['description_ar'],
                 'latitude' => $data['lat'],
                 'longitude' => $data['lng'],
                 'address' => $data['address'],
                 'phone' => $data['phone'],
-                'opening_hours' => json_encode($data['hours']),
-                'is_active' => 1,
-                'is_featured' => 0,
-                'updated_at' => now(),
-            ];
-
-            if ($existingId) {
-                DB::table('places')->where('id', $existingId)->update($attributes);
-                $placeId = $existingId;
-            } else {
-                $attributes['redeem_token'] = Str::random(32);
-                $attributes['created_at'] = now();
-                $placeId = DB::table('places')->insertGetId($attributes);
-            }
-
-            foreach ([['en', $data['title'], $data['description']], ['ar', $data['title_ar'], $data['description_ar']]] as [$locale, $title, $description]) {
-                PlaceTranslation::updateOrCreate(
-                    ['place_id' => $placeId, 'locale' => $locale],
-                    ['title' => $title, 'description' => $description],
-                );
-            }
-            $this->command->line("  clinic {$placeId}: {$data['title']}");
+                'opening_hours' => $data['hours'],
+                'is_active' => true,
+            ]);
+            $this->command->line("  clinic {$clinic->id}: {$clinic->name}");
         }
     }
 

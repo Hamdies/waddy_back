@@ -7,8 +7,6 @@ use App\Models\Module;
 use App\Models\Translation;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Modules\PlacesToVisit\Entities\PlaceCategory;
-use Modules\PlacesToVisit\Entities\Scopes\SurfaceScope;
 
 /**
  * The Pets module: module row, shared category tree, vet clinic category.
@@ -28,8 +26,8 @@ use Modules\PlacesToVisit\Entities\Scopes\SurfaceScope;
  *   tree (`store_id` NULL) so every shop browses the same way (PET-02).
  *   "All pets" holds what several species share (bowls, carriers; D3).
  *   `code` is the stable key the app reads; names and images are free to edit.
- * - Vet clinics are places in a `surface = pets` category (PET-04). Clinics
- *   themselves are added from Admin › Places with that category.
+ * - Vet clinics are their own records (`vet_clinics`), managed from
+ *   Admin › Vet clinics in the Pets module; nothing to seed here.
  */
 class PetsModuleSeeder extends Seeder
 {
@@ -47,11 +45,6 @@ class PetsModuleSeeder extends Seeder
                 $this->command->line("  {$species['name']}: " . count($species['subs']) . ' sub-categories');
             }
 
-            $clinics = PlaceCategory::withoutGlobalScope(SurfaceScope::class)->updateOrCreate(
-                ['surface' => SurfaceScope::PETS, 'name' => 'Vet clinics'],
-                ['name_ar' => 'عيادات بيطرية', 'is_active' => true, 'priority' => 0]
-            );
-            $this->command->info("Vet clinics place category id {$clinics->id}.");
         });
     }
 

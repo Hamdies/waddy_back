@@ -57,12 +57,7 @@
                                      onerror="this.src='{{ asset('public/assets/admin/img/160x160/img1.jpg') }}'"
                                      class="rounded" width="60">
                             </td>
-                            <td>
-                                {{ $category->name }}
-                                @if (($category->surface ?? 'spots') === 'pets')
-                                    <span class="badge badge-soft-info ml-1">{{ translate('messages.pets_vet_clinics') }}</span>
-                                @endif
-                            </td>
+                            <td>{{ $category->name }}</td>
                             <td>{{ $category->priority }}</td>
                             <td>{{ $category->places()->count() }}</td>
                             <td>
