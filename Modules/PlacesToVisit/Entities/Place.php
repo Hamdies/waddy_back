@@ -24,7 +24,12 @@ class Place extends Model
         'opening_hours' => 'array',
         'clinic_species' => 'array',
         'clinic_services' => 'array',
+        'clinic_service_prices' => 'array',
+        'clinic_vets' => 'array',
     ];
+
+    /** How many vets the admin form offers rows for. */
+    public const CLINIC_MAX_VETS = 4;
 
     /** Animals a vet clinic can tick (keys match the app's pet species). */
     public const CLINIC_SPECIES = ['cat', 'dog', 'bird', 'fish', 'small'];

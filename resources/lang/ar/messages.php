@@ -5710,4 +5710,10 @@
   'clinic_service_grooming' => 'تجميل وتنظيف',
   'clinic_service_boarding' => 'إقامة',
   'clinic_service_pharmacy' => 'صيدلية',
+  'clinic_price_hint' => 'اختار الخدمة وممكن تكتب سعرها الابتدائي بالجنيه. بيظهر "من … جنيه" في التطبيق.',
+  'clinic_price_from' => 'من (جنيه)',
+  'clinic_vets' => 'الأطباء (لحد ٤)',
+  'clinic_vet_name' => 'الاسم، مثلاً د. منى صالح',
+  'clinic_vet_role' => 'التخصص، مثلاً جراحة',
+  'clinic_vet_years' => 'سنين الخبرة',
 );
