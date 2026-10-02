@@ -1,0 +1,75 @@
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+/**
+ * Test data for the clinic page (design 03): what each of the 5 clinics
+ * treats, its services and starting prices, and its vets.
+ *
+ *   php artisan db:seed --class=PetsClinicDetailsSeeder --force
+ *
+ * Keyed on the place ids PetsDemoSeeder created (44–48). Re-running
+ * overwrites the same fields, nothing else (names, photos, hours untouched).
+ *
+ * PLACEHOLDER CONTENT. The vets and prices are the design's sample data, not
+ * facts about these clinics. Several are real businesses: replace these from
+ * Admin › Places with what each clinic actually offers before customers rely
+ * on it, or clear them all with:
+ *
+ *   php artisan tinker --execute='DB::table("places")->whereIn("id",[44,45,46,47,48])
+ *     ->update(["clinic_species"=>null,"clinic_services"=>null,
+ *               "clinic_service_prices"=>null,"clinic_vets"=>null]);'
+ */
+class PetsClinicDetailsSeeder extends Seeder
+{
+    public function run(): void
+    {
+        foreach ($this->clinics() as $id => $data) {
+            $updated = DB::table('places')->where('id', $id)->update([
+                'clinic_species' => json_encode($data['species']),
+                'clinic_services' => json_encode(array_keys($data['services'])),
+                'clinic_service_prices' => json_encode(array_filter($data['services'], fn ($p) => $p !== null)),
+                'clinic_vets' => json_encode($data['vets']),
+                'updated_at' => now(),
+            ]);
+            $this->command->line($updated ? "  clinic {$id}: updated" : "  clinic {$id}: not found, skipped");
+        }
+    }
+
+    /** id => species, services (key => starting price or null), vets */
+    private function clinics(): array
+    {
+        $vet = fn (string $name, string $role, int $years) => compact('name', 'role', 'years');
+
+        return [
+            44 => [
+                'species' => ['cat', 'dog'],
+                'services' => ['vaccination' => 450, 'grooming' => 350, 'dental' => 900, 'surgery' => 2500, 'pharmacy' => null],
+                'vets' => [$vet('Dr. Mona Saleh', 'General practice', 12), $vet('Dr. Omar Fathy', 'Surgery', 8)],
+            ],
+            45 => [
+                'species' => ['cat', 'dog', 'small'],
+                'services' => ['vaccination' => 400, 'home_visit' => 600, 'grooming' => 300, 'lab' => 500],
+                'vets' => [$vet('Dr. Sara Khaled', 'General practice', 9)],
+            ],
+            46 => [
+                'species' => ['cat', 'dog', 'bird'],
+                'services' => ['vaccination' => 420, 'dental' => 850, 'xray' => 650, 'pharmacy' => null],
+                'vets' => [$vet('Dr. Hala Samir', 'Dentistry', 6), $vet('Dr. Karim Adel', 'Internal medicine', 11)],
+            ],
+            47 => [
+                'species' => ['cat', 'dog', 'bird', 'small'],
+                'services' => ['emergency_24h' => 600, 'surgery' => 2800, 'xray' => 700, 'lab' => 700, 'boarding' => 250],
+                'vets' => [$vet('Dr. Yasmin Adel', 'Emergency care', 10), $vet('Dr. Tarek Nabil', 'Internal medicine', 14), $vet('Dr. Nour Hassan', 'Surgery', 7)],
+            ],
+            48 => [
+                'species' => ['bird', 'fish', 'small'],
+                'services' => ['vaccination' => 300, 'grooming' => 150, 'lab' => 200, 'home_visit' => 500],
+                'vets' => [$vet('Dr. Hany Ibrahim', 'Exotics & birds', 15)],
+            ],
+        ];
+    }
+}
