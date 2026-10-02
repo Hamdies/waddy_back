@@ -24,6 +24,9 @@ use Illuminate\Support\Facades\Validator;
 
 class ItemController extends Controller
 {
+    /** Orders a pair must share before it is offered as "goes well with". */
+    private const PAIRS_MIN_ORDERS = 2;
+
 
     public function get_latest_products(Request $request)
     {
@@ -546,6 +549,68 @@ class ItemController extends Controller
         return response()->json([
             'errors' => ['code' => 'product-001', 'message' => translate('messages.not_found')]
         ], 404);
+    }
+
+    /**
+     * What other customers bought in the same orders as this item, at the
+     * same store, most often first. This is the data behind the product
+     * page's "Goes well with" rail, so it only ever returns real pairings:
+     * an item with no repeated co-purchase gets an empty list and the app
+     * hides the rail rather than filling it with the aisle.
+     *
+     * A pair needs at least PAIRS_MIN_ORDERS orders together, so one odd
+     * basket does not make a recommendation.
+     */
+    public function get_pairs_with(Request $request, $id)
+    {
+        $item = Item::active()->find($id);
+        if (!$item) {
+            return response()->json([
+                'errors' => ['code' => 'product-001', 'message' => translate('messages.not_found')]
+            ], 404);
+        }
+
+        // The latest orders that held this item and were actually delivered.
+        $orderIds = DB::table('order_details')
+            ->join('orders', 'orders.id', '=', 'order_details.order_id')
+            ->where('order_details.item_id', $item->id)
+            ->where('orders.store_id', $item->store_id)
+            ->where('orders.order_status', 'delivered')
+            ->orderByDesc('order_details.order_id')
+            ->limit(500)
+            ->pluck('order_details.order_id');
+
+        if ($orderIds->isEmpty()) {
+            return response()->json([], 200);
+        }
+
+        $itemIds = DB::table('order_details')
+            ->whereIn('order_id', $orderIds)
+            ->whereNotNull('item_id')
+            ->where('item_id', '!=', $item->id)
+            ->groupBy('item_id')
+            ->havingRaw('COUNT(DISTINCT order_id) >= ?', [self::PAIRS_MIN_ORDERS])
+            ->orderByRaw('COUNT(DISTINCT order_id) DESC')
+            ->limit(20)
+            ->pluck('item_id')
+            ->all();
+
+        if (empty($itemIds)) {
+            return response()->json([], 200);
+        }
+
+        $items = Item::active()
+            ->where('store_id', $item->store_id)
+            ->whereIn('id', $itemIds)
+            ->get()
+            ->sortBy(fn ($paired) => array_search($paired->id, $itemIds))
+            ->values()
+            ->take(10);
+
+        return response()->json(
+            Helpers::product_data_formatting($items, true, false, app()->getLocale()),
+            200
+        );
     }
 
     /**
