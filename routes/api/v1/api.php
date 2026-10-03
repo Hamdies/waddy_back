@@ -454,6 +454,8 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
                 Route::post('refund-request', 'OrderController@refund_request');
                 Route::get('refund-reasons', 'OrderController@refund_reasons');
                 Route::get('track', 'OrderController@track_order');
+                // Rider position only, for the live map's 10 s poll (LT-05).
+                Route::get('rider-location', 'OrderController@rider_location');
                 Route::put('payment-method', 'OrderController@update_payment_method');
                 Route::put('offline-payment', 'OrderController@offline_payment');
                 Route::put('offline-payment-update', 'OrderController@update_offline_payment_info');

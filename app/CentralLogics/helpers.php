@@ -1212,6 +1212,10 @@ class Helpers
             $item['lat'] = $item->last_location ? $item->last_location->latitude : null;
             $item['lng'] = $item->last_location ? $item->last_location->longitude : null;
             $item['location'] = $item->last_location ? $item->last_location->location : null;
+            // How old the fix is, so the customer's map can hide a rider whose
+            // app stopped reporting (LT-07). Server-side, immune to phone clocks.
+            $fixedAt = $item->last_location ? ($item->last_location->time ?? $item->last_location->updated_at) : null;
+            $item['location_age_seconds'] = $fixedAt ? max(0, now()->getTimestamp() - $fixedAt->getTimestamp()) : null;
             if ($item['rating']) {
                 unset($item['rating']);
             }

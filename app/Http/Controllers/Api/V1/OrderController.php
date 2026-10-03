@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Models\Admin;
 use App\Models\Order;
+use App\Models\DeliveryHistory;
 use App\Models\Store;
 use App\Models\Refund;
 use App\Mail\PlaceOrder;
@@ -76,6 +77,63 @@ class OrderController extends Controller
             ], 404);
         }
         return response()->json($order, 200);
+    }
+
+    /**
+     * Where the rider is, and nothing else: the customer's live map polls this
+     * every 10 s while the rider is close, instead of reloading the whole order
+     * through track_order (LT-05). Ownership is checked on every call; only the
+     * rider's position is cached, briefly, so several phones on one order (or a
+     * quick re-open) share one read.
+     */
+    public function rider_location(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'order_id' => 'required',
+            'contact_number' => $request->user ? 'nullable' : 'required',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+
+        if ($request['contact_number'] && (substr($request['contact_number'], 0, 1) !== '+')) {
+            $request['contact_number'] = '+' . $request['contact_number'];
+        }
+
+        $order = Order::select(['id', 'order_status', 'delivery_man_id'])
+            ->where('id', $request['order_id'])
+            ->when($request->user, fn ($q) => $q->where('user_id', $request->user->id))
+            ->when(!$request->user, fn ($q) => $q->whereJsonContains('delivery_address->contact_person_number', $request['contact_number']))
+            ->Notpos()->first();
+        if (!$order) {
+            return response()->json([
+                'errors' => [['code' => 'order', 'message' => translate('messages.not_found')]]
+            ], 404);
+        }
+
+        $fix = $order->delivery_man_id
+            ? \Illuminate\Support\Facades\Cache::remember(
+                'rider_loc:' . $order->delivery_man_id,
+                5,
+                fn () => DeliveryHistory::where('delivery_man_id', $order->delivery_man_id)
+                    ->latest('id')
+                    ->first(['latitude', 'longitude', 'time', 'updated_at'])
+                    ?->toArray()
+            )
+            : null;
+
+        $at = $fix ? ($fix['time'] ?? $fix['updated_at'] ?? null) : null;
+        $at = $at ? \Carbon\Carbon::parse($at) : null;
+
+        return response()->json([
+            'order_id' => $order->id,
+            'order_status' => $order->order_status,
+            'lat' => $fix['latitude'] ?? null,
+            'lng' => $fix['longitude'] ?? null,
+            // Age is computed here so a phone with a wrong clock still sees
+            // a stale fix as stale.
+            'location_age_seconds' => $at ? max(0, now()->getTimestamp() - $at->getTimestamp()) : null,
+        ], 200);
     }
 
     public function get_order_list(Request $request)

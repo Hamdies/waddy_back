@@ -262,6 +262,14 @@ class ItemController extends Controller
         ];
 
         $data['products'] = Helpers::product_data_formatting($data['products'], true, false, app()->getLocale());
+        // Search results are shown grouped by store (logo, window, closed
+        // state), so each row names its store flat instead of making the app
+        // dig through the nested relation.
+        foreach ($data['products'] as $product) {
+            $store = $product->store;
+            $product['store_logo_full_url'] = $store?->logo_full_url;
+            $product['store_open'] = (bool) ($store && $store->active && (int) $store->open === 1);
+        }
         return response()->json($data, 200);
     }
 
