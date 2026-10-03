@@ -704,6 +704,25 @@ class Store extends Model
         $query->selectRaw('*, IF(((select count(*) from `store_schedule` where `stores`.`id` = `store_schedule`.`store_id` and `store_schedule`.`day` = '.now()->dayOfWeek.' and `store_schedule`.`opening_time` < "'.now()->format('H:i:s').'" and `store_schedule`.`closing_time` >"'.now()->format('H:i:s').'") > 0), true, false) as open,ST_Distance_Sphere(point(longitude, latitude),point('.$longitude.', '.$latitude.')) as distance');
     }
     /**
+     * Adds `max_item_discount`: the deepest markdown, as a whole percent, on
+     * any live item the store sells — 0 when nothing is on sale.
+     *
+     * Flat-amount markdowns are converted to a percent of the item's price so
+     * the two kinds can be compared and shown as one "up to X%" claim. Only
+     * items a shopper can actually buy count (active, approved), otherwise a
+     * hidden item would advertise a discount nobody can reach.
+     */
+    public function scopeWithMaxItemDiscount($query): void
+    {
+        $query->addSelect(['max_item_discount' => DB::table('items')
+            ->selectRaw("COALESCE(ROUND(MAX(CASE WHEN discount_type = 'percent' THEN discount WHEN price > 0 THEN discount / price * 100 ELSE 0 END)), 0)")
+            ->whereColumn('items.store_id', 'stores.id')
+            ->where('items.status', 1)
+            ->where('items.is_approved', 1)
+            ->where('items.discount', '>', 0)]);
+    }
+
+    /**
      * Adds the `open`, `distance` and `min_delivery_time` aliases.
      *
      * `delivery_time` is written as "30-45 min" by the admin panel but as a

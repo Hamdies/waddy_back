@@ -38,6 +38,7 @@ class StoreLogic
 
         $query = Store::type($type)->
         WithOpenWithDeliveryTime($longitude??0,$latitude??0)
+            ->withMaxItemDiscount()
             ->withCount(['items','campaigns','reviews','orders'])
             ->with(['discount'=>function($q){
                 return $q->validate();
@@ -268,6 +269,7 @@ class StoreLogic
 
 
     $query = Store::withOpen($longitude??0,$latitude??0)
+            ->withMaxItemDiscount()
             ->withCount(['items','campaigns'])
             ->with(['discount'=>function($q){
                 return $q->validate();
@@ -346,6 +348,7 @@ class StoreLogic
         $popular_store_sort_by_rating = PriorityList::where('name', 'popular_store_sort_by_rating')->where('type','rating')->first()?->value ??'';
 
         $query = Store::withOpen($longitude??0,$latitude??0)
+            ->withMaxItemDiscount()
             ->withCount(['items','campaigns'])
             ->with(['discount'=>function($q){
                 return $q->validate();
