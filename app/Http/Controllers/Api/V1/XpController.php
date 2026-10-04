@@ -431,15 +431,31 @@ class XpController extends Controller
                 ];
             });
 
-        // Group by status
-        $usable = $prizes->filter(fn($p) => $p['is_usable']);
+        // Every prize lands in exactly one group (X-32). These used to be three
+        // independent filters, and a prize past `expires_at` whose status the
+        // scheduler hadn't flipped yet (or one held back by a period limit)
+        // matched none of them, so it vanished from the app.
+        $isPastDeadline = fn($p) => $p['expires_at'] && now()->gt($p['expires_at']);
+
         $used = $prizes->filter(fn($p) => $p['status'] === 'used');
-        $expired = $prizes->filter(fn($p) => $p['status'] === 'expired');
+        $expired = $prizes->filter(
+            fn($p) => $p['status'] === 'expired'
+                || ($p['status'] !== 'used' && !$p['is_usable'] && $isPastDeadline($p))
+        );
+        $usable = $prizes->filter(fn($p) => $p['is_usable']);
+        // Owned and live, but not usable right now (a period limit). Shown,
+        // not dropped.
+        $waiting = $prizes->filter(
+            fn($p) => !$p['is_usable']
+                && in_array($p['status'], ['unlocked', 'claimed'])
+                && !$isPastDeadline($p)
+        );
 
         return response()->json([
             'usable_prizes' => $usable->values(),
             'used_prizes' => $used->values(),
             'expired_prizes' => $expired->values(),
+            'waiting_prizes' => $waiting->values(),
         ], 200);
     }
 
