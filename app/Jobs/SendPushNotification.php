@@ -82,27 +82,41 @@ class SendPushNotification implements ShouldQueue
      */
     private function accessToken(): ?string
     {
-        return Cache::remember($this->tokenCacheKey(), 3300, function () {
-            $jwtHeader = base64_encode(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
-            $jwtPayload = base64_encode(json_encode([
-                'iss' => $this->credentials['client_email'],
-                'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
-                'aud' => 'https://oauth2.googleapis.com/token',
-                'exp' => time() + 3600,
-                'iat' => time(),
-            ]));
+        // The cache is an optimisation, never a dependency. A cache directory
+        // written by two different OS users (artisan as `deploy`, the web
+        // server as `www-data`) makes the write throw "Permission denied", and
+        // that used to abort the whole push — every notification silently
+        // dropped for as long as the file stayed owned by the other user.
+        try {
+            return Cache::remember($this->tokenCacheKey(), 3300, fn () => $this->mintAccessToken());
+        } catch (\Throwable $e) {
+            Log::warning('FCM token cache unavailable, minting uncached: ' . $e->getMessage());
 
-            $unsignedJwt = $jwtHeader . '.' . $jwtPayload;
-            openssl_sign($unsignedJwt, $signature, $this->credentials['private_key'], OPENSSL_ALGO_SHA256);
-            $jwt = $unsignedJwt . '.' . base64_encode($signature);
+            return $this->mintAccessToken();
+        }
+    }
 
-            $response = Http::asForm()->timeout(15)->post('https://oauth2.googleapis.com/token', [
-                'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-                'assertion' => $jwt,
-            ]);
+    private function mintAccessToken(): ?string
+    {
+        $jwtHeader = base64_encode(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
+        $jwtPayload = base64_encode(json_encode([
+            'iss' => $this->credentials['client_email'],
+            'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
+            'aud' => 'https://oauth2.googleapis.com/token',
+            'exp' => time() + 3600,
+            'iat' => time(),
+        ]));
 
-            return $response->json('access_token');
-        });
+        $unsignedJwt = $jwtHeader . '.' . $jwtPayload;
+        openssl_sign($unsignedJwt, $signature, $this->credentials['private_key'], OPENSSL_ALGO_SHA256);
+        $jwt = $unsignedJwt . '.' . base64_encode($signature);
+
+        $response = Http::asForm()->timeout(15)->post('https://oauth2.googleapis.com/token', [
+            'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+            'assertion' => $jwt,
+        ]);
+
+        return $response->json('access_token');
     }
 
     private function tokenCacheKey(): string

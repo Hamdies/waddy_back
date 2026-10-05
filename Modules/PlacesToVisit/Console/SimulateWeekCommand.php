@@ -216,7 +216,7 @@ class SimulateWeekCommand extends Command
                 $place
             );
             $this->line($sent > 0
-                ? '  "Claw has picked" push sent'
+                ? '  "Claw has picked" push QUEUED (delivery is not confirmed — it goes through the queue worker and FCM)'
                 : '  No push — that account has no cm_firebase_token yet');
             return;
         }
@@ -239,7 +239,7 @@ class SimulateWeekCommand extends Command
 
         $pushed = app(PrizeDrawService::class)->notifyWinner($donor->fresh('place'));
         $this->line($pushed
-            ? '  Win push sent'
+            ? '  Win push QUEUED (delivery is not confirmed — it goes through the queue worker and FCM)'
             : '  No win push — that account has no cm_firebase_token yet');
     }
 
