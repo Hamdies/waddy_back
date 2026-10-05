@@ -101,7 +101,13 @@ class CartController extends Controller
             ], 404);
         }
 
-        return $this->withLineLock($is_guest, $user_id, $request->item_id, function () use ($request, $user_id, $is_guest, $preference, $model, $cartTypes, $item) {
+        // The module is the header's, but the global search sends none
+        // (`api/v1/customer*` is exempt from ModuleCheckMiddleware), and the
+        // cart's `module_id` is NOT NULL — that insert was a 500. An item
+        // always knows its own module.
+        $moduleId = $request->header('moduleId') ?: $item->module_id;
+
+        return $this->withLineLock($is_guest, $user_id, $request->item_id, function () use ($request, $user_id, $is_guest, $preference, $model, $cartTypes, $item, $moduleId) {
             // The same item with the same variation, the same add-ons AND the
             // same produce answer is one line; a different answer ("ripe
             // later" next to "ready to eat") or other add-ons are a line of
@@ -111,7 +117,7 @@ class CartController extends Controller
                 ->whereIn('item_type', $cartTypes)
                 ->where('user_id', $user_id)
                 ->where('is_guest', $is_guest)
-                ->where('module_id', $request->header('moduleId'))
+                ->where('module_id', $moduleId)
                 ->get()
                 ->first(fn ($line) => json_decode($line->variation ?? '""', true) == $request->variation
                     && ($line->preference ?: null) === $preference
@@ -135,18 +141,18 @@ class CartController extends Controller
                 // the order is repriced at placement anyway.
                 $cart->increment('quantity', $request->quantity);
             } else {
-                $this->insertLine($request, $user_id, $is_guest, $preference, $model, $item);
+                $this->insertLine($request, $user_id, $is_guest, $preference, $model, $item, $moduleId);
             }
 
             return response()->json($this->userCart($user_id, $is_guest), 200);
         });
     }
 
-    private function insertLine(Request $request, $user_id, int $is_guest, ?string $preference, string $model, $item): void
+    private function insertLine(Request $request, $user_id, int $is_guest, ?string $preference, string $model, $item, $moduleId): void
     {
         $cart = new Cart();
         $cart->user_id = $user_id;
-        $cart->module_id = $request->header('moduleId');
+        $cart->module_id = $moduleId;
         $cart->item_id = $request->item_id;
         $cart->is_guest = $is_guest;
         $cart->add_on_ids = isset($request->add_on_ids) ? json_encode($request->add_on_ids) : json_encode([]);
@@ -249,7 +255,7 @@ class CartController extends Controller
             }
 
             $cart->user_id = $user_id;
-            $cart->module_id = $request->header('moduleId');
+            $cart->module_id = $request->header('moduleId') ?: ($cart->module_id ?: $item?->module_id);
             $cart->is_guest = $is_guest;
             $cart->add_on_ids = isset($request->add_on_ids) ? json_encode($request->add_on_ids) : $cart->add_on_ids;
             $cart->add_on_qtys = isset($request->add_on_qtys) ? json_encode($request->add_on_qtys) : $cart->add_on_qtys;
@@ -286,7 +292,7 @@ class CartController extends Controller
         $carts = $this->formatCartCollection(
             Cart::where('user_id', $user_id)
                 ->where('is_guest', $is_guest)
-                ->where('module_id', $request->header('moduleId'))
+                ->when($request->header('moduleId'), fn ($q, $m) => $q->where('module_id', $m))
                 ->get()
                 ->filter(function ($data) {
                     return $data->item !== null;
