@@ -7,6 +7,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Modules\PlacesToVisit\Entities\Place;
+use Modules\PlacesToVisit\Entities\PlaceDrawEntrant;
 use Modules\PlacesToVisit\Entities\PlacePrize;
 use Modules\PlacesToVisit\Entities\PlaceVote;
 use Modules\PlacesToVisit\Entities\PlaceWinner;
@@ -30,7 +31,8 @@ class SimulateWeekCommand extends Command
         {--place= : Place id to crown (defaults to the first active place)}
         {--voters=12 : How many test voters to put in the pool}
         {--period= : ISO week to play (defaults to last week)}
-        {--user= : Also vote as a real user (id, phone or email) so the win shows in the app}
+        {--user= : A real user (id, phone or email) to see the result as, in the app}
+        {--outcome=won : What --user sees: won (picked by the claw), lost (voted for the winning venue, not picked) or onlooker (did not vote for it)}
         {--cleanup : Delete everything a previous simulation created, then stop}';
 
     protected $description = '[dev] Simulate a full Spots week: votes → winner → prize draw → printable codes';
@@ -50,6 +52,12 @@ class SimulateWeekCommand extends Command
 
         if ($this->option('cleanup')) {
             return $this->cleanup();
+        }
+
+        $outcome = (string) $this->option('outcome');
+        if (!in_array($outcome, ['won', 'lost', 'onlooker'], true)) {
+            $this->error("--outcome must be won, lost or onlooker (got \"{$outcome}\").");
+            return self::FAILURE;
         }
 
         $period = $this->option('period') ?: RaceClock::lastClosedPeriod();
@@ -106,14 +114,6 @@ class SimulateWeekCommand extends Command
         $voters = $this->seedVoters((int) $this->option('voters'));
         $this->castVotes($place, $voters, $period);
 
-        if ($realUser) {
-            PlaceVote::updateOrCreate(
-                ['place_id' => $place->id, 'user_id' => $realUser->id, 'period' => $period],
-                ['rating' => 5, 'is_flagged' => false]
-            );
-            $name = trim("{$realUser->f_name} {$realUser->l_name}") ?: "#{$realUser->id}";
-            $this->line("  Added real user {$name} (#{$realUser->id}) to the pool");
-        }
         $realUserId = $realUser?->id;
 
         $winners = $winnerService->closePeriod($period);
@@ -123,36 +123,21 @@ class SimulateWeekCommand extends Command
             return self::FAILURE;
         }
 
-        // The draw is genuinely random, so a real tester usually isn't picked.
-        // The point of --user is to see the win in the app, so hand them a
-        // slot after the fact rather than making them re-roll the command.
-        $forcedWin = false;
-        if ($realUserId && !PlacePrize::where('period', $period)->where('user_id', $realUserId)->exists()) {
-            $donor = PlacePrize::where('period', $period)
-                ->whereNotIn('user_id', [$realUserId])
-                ->orderByDesc('id')
-                ->first();
-
-            if ($donor) {
-                $donor->update(['user_id' => $realUserId]);
-                app(\Modules\PlacesToVisit\Services\LeaderboardService::class)->clearRecentWinnersCache();
-                $forcedWin = true;
-
-                // The draw already pushed to whoever originally held this
-                // slot, so the real tester has to be notified explicitly —
-                // otherwise --user produces a prize with no notification.
-                $pushed = app(PrizeDrawService::class)->notifyWinner($donor->fresh('place'));
-                $this->line($pushed
-                    ? '  Win push sent'
-                    : '  No win push — that account has no cm_firebase_token yet');
-            }
+        // The real tester is placed AFTER the draw, not voted in before it.
+        // The draw is random, so voting them in first would pick them one time
+        // in five and push them a "you won" they were not meant to see, and a
+        // reassigned prize left the claw's record naming someone else. Placing
+        // them afterwards makes each outcome deterministic and keeps the prize,
+        // the claw record and the pushes telling the same story.
+        $overall = $winners->firstWhere('zone_id', null);
+        if ($realUser && $overall) {
+            $this->placeRealUser($realUser, $outcome, $overall, $place, $period);
         }
 
         $prizes = PlacePrize::with('user')->where('period', $period)->get();
 
         $this->newLine();
         $this->components->info('Winner');
-        $overall = $winners->firstWhere('zone_id', null);
         $this->line("  Venue      {$place->title} (#{$place->id})");
         $this->line("  Votes      " . ($overall?->votes_count ?? 0));
         $this->line("  Zone wins  " . $winners->where('zone_id', '!=', null)->count() . ' (no prize draw — overall only)');
@@ -171,14 +156,9 @@ class SimulateWeekCommand extends Command
 
         if ($realUserId) {
             $mine = $prizes->firstWhere('user_id', $realUserId);
-            if ($mine) {
-                $this->line("  User #{$realUserId} won: {$mine->code}   ← open My Prizes in the app");
-                if ($forcedWin) {
-                    $this->comment('  (slot reassigned to them — the real draw is random and did not pick them)');
-                }
-            } else {
-                $this->warn("  User #{$realUserId} has no prize — they are inside the 30-day repeat-winner cooldown.");
-            }
+            $label = ['won' => 'WON the claw', 'lost' => 'was in the machine and LOST', 'onlooker' => 'did NOT vote for the winner'][$outcome];
+            $this->line("  User #{$realUserId} {$label}" . ($mine ? ": {$mine->code}   ← open My Prizes in the app" : ''));
+            $this->line("  Open in the app: Spots home card, or /spots/draw?period={$period}");
             $this->newLine();
         }
 
@@ -188,6 +168,79 @@ class SimulateWeekCommand extends Command
         $this->comment('  Undo everything:  php artisan placestovisit:simulate-week --cleanup');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Put the real tester into the finished draw as [$outcome], writing every
+     * row the app reads (prize, claw record) and sending the matching push.
+     *
+     *  - won      takes a drawn winner's slot (prize + pull order) and gets the
+     *             win push.
+     *  - lost     joins the machine as a never-pulled entrant and gets the
+     *             "the claw has picked" push.
+     *  - onlooker is not in the draw at all and gets nothing.
+     */
+    protected function placeRealUser(User $user, string $outcome, $overall, Place $place, string $period): void
+    {
+        if ($outcome === 'onlooker') {
+            $this->line("  User #{$user->id} left out of the draw (onlooker) — no push");
+            return;
+        }
+
+        $entrants = PlaceDrawEntrant::forPeriod($period);
+        $total = (clone $entrants)->value('total_entrants');
+
+        // The machine is one bigger now. Every row carries the real pool size.
+        if ($total !== null) {
+            (clone $entrants)->increment('total_entrants');
+            $total++;
+        }
+
+        $mine = PlaceDrawEntrant::updateOrCreate(
+            ['period' => $period, 'user_id' => $user->id],
+            [
+                'place_winner_id' => $overall->id,
+                'place_id' => $place->id,
+                'votes' => 1,
+                'rank' => 0,
+                'total_entrants' => $total,
+            ]
+        );
+
+        if ($outcome === 'lost') {
+            $winnerIds = PlacePrize::where('period', $period)->pluck('user_id')->map(fn($id) => (int) $id);
+            $sent = app(PrizeDrawService::class)->notifyEntrants(
+                $overall,
+                collect([['user_id' => $user->id]]),
+                $winnerIds,
+                $place
+            );
+            $this->line($sent > 0
+                ? '  "Claw has picked" push sent'
+                : '  No push — that account has no cm_firebase_token yet');
+            return;
+        }
+
+        // won: take over the last drawn winner's slot, prize and pull order.
+        $donor = PlacePrize::where('period', $period)->where('user_id', '!=', $user->id)->orderByDesc('id')->first();
+        if (!$donor) {
+            $this->warn('  No drawn winner to take a slot from — nothing to reassign.');
+            return;
+        }
+
+        $donorEntrant = PlaceDrawEntrant::forPeriod($period)->where('user_id', $donor->user_id)->first();
+        if ($donorEntrant) {
+            $mine->update(['rank' => $donorEntrant->rank]);
+            $donorEntrant->update(['rank' => 0]);
+        }
+
+        $donor->update(['user_id' => $user->id]);
+        app(\Modules\PlacesToVisit\Services\LeaderboardService::class)->clearRecentWinnersCache();
+
+        $pushed = app(PrizeDrawService::class)->notifyWinner($donor->fresh('place'));
+        $this->line($pushed
+            ? '  Win push sent'
+            : '  No win push — that account has no cm_firebase_token yet');
     }
 
     /**
@@ -287,6 +340,10 @@ class SimulateWeekCommand extends Command
         $periods = PlaceVote::whereIn('user_id', $userIds)->distinct()->pluck('period');
 
         DB::transaction(function () use ($userIds, $periods) {
+            // The claw's record of who was in the machine. Leaving these behind
+            // made a re-run of the same week fail on the (period, user_id)
+            // unique key, and orphaned rows for deleted users.
+            PlaceDrawEntrant::whereIn('period', $periods)->delete();
             PlacePrize::whereIn('period', $periods)->delete();
             PlaceWinner::whereIn('period', $periods)->delete();
             PlaceVote::whereIn('user_id', $userIds)->delete();
