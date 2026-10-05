@@ -13,6 +13,9 @@ use App\Models\StoreSchedule;
 use App\Models\BusinessSetting;
 use App\Models\OrderTransaction;
 use Illuminate\Support\Facades\DB;
+use App\Services\Search\ItemSearch;
+use App\Services\Search\SearchQuery;
+use App\Services\Search\StoreSearch;
 
 class StoreLogic
 {
@@ -604,7 +607,9 @@ class StoreLogic
 
     public static function search_stores($name, $zone_id, $category_id= null,$limit = 10, $offset = 1, $type = 'all',$longitude=0,$latitude=0,$filter=null,$rating_count=null,$category_ids=null)
     {
-        $key = explode(' ', $name);
+        $search = SearchQuery::fromString($name);
+        $limit = ItemSearch::limit($limit, (new Store)->getPerPage());
+        $offset = ItemSearch::page($offset);
         $paginator = Store::WithOpenWithDeliveryTime($longitude??0,$latitude??0)
         ->whereHas('zone.modules', function($query){
             return $query->where('modules.id', config('module.current_module_data')['id']);
@@ -612,25 +617,16 @@ class StoreLogic
         ->withCount(['items','campaigns'])->with(['discount'=>function($q){
             return $q->validate();
         }, 'cuisines:id,name'])->weekday()
-        ->where(function ($q) use ($key) {
-            foreach ($key as $value) {
-                $q->orWhere('name', 'like', "%{$value}%");
-            }
-            $relationships = [
-                'translations' => 'value',
-                'items.nutritions' => 'nutrition',
-                'items.allergies' => 'allergy',
-                'items.generic' => 'generic_name',
-                'items.ecommerce_item_details.brand' => 'name',
-                'items.pharmacy_item_details.common_condition' => 'name'
-            ];
-            return  $q->applyRelationShipSearch(relationships:$relationships ,searchParameter:$key);
-        })
+        ->withExists(['items as has_discounted_item' => function($q){
+            return $q->where('discount', '>', 0);
+        }])
+        ->tap(fn ($query) => ItemSearch::applyTextMatch($query, $search, ['stores.name'], StoreSearch::RELATIONSHIPS))
             ->when(config('module.current_module_data'), function($query)use($zone_id){
-                return   $query->module(config('module.current_module_data')['id']);
+                $query->module(config('module.current_module_data')['id']);
                 if(!config('module.current_module_data')['all_zone_service']) {
-                    return   $query->whereIn('zone_id', json_decode($zone_id, true));
+                    $query->whereIn('zone_id', json_decode($zone_id, true));
                 }
+                return $query;
             })
             ->when($category_id, function($query)use($category_id){
                 return $query->whereHas('items.category', function($q)use($category_id){
@@ -682,39 +678,35 @@ class StoreLogic
             ->when($filter && in_array('fast_delivery',$filter),function ($qurey){
                 return $qurey->orderBy('min_delivery_time');
             })
+            ->tap(fn ($query) => ItemSearch::orderByRelevance($query, $search, 'stores.name'))
             ->type($type)->paginate($limit, ['*'], 'page', $offset);
 
 
-        $paginator->each(function ($store) {
-            $category_ids = DB::table('items')
-                ->join('categories', 'items.category_id', '=', 'categories.id')
-                ->selectRaw('
-                CAST(categories.id AS UNSIGNED) as id,
-                categories.parent_id
-            ')
-                ->where('items.store_id', $store->id)
-                ->where('categories.status', 1)
-                ->groupBy('id', 'categories.parent_id')
-                ->get();
+        // One query for every store on the page instead of one per store.
+        $storeCategories = DB::table('items')
+            ->join('categories', 'items.category_id', '=', 'categories.id')
+            ->select('items.store_id', 'categories.id', 'categories.parent_id')
+            ->whereIn('items.store_id', $paginator->pluck('id'))
+            ->where('categories.status', 1)
+            ->distinct()
+            ->orderBy('categories.id')
+            ->get()
+            ->groupBy('store_id');
 
-            $data = json_decode($category_ids, true);
-
+        $paginator->each(function ($store) use ($storeCategories) {
             $mergedIds = [];
-
-            foreach ($data as $item) {
-                if ($item['id'] != 0) {
-                    $mergedIds[] = $item['id'];
+            foreach ($storeCategories->get($store->id, []) as $category) {
+                if ($category->id != 0) {
+                    $mergedIds[] = (int) $category->id;
                 }
-                if ($item['parent_id'] != 0) {
-                    $mergedIds[] = $item['parent_id'];
+                if ($category->parent_id != 0) {
+                    $mergedIds[] = (int) $category->parent_id;
                 }
             }
 
-            $category_ids = array_values(array_unique($mergedIds));
-
-            $store->category_ids = $category_ids;
-            $store->discount_status = !empty($store->items->where('discount', '>', 0));
-            unset($store['items']);
+            $store->category_ids = array_values(array_unique($mergedIds));
+            $store->discount_status = (bool) $store->has_discounted_item;
+            unset($store['has_discounted_item']);
         });
 
         return [
@@ -976,21 +968,9 @@ class StoreLogic
             })
             ->type($type)->Active()->Halal($halal);
             if($name){
-                $key = explode(' ', $name);
-                $query->where(function ($q) use ($key) {
-                    foreach ($key as $value) {
-                        $q->orWhere('name', 'like', "%{$value}%");
-                    }
-                    $relationships = [
-                        'translations' => 'value',
-                        // 'items.nutritions' => 'nutrition',
-                        // 'items.allergies' => 'allergy',
-                        // 'items.generic' => 'generic_name',
-                        // 'items.ecommerce_item_details.brand' => 'name',
-                        // 'items.pharmacy_item_details.common_condition' => 'name'
-                    ];
-                    return  $q->applyRelationShipSearch(relationships:$relationships ,searchParameter:$key);
-                }) ->orderByRaw("CASE WHEN name = ? THEN 1 WHEN name LIKE ? THEN 2 ELSE 3 END, LENGTH(name) ASC, name ASC ", [$name, "%{$name}%"]);
+                $search = SearchQuery::fromString($name);
+                ItemSearch::applyTextMatch($query, $search, ['stores.name'], ['translations' => 'value']);
+                $query->orderByRaw("CASE WHEN name = ? THEN 1 WHEN name LIKE ? THEN 2 ELSE 3 END, LENGTH(name) ASC, name ASC ", [$search->text(), SearchQuery::contains($search->text())]);
             }
 
             if($sort)

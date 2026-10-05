@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Models\Item;
-use App\Models\Category;
 use Illuminate\Http\Request;
 use App\CentralLogics\Helpers;
 use App\CentralLogics\StoreLogic;
 use App\CentralLogics\CategoryLogic;
 use App\CentralLogics\ProductLogic;
 use App\Http\Controllers\Controller;
+use App\Services\Search\ItemSearch;
 use Illuminate\Support\Facades\Validator;
 
 class SearchController extends Controller
@@ -30,137 +29,8 @@ class SearchController extends Controller
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
-        $zone_id = $request->header('zoneId');
 
-        $key = explode(' ', $request['name']);
-
-        $limit = $request['limit'] ?? 10;
-        $offset = $request['offset'] ?? 1;
-        $category_ids = $request['category_ids'] ? (is_array($request['category_ids']) ? $request['category_ids'] : json_decode($request['category_ids'])) : '';
-        $brand_ids = $request['brand_ids'] ? (is_array($request['brand_ids']) ? $request['brand_ids'] : json_decode($request['brand_ids'])) : '';
-        $filter = $request['filter'] ? (is_array($request['filter']) ? $request['filter'] : str_getcsv(trim($request['filter'], "[]"), ',')) : '';
-        $type = $request->query('type', 'all');
-        $min = $request->query('min_price');
-        $min = ($min == 0) ? 0.0001 : $min;
-        $max = $request->query('max_price');
-        $rating_count = $request->query('rating_count');
-
-        $items = Item::active()->type($type)
-            ->with('store', function ($query) {
-                $query->withCount(['campaigns' => function ($query) {
-                    $query->Running();
-                }]);
-            })
-            ->when($request->category_id, function ($query) use ($request) {
-                $query->whereHas('category', function ($q) use ($request) {
-                    return $q->whereId($request->category_id)->orWhere('parent_id', $request->category_id);
-                });
-            })
-            ->when($category_ids && (count($category_ids) > 0), function ($query) use ($category_ids) {
-                $query->whereHas('category', function ($q) use ($category_ids) {
-                    return $q->whereIn('id', $category_ids)->orWhereIn('parent_id', $category_ids);
-                });
-            })
-            ->when(isset($brand_ids) && (count($brand_ids) > 0), function ($query) use ($brand_ids) {
-                $query->whereHas('ecommerce_item_details', function ($q) use ($brand_ids) {
-                    return $q->whereHas('brand', function ($q) use ($brand_ids) {
-                        return $q->whereIn('id', $brand_ids);
-                    });
-                });
-            })
-            ->when($request->store_id, function ($query) use ($request) {
-                return $query->where('store_id', $request->store_id);
-            })
-            ->whereHas('module.zones', function ($query) use ($zone_id , $filter) {
-                $query->whereIn('zones.id', json_decode($zone_id, true))
-                ->when($filter&&in_array('free_delivery',$filter),function ($qurey){
-                    return $qurey->where('free_delivery',1);
-                })
-
-                ->when($filter&&in_array('coupon',$filter),function ($qurey){
-                    return $qurey->has('activeCoupons');
-                });
-            })
-            ->whereHas('store', function ($query) use ($zone_id) {
-                $query->when(config('module.current_module_data'), function ($query) {
-                    $query->where('module_id', config('module.current_module_data')['id'])->whereHas('zone.modules', function ($query) {
-                        $query->where('modules.id', config('module.current_module_data')['id']);
-                    });
-                })->whereIn('zone_id', json_decode($zone_id, true));
-            })
-            ->where(function ($q) use ($key) {
-                foreach ($key as $value) {
-                    $q->orWhere('name', 'like', "%{$value}%");
-                }
-                $relationships = [
-                    'translations' => 'value',
-                    'tags' => 'tag',
-                    'category.parent' => 'name',
-                    'category' => 'name',
-                    'nutritions' => 'nutrition',
-                    'allergies' => 'allergy',
-                    'generic' => 'generic_name',
-                    'ecommerce_item_details.brand' => 'name',
-                    'pharmacy_item_details.common_condition' => 'name',
-                ];
-                $q->applyRelationShipSearch(relationships: $relationships, searchParameter: $key);
-            })
-            ->when($rating_count, function ($query) use ($rating_count) {
-                $query->where('avg_rating', '>=', $rating_count);
-            })
-            ->when($min && $max, function ($query) use ($min, $max) {
-                $query->whereBetween('price', [$min, $max]);
-            })
-            ->orderByRaw("FIELD(name, ?) DESC", [$request['name']])
-            ->when($filter && in_array('top_rated', $filter), function ($qurey) {
-                $qurey->withCount('reviews')->orderBy('reviews_count', 'desc');
-            })
-            ->when($filter && in_array('popular', $filter), function ($qurey) {
-                $qurey->popular();
-            })
-            ->when($filter && in_array('high', $filter), function ($qurey) {
-                $qurey->orderBy('price', 'DESC');
-            })
-            ->when($filter && in_array('low', $filter), function ($qurey) {
-                $qurey->orderBy('price', 'asc');
-            })
-            ->when($filter && in_array('discounted', $filter), function ($qurey) {
-                $qurey->Discounted();
-            })
-        ->when($filter && in_array('available_now', $filter), function ($query) {
-                $query->where(function ($q) {
-                    $currentTime = now()->format('H:i:s');
-                    $q->whereRaw("(available_time_starts < available_time_ends AND TIME(?) BETWEEN available_time_starts AND available_time_ends)", [$currentTime])
-                    ->orWhereRaw("(available_time_starts > available_time_ends AND (TIME(?) >= available_time_starts OR TIME(?) <= available_time_ends))", [$currentTime, $currentTime]);
-                });
-            });
-
-        $item_categories =  $items->pluck('category_id')->toArray();
-        $items = $items->paginate($limit, ['*'], 'page', $offset);
-
-        $item_categories = array_unique($item_categories);
-
-        $categories = Category::withCount(['products', 'childes'])->with(['childes' => function ($query) {
-            $query->withCount(['products', 'childes']);
-        }])
-            ->shared()
-            ->where(['position' => 0, 'status' => 1])
-            ->when(config('module.current_module_data'), function ($query) {
-                $query->module(config('module.current_module_data')['id']);
-            })
-            ->whereIn('id', $item_categories)
-            ->orderBy('priority', 'desc')->get();
-
-        $data =  [
-            'total_size' => $items->total(),
-            'limit' => $limit,
-            'offset' => $offset,
-            'products' => $items->items(),
-            'categories' => $categories
-        ];
-
-        $data['products'] = Helpers::product_data_formatting($data['products'], true, false, app()->getLocale());
-        return response()->json($data, 200);
+        return response()->json(ItemSearch::search($request, $request->header('zoneId')), 200);
     }
 
     public function get_combined_data(Request $request)
