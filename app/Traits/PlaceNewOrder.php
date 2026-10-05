@@ -70,17 +70,18 @@ trait PlaceNewOrder
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
 
+        // Lock, replay and cooldown live in OrderSecurityService::guard; see
+        // its class comment for the rules. Parcel and prescription orders come
+        // through here too, so they get the same ones.
+        return app(\App\Services\OrderSecurityService::class)->guard(
+            $request,
+            fn () => $this->placeValidatedOrder($request, $is_prescription)
+        );
+    }
+
+    private function placeValidatedOrder(Request $request, $is_prescription)
+    {
         $securityService = app(\App\Services\OrderSecurityService::class);
-
-        $idempotencyResult = $securityService->checkIdempotency($request);
-        if ($idempotencyResult) {
-            return $idempotencyResult;
-        }
-
-        $cooldownResult = $securityService->checkOrderCooldown($request);
-        if ($cooldownResult) {
-            return $cooldownResult;
-        }
 
         try {
             DB::beginTransaction();
@@ -659,14 +660,7 @@ trait PlaceNewOrder
 
             $this->sentOrderPlaceNotification($request, $order, $store);
 
-            return response()->json([
-                'message' => translate('messages.order_placed_successfully'),
-                'order_id' => $order->id,
-                'total_ammount' => $order->order_amount,
-                'status' => $order->order_status,
-                'created_at' => $order->created_at,
-                'user_id' => (int) $order->user_id,
-            ], 200);
+            return $securityService->placedResponse($order);
         } catch (\Exception $exception) {
 
             info([$exception->getFile(), $exception->getLine(), $exception->getMessage()]);

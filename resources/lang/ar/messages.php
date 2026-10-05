@@ -5732,4 +5732,7 @@
   'cover_image' => 'صورة الغلاف',
   'search_location' => 'ابحث عن المكان',
   'cart_busy_try_again' => 'لحظة واحدة، حاول تاني',
+  'order_in_progress' => 'طلبك لسه بيتبعت، استنى لحظة',
+  'this_order_has_already_been_submitted' => 'الطلب ده اتبعت قبل كده',
+  'please_wait_before_placing_another_order' => 'استنى لحظة قبل ما تعمل طلب تاني',
 );

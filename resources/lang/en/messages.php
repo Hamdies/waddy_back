@@ -8414,4 +8414,7 @@ Smartly or Earn. ',
   'cover_image' => 'Cover image',
   'search_location' => 'Search location',
   'cart_busy_try_again' => 'Busy for a second, please try again',
+  'order_in_progress' => 'Your order is being placed, hold on a moment',
+  'this_order_has_already_been_submitted' => 'This order has already been submitted',
+  'please_wait_before_placing_another_order' => 'Please wait a moment before placing another order',
 );
