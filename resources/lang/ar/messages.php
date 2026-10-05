@@ -5586,6 +5586,8 @@
   'this_week_winner' => 'المكان الفائز هذا الأسبوع',
   'spots_prize_won_title' => '🎉 فزت بجائزة وادي سبوتس هذا الأسبوع!',
   'spots_prize_won_body' => 'جائزتك في :venue في انتظارك — اضغط لعرض الكود.',
+  'spots_draw_ready_title' => '🎰 الكلّاب اختار!',
+  'spots_draw_ready_body' => 'سحب الأسبوع في :venue خلص — شوف مين اتختار.',
   'spots_prize_expiring_title' => '⏳ جائزتك في وادي سبوتس تنتهي غدًا',
   'spots_prize_expiring_body' => 'استخدمها في :venue قبل أن تنتهي.',
   'crack_the_code_html' => 'افتح <em>الكود</em>',

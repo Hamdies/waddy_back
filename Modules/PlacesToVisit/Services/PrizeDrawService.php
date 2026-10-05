@@ -100,6 +100,10 @@ class PrizeDrawService
             $this->notifyWinner($prize, $place);
         }
 
+        // Everyone else who was in the machine gets the replay. Winners are
+        // excluded: they already have the prize push, which is the better one.
+        $this->notifyEntrants($winner, $pool, $userIds, $place);
+
         return $prizes;
     }
 
@@ -299,6 +303,77 @@ class PrizeDrawService
         } catch (\Throwable $e) {
             Log::error("Spots prize win push failed for prize {$prize->id}: " . $e->getMessage());
             return false;
+        }
+    }
+
+    /**
+     * "The claw has picked" push to the pool members who did NOT win, so they
+     * can watch the draw they were in. Winners are skipped — they get
+     * notifyWinner() instead.
+     *
+     * The period travels as data_id for the same reason the prize id does in
+     * notifyWinner(): send_push_notif_to_device drops unknown keys. The app
+     * opens /spots/draw?period={data_id}.
+     *
+     * Never throws: a bad token must not affect an already-committed draw.
+     *
+     * @return int devices pushed
+     */
+    public function notifyEntrants(PlaceWinner $winner, Collection $pool, Collection $winnerIds, ?Place $place = null): int
+    {
+        try {
+            $winnerSet = $winnerIds->flip();
+            $loserIds = $pool->pluck('user_id')
+                ->map(fn($id) => (int) $id)
+                ->reject(fn($id) => $winnerSet->has($id))
+                ->unique()
+                ->values();
+
+            if ($loserIds->isEmpty()) {
+                return 0;
+            }
+
+            $place = $place ?? Place::find($winner->place_id);
+            $venue = $place?->title ?? translate('messages.this_week_winner');
+
+            $data = [
+                'title' => translate('messages.spots_draw_ready_title'),
+                'description' => translate('messages.spots_draw_ready_body', ['venue' => $venue]),
+                'image' => '',
+                'type' => 'spots_draw_ready',
+                'data_id' => (string) $winner->period,
+                'order_id' => '',
+                'module_id' => '',
+                'order_type' => '',
+            ];
+
+            $sent = 0;
+            User::whereIn('id', $loserIds)
+                ->whereNotNull('cm_firebase_token')
+                ->select(['id', 'cm_firebase_token'])
+                ->chunkById(200, function ($users) use ($data, &$sent) {
+                    $rows = [];
+                    foreach ($users as $user) {
+                        try {
+                            Helpers::send_push_notif_to_device($user->cm_firebase_token, $data);
+                            $sent++;
+                        } catch (\Throwable $e) {
+                            Log::warning("Spots draw push failed for user {$user->id}: " . $e->getMessage());
+                        }
+                        $rows[] = [
+                            'data' => json_encode($data),
+                            'user_id' => $user->id,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    }
+                    DB::table('user_notifications')->insert($rows);
+                });
+
+            return $sent;
+        } catch (\Throwable $e) {
+            Log::error("Spots draw-ready push failed for {$winner->period}: " . $e->getMessage());
+            return 0;
         }
     }
 
