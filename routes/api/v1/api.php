@@ -516,6 +516,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
             Route::get('{id}/bundles', 'StoreController@get_bundles');
         });
         Route::get('get-combined-data', 'SearchController@get_combined_data');
+        Route::get('search/global', 'GlobalSearchController@search');
 
         Route::group(['prefix' => 'banners'], function () {
             Route::get('/', 'BannerController@get_banners');
