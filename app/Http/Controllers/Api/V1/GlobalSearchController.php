@@ -7,6 +7,8 @@ use App\Models\Store;
 use App\CentralLogics\Helpers;
 use App\CentralLogics\StoreLogic;
 use App\Http\Controllers\Controller;
+use App\Services\Search\ItemSearch;
+use App\Services\Search\SearchQuery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -36,6 +38,9 @@ class GlobalSearchController extends Controller
     /** Products shown on each store's rail. */
     private const ITEMS_PER_STORE = 8;
 
+    /** Kept narrower than ItemSearch::RELATIONSHIPS: this runs per keystroke across every module. */
+    private const ITEM_RELATIONSHIPS = ['translations' => 'value', 'tags' => 'tag', 'category' => 'name'];
+
     public function search(Request $request)
     {
         if (!$request->hasHeader('zoneId')) {
@@ -51,57 +56,20 @@ class GlobalSearchController extends Controller
         $zoneIds = json_decode($request->header('zoneId'), true) ?: [];
         $longitude = (float) $request->header('longitude', 0);
         $latitude = (float) $request->header('latitude', 0);
-        $keys = array_values(array_filter(explode(' ', trim($request['name']))));
-        $limit = min((int) ($request['limit'] ?? self::MAX_STORES), 40);
+        $search = SearchQuery::fromString($request['name']);
+        $limit = max(1, min((int) ($request['limit'] ?? self::MAX_STORES), 40));
 
-        if (empty($zoneIds) || empty($keys)) {
+        if (empty($zoneIds) || $search->isEmpty()) {
             return response()->json(['stores' => []], 200);
         }
 
-        $itemMatches = function ($q) use ($keys) {
-            foreach ($keys as $value) {
-                $q->orWhere('name', 'like', "%{$value}%");
-            }
-            $q->applyRelationShipSearch(
-                relationships: ['translations' => 'value', 'tags' => 'tag', 'category' => 'name'],
-                searchParameter: $keys
-            );
-        };
-
-        $stores = Store::WithOpenWithDeliveryTime($longitude, $latitude)
-            ->withMaxItemDiscount()
-            ->with(['discount' => fn ($q) => $q->validate(), 'module:id,module_type,variant', 'cuisines:id,name'])
-            ->active()
-            ->weekday()
-            ->whereIn('zone_id', $zoneIds)
-            ->when(config('module.current_module_data'), fn ($q, $module) => $q->where('module_id', $module['id']))
-            ->whereHas('module', fn ($q) => $q->active()->notParcel()->notRental())
-            ->whereHas('zone.modules', fn ($q) => $q->whereColumn('modules.id', 'stores.module_id'))
-            ->where(function ($q) use ($keys, $itemMatches) {
-                $q->where(function ($n) use ($keys) {
-                    foreach ($keys as $value) {
-                        $n->orWhere('name', 'like', "%{$value}%");
-                    }
-                })
-                    ->orWhereHas('translations', function ($t) use ($keys) {
-                        foreach ($keys as $value) {
-                            $t->orWhere('value', 'like', "%{$value}%");
-                        }
-                    })
-                    ->orWhereHas('cuisines', function ($c) use ($keys) {
-                        foreach ($keys as $value) {
-                            $c->orWhere('name', 'like', "%{$value}%");
-                        }
-                    })
-                    ->orWhereHas('items', function ($i) use ($itemMatches) {
-                        $i->active()->where($itemMatches);
-                    });
-            })
-            ->orderByDesc('open')
-            ->orderByRaw('CASE WHEN name LIKE ? THEN 0 ELSE 1 END', ["%{$request['name']}%"])
-            ->orderBy('distance')
-            ->limit($limit)
-            ->get();
+        $mode = 'all';
+        $stores = $this->matchingStores($search, $mode, $zoneIds, $longitude, $latitude, $limit);
+        // Nothing matches every word: fall back to any of them, as items/search does.
+        if ($stores->isEmpty() && $search->hasMultipleTerms()) {
+            $mode = 'any';
+            $stores = $this->matchingStores($search, $mode, $zoneIds, $longitude, $latitude, $limit);
+        }
 
         if ($stores->isEmpty()) {
             return response()->json(['stores' => []], 200);
@@ -114,23 +82,15 @@ class GlobalSearchController extends Controller
         $matched = Item::active()
             ->with('store')
             ->whereIn('store_id', $storeIds)
-            ->where($itemMatches)
-            ->orderByRaw('FIELD(name, ?) DESC', [$request['name']])
+            ->tap(fn ($q) => ItemSearch::applyTextMatch($q, $search, ['items.name'], self::ITEM_RELATIONSHIPS, $mode))
+            ->tap(fn ($q) => ItemSearch::orderByRelevance($q, $search, 'items.name'))
             ->orderByDesc('order_count')
             ->get()
             ->groupBy('store_id');
 
         // Stores that matched on name alone: their best sellers stand in.
         $nameOnly = array_values(array_diff($storeIds, $matched->keys()->all()));
-        $fallback = collect();
-        if (!empty($nameOnly)) {
-            $fallback = Item::active()
-                ->with('store')
-                ->whereIn('store_id', $nameOnly)
-                ->orderByDesc('order_count')
-                ->get()
-                ->groupBy('store_id');
-        }
+        $fallback = $this->bestSellers($nameOnly);
 
         $locale = app()->getLocale();
         $out = [];
@@ -171,5 +131,61 @@ class GlobalSearchController extends Controller
         }
 
         return response()->json(['stores' => $out], 200);
+    }
+
+    /**
+     * A store is a hit when its own name, translation or cuisine matches, or
+     * when it sells a matching item.
+     */
+    private function matchingStores(SearchQuery $search, string $mode, array $zoneIds, float $longitude, float $latitude, int $limit)
+    {
+        return Store::WithOpenWithDeliveryTime($longitude, $latitude)
+            ->withMaxItemDiscount()
+            ->with(['discount' => fn ($q) => $q->validate(), 'module:id,module_type,variant', 'cuisines:id,name'])
+            ->active()
+            ->weekday()
+            ->whereIn('zone_id', $zoneIds)
+            ->when(config('module.current_module_data'), fn ($q, $module) => $q->where('module_id', $module['id']))
+            ->whereHas('module', fn ($q) => $q->active()->notParcel()->notRental())
+            ->whereHas('zone.modules', fn ($q) => $q->whereColumn('modules.id', 'stores.module_id'))
+            ->where(function ($q) use ($search, $mode) {
+                $q->where(fn ($own) => ItemSearch::applyTextMatch($own, $search, ['stores.name'], ['translations' => 'value', 'cuisines' => 'name'], $mode))
+                    ->orWhereHas('items', function ($i) use ($search, $mode) {
+                        ItemSearch::applyTextMatch($i->active(), $search, ['items.name'], self::ITEM_RELATIONSHIPS, $mode);
+                    });
+            })
+            ->orderByDesc('open')
+            ->tap(fn ($q) => ItemSearch::orderByRelevance($q, $search, 'stores.name'))
+            ->orderBy('distance')
+            ->limit($limit)
+            ->get();
+    }
+
+    /**
+     * Each store's top sellers, ITEMS_PER_STORE apiece. One UNION ALL of
+     * per-store LIMITs, so a store with thousands of products costs eight rows.
+     */
+    private function bestSellers(array $storeIds)
+    {
+        if (empty($storeIds)) {
+            return collect();
+        }
+
+        $ids = null;
+        foreach ($storeIds as $storeId) {
+            $part = Item::active()
+                ->select('items.id')
+                ->where('store_id', $storeId)
+                ->orderByDesc('order_count')
+                ->limit(self::ITEMS_PER_STORE)
+                ->toBase();
+            $ids = $ids ? $ids->unionAll($part) : $part;
+        }
+
+        return Item::with('store')
+            ->whereIn('id', $ids->pluck('id'))
+            ->orderByDesc('order_count')
+            ->get()
+            ->groupBy('store_id');
     }
 }
