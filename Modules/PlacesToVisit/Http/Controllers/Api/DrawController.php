@@ -36,7 +36,10 @@ class DrawController extends Controller
             // Winners first and in pull order, then everyone else. The client
             // reads `winner_ids` for the order, but sending them sorted keeps
             // the pile's first twelve from being all losers.
-            ->orderByRaw('CASE WHEN rank = 0 THEN 1 ELSE 0 END, rank ASC')
+            // `rank` is a reserved word on MySQL 8 (RANK() window function);
+            // raw SQL is not quoted by the query builder, so it needs
+            // backticks or the whole endpoint 500s with a syntax error.
+            ->orderByRaw('CASE WHEN `rank` = 0 THEN 1 ELSE 0 END, `rank` ASC')
             ->get();
 
         if ($entrants->isEmpty()) {
