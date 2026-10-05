@@ -96,13 +96,14 @@ class PrizeDrawService
 
         // Push after the transaction commits — a dead FCM token must never
         // roll back an awarded prize.
-        foreach ($prizes as $prize) {
-            $this->notifyWinner($prize, $place);
-        }
-
-        // Everyone else who was in the machine gets the replay. Winners are
-        // excluded: they already have the prize push, which is the better one.
-        $this->notifyEntrants($winner, $pool, $userIds, $place);
+        // One push for everybody in the machine, winners included, with the
+        // same words. The claw is where the result is revealed, so the push
+        // must not give it away: "you won" in a notification spoils the draw,
+        // and a different push for losers would give it away by omission.
+        // The prize is found through the claw ("Claim your prize") and My
+        // Prizes; notifyWinner() remains for the expiry reminder's sibling
+        // uses and admin-awarded prizes.
+        $this->notifyEntrants($winner, $pool, $place);
 
         return $prizes;
     }
@@ -307,9 +308,11 @@ class PrizeDrawService
     }
 
     /**
-     * "The claw has picked" push to the pool members who did NOT win, so they
-     * can watch the draw they were in. Winners are skipped — they get
-     * notifyWinner() instead.
+     * The suspense push: "<venue> won this week — see if the claw picked you."
+     *
+     * Goes to everyone who was in the machine, winners and losers alike, with
+     * identical copy, and opens the claw. It deliberately says nothing about
+     * the viewer's result — the reveal belongs to the claw.
      *
      * The period travels as data_id for the same reason the prize id does in
      * notifyWinner(): send_push_notif_to_device drops unknown keys. The app
@@ -319,17 +322,15 @@ class PrizeDrawService
      *
      * @return int devices pushed
      */
-    public function notifyEntrants(PlaceWinner $winner, Collection $pool, Collection $winnerIds, ?Place $place = null): int
+    public function notifyEntrants(PlaceWinner $winner, Collection $pool, ?Place $place = null): int
     {
         try {
-            $winnerSet = $winnerIds->flip();
-            $loserIds = $pool->pluck('user_id')
+            $userIds = $pool->pluck('user_id')
                 ->map(fn($id) => (int) $id)
-                ->reject(fn($id) => $winnerSet->has($id))
                 ->unique()
                 ->values();
 
-            if ($loserIds->isEmpty()) {
+            if ($userIds->isEmpty()) {
                 return 0;
             }
 
@@ -337,8 +338,8 @@ class PrizeDrawService
             $venue = $place?->title ?? translate('messages.this_week_winner');
 
             $data = [
-                'title' => translate('messages.spots_draw_ready_title'),
-                'description' => translate('messages.spots_draw_ready_body', ['venue' => $venue]),
+                'title' => translate('messages.spots_draw_ready_title', ['venue' => $venue]),
+                'description' => translate('messages.spots_draw_ready_body'),
                 'image' => '',
                 'type' => 'spots_draw_ready',
                 'data_id' => (string) $winner->period,
@@ -348,7 +349,7 @@ class PrizeDrawService
             ];
 
             $sent = 0;
-            User::whereIn('id', $loserIds)
+            User::whereIn('id', $userIds)
                 ->whereNotNull('cm_firebase_token')
                 ->select(['id', 'cm_firebase_token'])
                 ->chunkById(200, function ($users) use ($data, &$sent) {

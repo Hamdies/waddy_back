@@ -208,16 +208,7 @@ class SimulateWeekCommand extends Command
         );
 
         if ($outcome === 'lost') {
-            $winnerIds = PlacePrize::where('period', $period)->pluck('user_id')->map(fn($id) => (int) $id);
-            $sent = app(PrizeDrawService::class)->notifyEntrants(
-                $overall,
-                collect([['user_id' => $user->id]]),
-                $winnerIds,
-                $place
-            );
-            $this->line($sent > 0
-                ? '  "Claw has picked" push QUEUED (delivery is not confirmed — it goes through the queue worker and FCM)'
-                : '  No push — that account has no cm_firebase_token yet');
+            $this->pushDrawReady($user, $overall, $place);
             return;
         }
 
@@ -237,10 +228,21 @@ class SimulateWeekCommand extends Command
         $donor->update(['user_id' => $user->id]);
         app(\Modules\PlacesToVisit\Services\LeaderboardService::class)->clearRecentWinnersCache();
 
-        $pushed = app(PrizeDrawService::class)->notifyWinner($donor->fresh('place'));
-        $this->line($pushed
-            ? '  Win push QUEUED (delivery is not confirmed — it goes through the queue worker and FCM)'
-            : '  No win push — that account has no cm_firebase_token yet');
+        // Same suspense push the real draw sends everybody; the prize itself is
+        // revealed by the claw, not the notification.
+        $this->pushDrawReady($user, $overall, $place);
+    }
+
+    protected function pushDrawReady(User $user, $overall, Place $place): void
+    {
+        $sent = app(PrizeDrawService::class)->notifyEntrants(
+            $overall,
+            collect([['user_id' => $user->id]]),
+            $place
+        );
+        $this->line($sent > 0
+            ? '  Draw push QUEUED (delivery is not confirmed — it goes through FCM)'
+            : '  No push — that account has no cm_firebase_token yet');
     }
 
     /**
