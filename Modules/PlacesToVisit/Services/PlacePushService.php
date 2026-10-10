@@ -10,7 +10,7 @@ use Modules\PlacesToVisit\Entities\Place;
 /**
  * Race pushes — exactly two triggers, no spam:
  *  1. Lead change (checked after every vote, 30-min cooldown per scope)
- *  2. Final-hours close race (scheduled Sunday evening)
+ *  2. Final-hours close race (scheduled Thursday evening, before the Friday lock)
  *
  * Topics: places_race_all + places_race_zone_{id} (app subscribes on the
  * Spots screen; zone topic follows the selected zone filter).
@@ -80,7 +80,7 @@ class PlacePushService
     }
 
     /**
-     * Sunday-evening nudge for every scope where the race is within reach.
+     * Thursday-evening nudge for every scope where the race is within reach.
      * Returns the number of pushes sent (for the console command).
      */
     public function sendFinalHoursPushes(int $maxGap = 3): int

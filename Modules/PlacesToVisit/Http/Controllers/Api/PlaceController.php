@@ -257,6 +257,9 @@ class PlaceController extends Controller
             'success' => true,
             'period' => $period,
             'current_period' => $this->leaderboardService->getCurrentPeriod(),
+            // The instant the current round locks (Friday 00:00 Cairo). The
+            // app counts down to this rather than to its own clock.
+            'lock_at' => \Modules\PlacesToVisit\Services\RaceClock::lockTime()->toIso8601String(),
             'data' => $topPlaces,
         ]);
     }
@@ -282,6 +285,7 @@ class PlaceController extends Controller
             'success' => true,
             'scope' => $scope,
             'period' => $period,
+            'lock_at' => \Modules\PlacesToVisit\Services\RaceClock::lockTime()->toIso8601String(),
             'data' => $topVoters,
         ]);
     }

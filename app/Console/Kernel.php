@@ -39,11 +39,11 @@ class Kernel extends ConsoleKernel
         // (WinnerService also lazy-closes on read if this ever misses.)
         $raceTz = config('placestovisit.timezone', 'Africa/Cairo');
         $schedule->command('placestovisit:close-week')
-            ->weeklyOn(1, '00:10')->timezone($raceTz);
+            ->weeklyOn(5, '00:10')->timezone($raceTz);
 
-        // Sunday-evening nudge when the weekly spot race is close (locks midnight)
+        // Thursday-evening nudge when the weekly spot race is close (locks Friday 00:00)
         $schedule->command('placestovisit:final-hours-push')
-            ->weeklyOn(0, '21:00')->timezone($raceTz);
+            ->weeklyOn(4, '21:00')->timezone($raceTz);
 
         // Voter-prize vouchers: auto-expire after their 7-day window and
         // nudge winners in the last 24h. No reissue, no rollover.

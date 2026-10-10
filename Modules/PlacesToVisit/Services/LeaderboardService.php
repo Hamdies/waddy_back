@@ -185,7 +185,7 @@ class LeaderboardService
     {
         $periods = [];
         for ($i = 0; $i < 12; $i++) {
-            $periods[] = RaceClock::now()->subWeeks($i)->format('o-\WW');
+            $periods[] = RaceClock::periodWeeksAgo($i);
         }
         return $periods;
     }
