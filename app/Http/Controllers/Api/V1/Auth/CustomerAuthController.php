@@ -15,9 +15,11 @@ use Illuminate\Support\Carbon;
 use App\Mail\EmailVerification;
 use App\Models\BusinessSetting;
 use App\CentralLogics\SMS_module;
+use App\CentralLogics\AkedlyGateway;
 use App\Models\WalletTransaction;
 use App\Models\EmailVerifications;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Http;
@@ -118,65 +120,14 @@ class CustomerAuthController extends Controller
                         $this->check_guest_cart($user, $request['guest_id']);
                     }
                 }
-                return response()->json(['token' => isset($token)?$token:$temporaryToken, 'is_phone_verified'=>1, 'is_email_verified'=>1, 'is_personal_info' => $is_personal_info, 'is_exist_user' =>null, 'login_type' => $request->login_type, 'email' => $user_email], 200);
+                return response()->json(['token' => isset($token)?$token:$temporaryToken, 'is_phone_verified'=>1, 'is_email_verified'=>1, 'is_personal_info' => $is_personal_info, 'is_exist_user' =>null, 'login_type' => $request->login_type, 'email' => $user_email, 'profile_token' => $this->profile_token($user, $is_personal_info)], 200);
             }
             else{
                 if ($request->verification_type == 'phone') {
-                    $max_otp_hit = 5;
-
-                    $max_otp_hit_time = 60; // seconds
-                    $temp_block_time = 600; // seconds
-
-                    $verification_data = DB::table('phone_verifications')->where('phone', $request['phone'])->first();
-
-                    if (isset($verification_data)) {
-                        if (isset($verification_data->temp_block_time) && Carbon::parse($verification_data->temp_block_time)->DiffInSeconds() <= $temp_block_time) {
-                            $time = $temp_block_time - Carbon::parse($verification_data->temp_block_time)->DiffInSeconds();
-
-                            $errors = [];
-                            array_push($errors, ['code' => 'otp_block_time',
-                                'message' => translate('messages.please_try_again_after_') . CarbonInterval::seconds($time)->cascade()->forHumans()
-                            ]);
-                            return response()->json([
-                                'errors' => $errors
-                            ], 405);
-                        }
-
-                        if ($verification_data->is_temp_blocked == 1 && Carbon::parse($verification_data->updated_at)->DiffInSeconds() >= $max_otp_hit_time) {
-                            DB::table('phone_verifications')->updateOrInsert(['phone' => $request['phone']],
-                                [
-                                    'otp_hit_count' => 0,
-                                    'is_temp_blocked' => 0,
-                                    'temp_block_time' => null,
-                                    'created_at' => now(),
-                                    'updated_at' => now(),
-                                ]);
-                        }
-
-                        if ($verification_data->otp_hit_count >= $max_otp_hit && Carbon::parse($verification_data->updated_at)->DiffInSeconds() < $max_otp_hit_time && $verification_data->is_temp_blocked == 0) {
-
-                            DB::table('phone_verifications')->updateOrInsert(['phone' => $request['phone']],
-                                [
-                                    'is_temp_blocked' => 1,
-                                    'temp_block_time' => now(),
-                                    'created_at' => now(),
-                                    'updated_at' => now(),
-                                ]);
-                            $errors = [];
-                            array_push($errors, ['code' => 'otp_temp_blocked', 'message' => translate('messages.Too_many_attemps')]);
-                            return response()->json([
-                                'errors' => $errors
-                            ], 405);
-                        }
+                    $blocked = $this->record_wrong_otp($request['phone']);
+                    if ($blocked) {
+                        return $blocked;
                     }
-
-
-                    DB::table('phone_verifications')->updateOrInsert(['phone' => $request['phone']],
-                        [
-                            'otp_hit_count' => DB::raw('otp_hit_count + 1'),
-                            'updated_at' => now(),
-                            'temp_block_time' => null,
-                        ]);
                 }
                 return response()->json([
                     'message' => translate('OTP does not match')
@@ -184,10 +135,23 @@ class CustomerAuthController extends Controller
             }
         }
         if($request->login_type== 'otp'){
+            // A blocked number stays blocked even for the right code, otherwise
+            // the limit only slows guessing down instead of stopping it.
+            $blocked = $this->otp_block_response($request['phone']);
+            if ($blocked) {
+                return $blocked;
+            }
+
             $data = DB::table('phone_verifications')->where([
                 'phone' => $request['phone'],
                 'token' => $request['otp'],
             ])->first();
+
+            if ($data && Carbon::parse($data->created_at)->DiffInSeconds() > self::OTP_EXPIRY) {
+                return response()->json([
+                    'errors' => [['code' => 'otp_expired', 'message' => translate('messages.otp_expired_request_a_new_code')]]
+                ], 405);
+            }
 
             if($data){
                 if($user && $user->is_phone_verified == 0 && $user->is_from_pos == 0){
@@ -216,7 +180,7 @@ class CustomerAuthController extends Controller
                             $this->check_guest_cart($user, $request['guest_id']);
                         }
                     }
-                    return response()->json(['token' => isset($token)?$token:$temporaryToken, 'is_phone_verified'=>1, 'is_email_verified'=>1, 'is_personal_info' => $is_personal_info, 'is_exist_user' =>null, 'login_type' => $request->login_type, 'email' => $user_email], 200);
+                    return response()->json(['token' => isset($token)?$token:$temporaryToken, 'is_phone_verified'=>1, 'is_email_verified'=>1, 'is_personal_info' => $is_personal_info, 'is_exist_user' =>null, 'login_type' => $request->login_type, 'email' => $user_email, 'profile_token' => $this->profile_token($user, $is_personal_info)], 200);
                 }
                 else{
                     $user = new User();
@@ -234,9 +198,13 @@ class CustomerAuthController extends Controller
                         $user_email = $user->email;
                     }
 
-                    return response()->json(['token' => $temporaryToken, 'is_phone_verified'=>1, 'is_email_verified'=>1, 'is_personal_info' => $is_personal_info, 'is_exist_user' => null, 'login_type' => 'otp', 'email' => $user_email], 200);
+                    return response()->json(['token' => $temporaryToken, 'is_phone_verified'=>1, 'is_email_verified'=>1, 'is_personal_info' => $is_personal_info, 'is_exist_user' => null, 'login_type' => 'otp', 'email' => $user_email, 'profile_token' => $this->profile_token($user, $is_personal_info)], 200);
                 }
             }else{
+                $blocked = $this->record_wrong_otp($request['phone']);
+                if ($blocked) {
+                    return $blocked;
+                }
                 return response()->json([
                     'message' => translate('OTP does not match')
                 ], 404);
@@ -306,7 +274,7 @@ class CustomerAuthController extends Controller
                 }
             }
 
-            return response()->json(['token' => isset($token)?$token:$temporaryToken, 'is_phone_verified'=>1, 'is_email_verified'=>1, 'is_personal_info' => $is_personal_info, 'is_exist_user' =>null, 'login_type' => $request->login_type, 'email' => $user_email], 200);
+            return response()->json(['token' => isset($token)?$token:$temporaryToken, 'is_phone_verified'=>1, 'is_email_verified'=>1, 'is_personal_info' => $is_personal_info, 'is_exist_user' =>null, 'login_type' => $request->login_type, 'email' => $user_email, 'profile_token' => $this->profile_token($user, $is_personal_info)], 200);
 
         }
 
@@ -345,7 +313,7 @@ class CustomerAuthController extends Controller
                         $this->check_guest_cart($user, $request['guest_id']);
                     }
                 }
-                return response()->json(['token' => isset($token)?$token:$temporaryToken, 'is_phone_verified'=>1, 'is_email_verified'=>1, 'is_personal_info' => $is_personal_info, 'is_exist_user' =>null, 'login_type' => $request->login_type, 'email' => $user_email], 200);
+                return response()->json(['token' => isset($token)?$token:$temporaryToken, 'is_phone_verified'=>1, 'is_email_verified'=>1, 'is_personal_info' => $is_personal_info, 'is_exist_user' =>null, 'login_type' => $request->login_type, 'email' => $user_email, 'profile_token' => $this->profile_token($user, $is_personal_info)], 200);
             }else{
                 $user = new User();
                 $user->phone = $request['phone'];
@@ -361,7 +329,7 @@ class CustomerAuthController extends Controller
                 if($user->email){
                     $user_email = $user->email;
                 }
-                return response()->json(['token' => $temporaryToken, 'is_phone_verified'=>1, 'is_email_verified'=>1, 'is_personal_info' => $is_personal_info, 'is_exist_user' => null, 'login_type' => 'otp', 'email' => $user_email], 200);
+                return response()->json(['token' => $temporaryToken, 'is_phone_verified'=>1, 'is_email_verified'=>1, 'is_personal_info' => $is_personal_info, 'is_exist_user' => null, 'login_type' => 'otp', 'email' => $user_email, 'profile_token' => $this->profile_token($user, $is_personal_info)], 200);
             }
         }
 
@@ -634,6 +602,9 @@ class CustomerAuthController extends Controller
 
             $request_data = [
                 'phone' => $request->phone,
+                // 'sms' when the user taps "Send by SMS instead"; absent on the
+                // first send so Akedly's chain tries WhatsApp first.
+                'otp_channel' => $request->otp_channel,
             ];
 
             return $this->send_otp($request_data);
@@ -799,7 +770,7 @@ class CustomerAuthController extends Controller
                 }
             }
 
-            return response()->json(['token' => $token, 'is_phone_verified'=> 1, 'is_email_verified'=> 1, 'is_personal_info' => $is_personal_info, 'is_exist_user' => null, 'login_type' => 'manual', 'email' => $user_email], 200);
+            return response()->json(['token' => $token, 'is_phone_verified'=> 1, 'is_email_verified'=> 1, 'is_personal_info' => $is_personal_info, 'is_exist_user' => null, 'login_type' => 'manual', 'email' => $user_email, 'profile_token' => $this->profile_token($user, $is_personal_info)], 200);
         } else {
             $errors = [];
             array_push($errors, ['code' => 'auth-001', 'message' => translate('User_credential_does_not_match')]);
@@ -865,7 +836,7 @@ class CustomerAuthController extends Controller
                 $user_email = $user->email;
             }
 
-            return response()->json(['token' => $token, 'is_phone_verified'=>1, 'is_email_verified'=>1, 'is_personal_info' => $is_personal_info, 'is_exist_user' => null, 'login_type' => 'otp', 'email' => $user_email], 200);
+            return response()->json(['token' => $token, 'is_phone_verified'=>1, 'is_email_verified'=>1, 'is_personal_info' => $is_personal_info, 'is_exist_user' => null, 'login_type' => 'otp', 'email' => $user_email, 'profile_token' => $this->profile_token($user, $is_personal_info)], 200);
         }
 
         return response()->json([
@@ -965,7 +936,7 @@ class CustomerAuthController extends Controller
             if($user->email){
                 $user_email = $user->email;
             }
-            return response()->json(['token' => $token, 'is_phone_verified'=>1, 'is_email_verified'=>1, 'is_personal_info' => $is_personal_info, 'is_exist_user' =>$is_exist_user, 'login_type' => 'social', 'email' => $user_email], 200);
+            return response()->json(['token' => $token, 'is_phone_verified'=>1, 'is_email_verified'=>1, 'is_personal_info' => $is_personal_info, 'is_exist_user' =>$is_exist_user, 'login_type' => 'social', 'email' => $user_email, 'profile_token' => $this->profile_token($user, $is_personal_info)], 200);
         } else {
             $errors = [];
             array_push($errors, ['code' => 'auth-001', 'message' => 'Unauthorized.']);
@@ -975,11 +946,136 @@ class CustomerAuthController extends Controller
         }
     }
 
+    /** How long a verified-but-unnamed user has to finish the name step (covers an app restart). */
+    const PROFILE_TOKEN_TTL = 86400;
+
+    /**
+     * Proof that this caller just verified the account, for update_info to check.
+     *
+     * update_info hands out a full login token for any account without a name.
+     * Keyed only on the phone in the request, anyone who knew a number could claim
+     * an account sitting between "code verified" and "name saved". The proof is
+     * encrypted and MAC'd with APP_KEY, so it can't be forged or retargeted, and
+     * needs no storage. Named accounts get null: they never reach update_info.
+     */
+    private function profile_token($user, $is_personal_info): ?string
+    {
+        if ($is_personal_info || !isset($user->id)) {
+            return null;
+        }
+        return Crypt::encryptString(json_encode(['uid' => $user->id, 'exp' => time() + self::PROFILE_TOKEN_TTL]));
+    }
+
+    private function profile_token_matches($token, $user): bool
+    {
+        if (!is_string($token) || $token === '') {
+            return false;
+        }
+        try {
+            $claims = json_decode(Crypt::decryptString($token), true);
+        } catch (\Exception $exception) {
+            return false;
+        }
+        return isset($claims['uid'], $claims['exp'])
+            && (int) $claims['uid'] === (int) $user->id
+            && (int) $claims['exp'] >= time();
+    }
+
+    /** Seconds between login OTP sends. The app runs its resend countdown from the value we return. */
+    const OTP_RESEND_INTERVAL = 30;
+
+    /**
+     * A resend inside this window re-sends the code already on file instead of a
+     * new one, so a late WhatsApp message and the SMS fallback carry the same
+     * digits and whichever lands first works.
+     */
+    const OTP_REUSE_WINDOW = 300;
+
+    /** A login OTP older than this is refused; the user is told to request a new one. */
+    const OTP_EXPIRY = 600;
+
+    /** The error response while this phone sits in its 10-minute wrong-OTP block, else null. */
+    private function otp_block_response($phone)
+    {
+        $temp_block_time = 600; // seconds
+        $verification_data = DB::table('phone_verifications')->where('phone', $phone)->first();
+
+        if (isset($verification_data->temp_block_time) && Carbon::parse($verification_data->temp_block_time)->DiffInSeconds() <= $temp_block_time) {
+            $time = $temp_block_time - Carbon::parse($verification_data->temp_block_time)->DiffInSeconds();
+
+            $errors = [];
+            array_push($errors, ['code' => 'otp_block_time',
+                'message' => translate('messages.please_try_again_after_') . CarbonInterval::seconds($time)->cascade()->forHumans()
+            ]);
+            return response()->json([
+                'errors' => $errors
+            ], 405);
+        }
+        return null;
+    }
+
+    /**
+     * Count a wrong phone OTP; after 5 inside a minute the number is blocked for
+     * 10 minutes. Returns the error response while blocked, null otherwise.
+     */
+    private function record_wrong_otp($phone)
+    {
+        $max_otp_hit = 5;
+
+        $max_otp_hit_time = 60; // seconds
+
+        $blocked = $this->otp_block_response($phone);
+        if ($blocked) {
+            return $blocked;
+        }
+
+        $verification_data = DB::table('phone_verifications')->where('phone', $phone)->first();
+
+        if (isset($verification_data)) {
+
+            if ($verification_data->is_temp_blocked == 1 && Carbon::parse($verification_data->updated_at)->DiffInSeconds() >= $max_otp_hit_time) {
+                DB::table('phone_verifications')->updateOrInsert(['phone' => $phone],
+                    [
+                        'otp_hit_count' => 0,
+                        'is_temp_blocked' => 0,
+                        'temp_block_time' => null,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+            }
+
+            if ($verification_data->otp_hit_count >= $max_otp_hit && Carbon::parse($verification_data->updated_at)->DiffInSeconds() < $max_otp_hit_time && $verification_data->is_temp_blocked == 0) {
+
+                DB::table('phone_verifications')->updateOrInsert(['phone' => $phone],
+                    [
+                        'is_temp_blocked' => 1,
+                        'temp_block_time' => now(),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                $errors = [];
+                array_push($errors, ['code' => 'otp_temp_blocked', 'message' => translate('messages.Too_many_attemps')]);
+                return response()->json([
+                    'errors' => $errors
+                ], 405);
+            }
+        }
+
+
+        DB::table('phone_verifications')->updateOrInsert(['phone' => $phone],
+            [
+                'otp_hit_count' => DB::raw('otp_hit_count + 1'),
+                'updated_at' => now(),
+                'temp_block_time' => null,
+            ]);
+        return null;
+    }
+
     private function verification_check($request_data){
         $firebase_otp_verification = BusinessSetting::where('key', 'firebase_otp_verification')->first()?->value??0;
         if(!$firebase_otp_verification)
         {
-            $otp_interval_time= 60; //seconds
+            $otp_interval_time = self::OTP_RESEND_INTERVAL;
 
             $verification_data= DB::table('phone_verifications')->where('phone', $request_data['phone'])->first();
 
@@ -992,14 +1088,9 @@ class CustomerAuthController extends Controller
                 return $errors;
             }
 
-            $otp = rand(100000, 999999);
-            DB::table('phone_verifications')->updateOrInsert(['phone' => $request_data['phone']],
-                [
-                    'token' => $otp,
-                    'otp_hit_count' => 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+            $reuse = isset($verification_data) && !empty($verification_data->token)
+                && Carbon::parse($verification_data->created_at)->DiffInSeconds() < self::OTP_REUSE_WINDOW;
+            $otp = $reuse ? $verification_data->token : rand(100000, 999999);
 
             $response= null;
 
@@ -1010,6 +1101,8 @@ class CustomerAuthController extends Controller
                 $published_status = $payment_published_status[0]['is_published'];
             }
 
+            AkedlyGateway::request_channel($request_data['otp_channel'] ?? null);
+
             if($published_status == 1){
                 $response = SmsGateway::send($request_data['phone'],$otp);
             }else{
@@ -1018,10 +1111,26 @@ class CustomerAuthController extends Controller
 
             if($response !== 'success')
             {
+                // Nothing is written on failure, so the cooldown above doesn't
+                // block the retry for a code that never arrived.
                 $errors = [];
                 array_push($errors, ['code' => 'otp', 'message' => translate('messages.failed_to_send_sms')]);
                 return $errors;
             }
+
+            // A reused code keeps its created_at (the reuse window runs from the
+            // first send) and its wrong-attempt count, so resending can't be used
+            // to reset the attempt limit.
+            DB::table('phone_verifications')->updateOrInsert(['phone' => $request_data['phone']],
+                $reuse ? ['updated_at' => now()] : [
+                    'token' => $otp,
+                    'otp_hit_count' => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+            // Only Akedly reports a channel; every other gateway is plain SMS.
+            return ['otp_channel' => AkedlyGateway::last_channel() ?? 'sms', 'resend_in' => $otp_interval_time];
         }
         return true;
     }
@@ -1158,6 +1267,15 @@ class CustomerAuthController extends Controller
                 'message' => translate('messages.already_exists')
             ], 403);
         }
+        // Older app builds never send the token, so its absence is only refused
+        // once REQUIRE_PROFILE_TOKEN is on; a token that is sent must be valid.
+        $sent_token = filled($request->profile_token);
+        if (($sent_token || config('app.require_profile_token'))
+            && !$this->profile_token_matches($request->profile_token, $user)) {
+            return response()->json([
+                'errors' => [['code' => 'profile_token_invalid', 'message' => translate('messages.verify_your_phone_again_to_continue')]]
+            ], 403);
+        }
         $user->f_name = $firstName;
         $user->l_name = $lastName;
         $user->email = $request->email??$user->email;
@@ -1182,14 +1300,15 @@ class CustomerAuthController extends Controller
 
     private function send_otp($request_data){
         $verification_check = $this->verification_check($request_data);
-        if(is_array($verification_check))
+        if(is_array($verification_check) && !isset($verification_check['otp_channel']))
         {
             return response()->json([
                 'errors' => $verification_check
             ], 405);
         }
         $temporaryToken = null;
-        return response()->json(['token' => $temporaryToken, 'is_phone_verified'=>0, 'is_email_verified'=>1, 'is_personal_info' => 1, 'is_exist_user' => null, 'login_type' => 'otp', 'email' => null], 200);
+        $delivery = is_array($verification_check) ? $verification_check : [];
+        return response()->json(array_merge(['token' => $temporaryToken, 'is_phone_verified'=>0, 'is_email_verified'=>1, 'is_personal_info' => 1, 'is_exist_user' => null, 'login_type' => 'otp', 'email' => null], $delivery), 200);
     }
 
     #handshake

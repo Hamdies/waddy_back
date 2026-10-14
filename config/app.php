@@ -69,6 +69,13 @@ return [
     |
     */
 
+    /*
+    | update-info refuses a missing profile_token only when this is on. Leave it
+    | off until app builds that send the token are what most users run; a wrong
+    | or expired token is refused either way. See CustomerAuthController::update_info.
+    */
+    'require_profile_token' => env('REQUIRE_PROFILE_TOKEN', false),
+
     'timezone' => 'UTC',
 
     /*

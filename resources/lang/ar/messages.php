@@ -5737,4 +5737,8 @@
   'order_in_progress' => 'طلبك لسه بيتبعت، استنى لحظة',
   'this_order_has_already_been_submitted' => 'الطلب ده اتبعت قبل كده',
   'please_wait_before_placing_another_order' => 'استنى لحظة قبل ما تعمل طلب تاني',
+  'otp_expired_request_a_new_code' => 'انتهت صلاحية الرمز. اطلب رمزًا جديدًا.',
+  'Too_many_attemps' => 'محاولات خاطئة كثيرة. انتظر قليلًا ثم حاول مرة أخرى.',
+  'too_many_requests_try_again_shortly' => 'محاولات كثيرة. انتظر دقيقة ثم حاول مرة أخرى.',
+  'verify_your_phone_again_to_continue' => 'يرجى تأكيد رقم هاتفك مرة أخرى للمتابعة.',
 );

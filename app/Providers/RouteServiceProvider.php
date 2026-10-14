@@ -99,12 +99,40 @@ class RouteServiceProvider extends ServiceProvider
             return Limit::perMinute(120)->by(optional($request->user())->id ?: $request->ip());
         });
 
+        // Egyptian carriers run heavy CGNAT (see routes/api/v1/api.php), so a tight
+        // per-IP cap rejects real people who merely share a public IP. The tight
+        // limit sits on the account being attacked instead; the IP limit is only a
+        // loose backstop against one machine spraying many numbers.
         RateLimiter::for('auth', function (Request $request) {
-            return Limit::perMinute(10)->by($request->ip());
+            return self::identity_limits($request, 10, 60);
         });
 
         RateLimiter::for('otp', function (Request $request) {
-            return Limit::perMinute(5)->by($request->ip());
+            return self::identity_limits($request, 5, 30);
         });
+    }
+
+    /**
+     * @param  int  $per_identity  per minute, per phone/email in the request
+     * @param  int  $per_ip        per minute, per client IP
+     */
+    protected static function identity_limits(Request $request, int $per_identity, int $per_ip): array
+    {
+        $respond = fn () => response()->json([
+            'errors' => [['code' => 'too_many_requests', 'message' => translate('messages.too_many_requests_try_again_shortly')]],
+        ], 429);
+
+        $limits = [Limit::perMinute($per_ip)->by('ip:' . $request->ip())->response($respond)];
+
+        $identity = $request->input('phone') ?? $request->input('email_or_phone') ?? $request->input('email');
+        // No identity (guest/request runs on every first launch) means only the
+        // loose IP limit applies; a tight one here would hit CGNAT users again.
+        if (is_string($identity) && $identity !== '') {
+            // Strip formatting so "+20 100…" and "+20100…" share one bucket.
+            $key = strtolower(preg_replace('/[^0-9a-zA-Z@.+_-]/', '', $identity));
+            $limits[] = Limit::perMinute($per_identity)->by('id:' . $key)->response($respond);
+        }
+
+        return $limits;
     }
 }

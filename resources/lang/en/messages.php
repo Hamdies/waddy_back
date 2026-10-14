@@ -8419,4 +8419,8 @@ Smartly or Earn. ',
   'order_in_progress' => 'Your order is being placed, hold on a moment',
   'this_order_has_already_been_submitted' => 'This order has already been submitted',
   'please_wait_before_placing_another_order' => 'Please wait a moment before placing another order',
+  'otp_expired_request_a_new_code' => 'This code has expired. Request a new one.',
+  'Too_many_attemps' => 'Too many wrong codes. Please wait and try again.',
+  'too_many_requests_try_again_shortly' => 'Too many tries. Please wait a minute and try again.',
+  'verify_your_phone_again_to_continue' => 'Please verify your phone number again to continue.',
 );
