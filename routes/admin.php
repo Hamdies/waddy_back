@@ -426,6 +426,14 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
             // QR codes for our links, drawn in the browser; no external generator.
             Route::get('qr-code', 'QrCodeController@index')->name('qr-code');
+            Route::group(['prefix' => 'qr-code/tracked', 'as' => 'qr-code.'], function () {
+                Route::get('/', 'QrCodeController@tracked')->name('tracked');
+                Route::post('/', 'QrCodeController@store')->name('store');
+                Route::get('{qrCode}', 'QrCodeController@show')->name('show')->whereNumber('qrCode');
+                Route::put('{qrCode}', 'QrCodeController@update')->name('update')->whereNumber('qrCode');
+                Route::post('{qrCode}/toggle', 'QrCodeController@toggle')->name('toggle')->whereNumber('qrCode');
+                Route::delete('{qrCode}', 'QrCodeController@destroy')->name('destroy')->whereNumber('qrCode');
+            });
 
             Route::group(['prefix' => 'file-manager', 'as' => 'file-manager.'], function () {
                 Route::get('/download/{file_name}/{storage?}', 'FileManagerController@download')->name('download');

@@ -56,6 +56,10 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    // Optional host for the standalone Waddy Vets site (e.g. vets.waddy.app). Its
+    // root shows the vets landing; /vets/* works on every host either way.
+    'vet_site_domain' => env('VET_SITE_DOMAIN'),
+
     'asset_url' => env('ASSET_URL', null),
 
     /*

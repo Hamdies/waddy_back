@@ -32,6 +32,10 @@
     .qr-recent button { text-align: start; border: 1px solid #e7eaf3; background: #fff; border-radius: 10px; padding: 10px 12px; }
     .qr-recent button:hover { border-color: var(--primary, #107980); }
     .qr-recent strong { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .qr-track { border: 1px solid #e7eaf3; border-radius: 12px; padding: 14px 16px; margin-top: 20px; background: #f8fafd; }
+    .qr-track-saved { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 13px; }
+    .qr-track-saved code { background: #fff; border: 1px solid #e7eaf3; border-radius: 6px; padding: 3px 8px; color: #334257; }
+    .qr-track-scans { font-weight: 700; color: var(--primary, #107980); }
     .qr-recent small { color: #8a94a6; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>
 @endpush
@@ -44,6 +48,17 @@
         </h1>
         <p class="text-muted mb-0">{{ translate('messages.qr_code_generator_hint') }}</p>
     </div>
+
+    <ul class="nav nav-tabs mb-3 border-0">
+        <li class="nav-item">
+            <a class="nav-link active" href="{{ route('admin.business-settings.qr-code') }}">{{ translate('messages.qr_tab_generator') }}</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{{ route('admin.business-settings.qr-code.tracked') }}">
+                {{ translate('messages.qr_tab_tracked') }} <span class="badge badge-soft-dark ml-1">{{ $trackedCount }}</span>
+            </a>
+        </li>
+    </ul>
 
     <div class="row">
         {{-- Left: what goes in the code, and how it looks --}}
@@ -144,6 +159,34 @@
                                     <input type="checkbox" class="qr-in mr-2" id="wifiHidden"> {{ translate('messages.qr_wifi_hidden') }}
                                 </label>
                             </div>
+                        </div>
+                    </div>
+
+                    {{-- Tracking: only for codes that open a web link --}}
+                    <div class="qr-track" id="trackBox">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="pr-3">
+                                <div class="font-weight-bold"><i class="tio-chart-bar-4"></i> {{ translate('messages.qr_track_scans') }}</div>
+                                <small class="text-muted">{{ translate('messages.qr_track_hint') }}</small>
+                            </div>
+                            <label class="toggle-switch toggle-switch-sm mb-0">
+                                <input type="checkbox" class="toggle-switch-input qr-in" id="trackOn">
+                                <span class="toggle-switch-label"><span class="toggle-switch-indicator"></span></span>
+                            </label>
+                        </div>
+                        <div id="trackFields" style="display: none;" class="mt-3">
+                            <div class="d-flex flex-wrap" style="gap: 8px;">
+                                <input type="text" class="form-control qr-in" id="trackName" maxlength="100" style="flex: 1 1 220px;"
+                                       placeholder="{{ translate('messages.qr_track_name_placeholder') }}">
+                                <button type="button" class="btn btn--primary" id="trackSave">{{ translate('messages.save') }}</button>
+                            </div>
+                            <div class="qr-track-saved mt-2" id="trackSaved" style="display: none;">
+                                <code id="trackShort"></code>
+                                <span><span class="qr-track-scans" id="trackScans">0</span> {{ translate('messages.qr_scans') }}</span>
+                                <a href="#" id="trackStats"><i class="tio-chart-bar-4"></i> {{ translate('messages.qr_view_stats') }}</a>
+                                <span class="text-warning" id="trackDirty" style="display: none;"><i class="tio-edit"></i> {{ translate('messages.qr_unsaved') }}</span>
+                            </div>
+                            <small class="text-muted d-block mt-1" id="trackNote">{{ translate('messages.qr_track_note_new') }}</small>
                         </div>
                     </div>
                 </div>
@@ -285,8 +328,18 @@
             copyFailed: @json(translate('messages.qr_copy_failed')),
             downloaded: @json(translate('messages.qr_downloaded')),
             chars: @json(translate('messages.qr_chars')),
+            needName: @json(translate('messages.qr_track_need_name')),
+            saved: @json(translate('messages.qr_track_saved')),
+            saveFailed: @json(translate('messages.qr_track_save_failed')),
+            noteSaved: @json(translate('messages.qr_track_note_saved')),
+            redirectsTo: @json(translate('messages.qr_redirects_to')),
         };
         const BRAND_LOGO = @json($logo);
+        const EDITING = @json($editing);
+        const SHORT_BASE = @json($shortBase);
+        const STORE_URL = @json(route('admin.business-settings.qr-code.store'));
+        const CSRF = document.querySelector('meta[name="csrf-token"]')?.content;
+        const TRACKABLE = ['link', 'whatsapp'];
         const PREVIEW = 280;
         const RECENT_KEY = 'waddy.qr.recent';
         const $ = id => document.getElementById(id);
@@ -371,6 +424,75 @@
             return '';
         }
 
+        // ---------- Tracking ----------
+
+        let tracked = null;      // the saved code: {id, short_url, update_url, stats_url, scans, ...}
+        let savedSig = null;     // what was last saved, to spot unsaved edits
+
+        const trackingActive = () => TRACKABLE.includes(type) && $('trackOn').checked;
+
+        // What the QR holds: our short link when tracking, else the destination itself.
+        // Before the first save, a same-length placeholder keeps the preview's density honest.
+        function encoded() {
+            if (!trackingActive()) return payload();
+            return tracked ? tracked.short_url : SHORT_BASE + '/xxxxxx';
+        }
+
+        // Only what this code saves: its name, where it goes, and its look. Other tabs' fields don't count.
+        function signature() {
+            return JSON.stringify([val('trackName'), type, payload(), $('fg').value, $('bg').value, $('bgClear').checked,
+                val('caption'), $('margin').value, radio('dotType'), radio('cornerType')]);
+        }
+
+        async function ensureSaved() {
+            if (tracked && savedSig === signature()) return true;
+            if (!payload()) { toastr.warning(T.empty); return false; }
+            if (!val('trackName')) { toastr.warning(T.needName); $('trackName').focus(); return false; }
+            $('trackSave').disabled = true;
+            try {
+                const res = await fetch(tracked ? tracked.update_url : STORE_URL, {
+                    method: tracked ? 'PUT' : 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF },
+                    body: JSON.stringify({ name: val('trackName'), type, target_url: payload(), style: snapshot() }),
+                });
+                const body = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    const first = body.errors ? Object.values(body.errors)[0][0] : (body.message || T.saveFailed);
+                    toastr.error(first);
+                    return false;
+                }
+                const isNew = !tracked;
+                tracked = body;
+                savedSig = signature();
+                if (isNew && history.replaceState) {
+                    const u = new URL(location.href); u.searchParams.set('edit', tracked.id); history.replaceState(null, '', u);
+                }
+                toastr.success(T.saved);
+                render();
+                return true;
+            } catch (e) {
+                toastr.error(T.saveFailed);
+                return false;
+            } finally {
+                $('trackSave').disabled = false;
+            }
+        }
+
+        function renderTracking() {
+            $('trackBox').style.display = TRACKABLE.includes(type) ? '' : 'none';
+            $('trackFields').style.display = $('trackOn').checked ? '' : 'none';
+            $('trackSaved').style.display = tracked ? '' : 'none';
+            if (tracked) {
+                $('trackShort').textContent = tracked.short_url.replace(/^https?:\/\//, '');
+                $('trackScans').textContent = tracked.scans;
+                $('trackStats').href = tracked.stats_url;
+                $('trackDirty').style.display = savedSig !== signature() ? '' : 'none';
+                $('trackNote').textContent = T.noteSaved;
+            }
+        }
+
+        $('trackSave').addEventListener('click', ensureSaved);
+
         // ---------- How it looks ----------
 
         function logoImage() {
@@ -386,7 +508,7 @@
             const image = logoImage();
             return {
                 width: size, height: size, type: 'canvas',
-                data: payload() || ' ',
+                data: encoded() || ' ',
                 margin: Math.round(parseInt($('margin').value, 10) * size / PREVIEW),
                 image: image || undefined,
                 // A logo hides modules, so it needs the highest error correction.
@@ -412,7 +534,11 @@
             const data = payload();
             qr.update(options(PREVIEW));
             $('qrPreview').style.opacity = data ? 1 : 0.15;
-            $('encoded').textContent = data || T.empty;
+            $('encoded').textContent = !data ? T.empty
+                : trackingActive() ? encoded() + '\n' + T.redirectsTo + ' ' + data
+                : data;
+            $('encoded').style.whiteSpace = 'pre-line';
+            renderTracking();
             $('charCount').textContent = data.length + ' ' + T.chars;
             $('charCount').classList.toggle('text-danger', data.length > 1200);
 
@@ -496,6 +622,7 @@
 
         document.querySelectorAll('[data-export]').forEach(btn => btn.addEventListener('click', async () => {
             if (!payload()) { toastr.warning(T.empty); return; }
+            if (trackingActive() && !(await ensureSaved())) return;
             const ext = btn.dataset.export;
             const blob = await buildBlob(ext);
             const a = document.createElement('a');
@@ -511,6 +638,7 @@
 
         $('copyPng').addEventListener('click', async () => {
             if (!payload()) { toastr.warning(T.empty); return; }
+            if (trackingActive() && !(await ensureSaved())) return;
             try {
                 const blob = await buildBlob('png');
                 await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
@@ -576,7 +704,13 @@
                 const small = document.createElement('small');
                 small.textContent = s.type + ' · ' + new Date(s.at).toLocaleDateString();
                 b.append(strong, small);
-                b.addEventListener('click', () => restore(s));
+                b.addEventListener('click', () => {
+                    // A recent item is a fresh code: leave the tracked one being edited untouched.
+                    tracked = null; savedSig = null;
+                    $('trackOn').checked = false; $('trackName').value = '';
+                    if (history.replaceState) { const u = new URL(location.href); u.searchParams.delete('edit'); history.replaceState(null, '', u); }
+                    restore(s);
+                });
                 box.appendChild(b);
             });
         }
@@ -625,6 +759,14 @@
         });
 
         drawRecent();
+        if (EDITING) {
+            if (EDITING.style) restore(EDITING.style); else setType(EDITING.type);
+            if (EDITING.type === 'link' && !(EDITING.style && EDITING.style.v)) $('linkUrl').value = EDITING.target_url;
+            $('trackOn').checked = true;
+            $('trackName').value = EDITING.name;
+            tracked = EDITING;
+            savedSig = signature();
+        }
         render();
     })();
 </script>

@@ -17,6 +17,11 @@ use App\Http\Controllers\FirebaseController;
 
 
 Route::post('/subscribeToTopic', [FirebaseController::class, 'subscribeToTopic']);
+// Optional own domain for Waddy Vets (e.g. vets.waddy.app): its home page is the
+// vets landing. Registered before `home` because routes match in order.
+if ($vetDomain = config('app.vet_site_domain')) {
+    Route::domain($vetDomain)->get('/', 'VetClinicApplicationController@landing')->name('vet-clinic.home');
+}
 Route::get('/', 'HomeController@index')->name('home');
 Route::get('lang/{locale}', 'HomeController@lang')->name('lang');
 Route::get('terms-and-conditions', 'HomeController@terms_and_conditions')->name('terms-and-conditions');
@@ -90,12 +95,22 @@ Route::group(['prefix' => 'deliveryman', 'as' => 'deliveryman.'], function () {
 
 });
 
-//Vet clinic application (Pets module): lands in Admin › Vet clinics › Applications
-Route::group(['prefix' => 'vet-clinic', 'as' => 'vet-clinic.'], function () {
+//Waddy Vets: standalone site where vets list their clinic (Pets module).
+//Applications land in Admin › Vet clinics › Applications.
+Route::group(['prefix' => 'vets', 'as' => 'vet-clinic.'], function () {
+    Route::get('/', 'VetClinicApplicationController@landing')->name('landing');
     Route::get('apply', 'VetClinicApplicationController@create')->name('create');
     Route::post('apply', 'VetClinicApplicationController@store')->name('store')->middleware('throttle:10,60');
     Route::get('apply/thanks', 'VetClinicApplicationController@thanks')->name('thanks');
 });
+// The form's first address; printed QR codes and shared links may still use it.
+Route::permanentRedirect('vet-clinic/apply', '/vets/apply');
+
+// Tracked QR codes: count the scan, then redirect (Admin › QR code generator).
+Route::get('q/{code}', \App\Http\Controllers\QrRedirectController::class)
+    ->where('code', '[A-Za-z0-9]{4,16}')
+    ->middleware('throttle:120,1')
+    ->name('qr.redirect');
 
 Route::get('/image-proxy', \App\Http\Controllers\ImageProxyController::class)
     ->middleware('throttle:60,1')
