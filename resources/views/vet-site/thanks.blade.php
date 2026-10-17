@@ -6,6 +6,7 @@
 @section('content')
 @include('vet-site.partials._topbar')
 
+<div class="thanks-band">
 <main class="wrap thanks">
     <div class="thanks-icon">@include('vet-site.partials._icon', ['name' => 'check'])</div>
     <h1>{{ translate('messages.vs_thanks_title') }}</h1>
@@ -17,8 +18,9 @@
         @endif
     </p>
     <div class="actions">
-        <a class="btn btn--block" href="{{ route('vet-clinic.landing') }}">{{ translate('messages.vet_apply_back_home') }}</a>
+        <a class="btn btn--teal btn--block" href="{{ route('vet-clinic.landing') }}">{{ translate('messages.vet_apply_back_home') }}</a>
         <a class="text-link" href="{{ route('vet-clinic.create') }}">{{ translate('messages.vet_apply_another') }}</a>
     </div>
 </main>
+</div>
 @endsection

@@ -12,7 +12,7 @@
                 {{ $otherLang === 'ar' ? 'عربي' : 'English' }}
             </a>
             @if($cta ?? false)
-                <a class="btn" href="{{ route('vet-clinic.create') }}">{{ translate('messages.vs_cta_apply_short') }}</a>
+                <a class="btn btn--teal" href="{{ route('vet-clinic.create') }}">{{ translate('messages.vs_cta_apply_short') }}</a>
             @endif
         </div>
     </div>

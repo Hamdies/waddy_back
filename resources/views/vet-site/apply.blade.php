@@ -18,11 +18,14 @@
 @section('content')
 @include('vet-site.partials._topbar')
 
-<main class="wrap">
-    <div class="apply-head">
+<div class="apply-band">
+    <div class="wrap apply-head">
         <h1>{{ translate('messages.vs_apply_title') }}</h1>
         <p>{{ translate('messages.vs_apply_lede') }}</p>
     </div>
+</div>
+
+<main class="wrap">
 
     <div class="apply-grid">
         <form id="vcaForm" action="{{ route('vet-clinic.store') }}" method="POST" enctype="multipart/form-data" novalidate>

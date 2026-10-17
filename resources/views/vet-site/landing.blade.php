@@ -13,7 +13,7 @@
                 <h1>{{ translate('messages.vs_hero_title') }}</h1>
                 <p class="hero-lede">{{ translate('messages.vs_hero_lede') }}</p>
                 <div class="hero-cta" id="heroCta">
-                    <a class="btn btn--block" href="{{ route('vet-clinic.create') }}" style="max-width: 320px;">
+                    <a class="btn btn--teal btn--block" href="{{ route('vet-clinic.create') }}" style="max-width: 320px;">
                         {{ translate('messages.vs_cta_apply') }}
                         @include('vet-site.partials._icon', ['name' => 'arrow-right', 'class' => 'vi-flip'])
                     </a>
@@ -31,7 +31,7 @@
         </div>
     </section>
 
-    <section class="section" id="how">
+    <section class="section section--tint" id="how">
         <div class="wrap split">
             <div>
                 <h2>{{ translate('messages.vs_why_title') }}</h2>
@@ -89,14 +89,14 @@
         </div>
     </section>
 
-    <section class="section" style="padding-top: 0; border-top: 0;">
+    <section class="section" style="padding-top: 0;">
         <div class="wrap">
             <div class="closing">
                 <div>
                     <h2>{{ translate('messages.vs_band_title') }}</h2>
                     <p>{{ translate('messages.vs_band_body') }}</p>
                 </div>
-                <a class="btn" href="{{ route('vet-clinic.create') }}">
+                <a class="btn btn--teal" href="{{ route('vet-clinic.create') }}">
                     {{ translate('messages.vs_cta_apply') }}
                     @include('vet-site.partials._icon', ['name' => 'arrow-right', 'class' => 'vi-flip'])
                 </a>
