@@ -90,6 +90,13 @@ Route::group(['prefix' => 'deliveryman', 'as' => 'deliveryman.'], function () {
 
 });
 
+//Vet clinic application (Pets module): lands in Admin › Vet clinics › Applications
+Route::group(['prefix' => 'vet-clinic', 'as' => 'vet-clinic.'], function () {
+    Route::get('apply', 'VetClinicApplicationController@create')->name('create');
+    Route::post('apply', 'VetClinicApplicationController@store')->name('store')->middleware('throttle:10,60');
+    Route::get('apply/thanks', 'VetClinicApplicationController@thanks')->name('thanks');
+});
+
 Route::get('/image-proxy', \App\Http\Controllers\ImageProxyController::class)
     ->middleware('throttle:60,1')
     ->name('image-proxy');

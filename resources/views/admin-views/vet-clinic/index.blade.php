@@ -9,11 +9,14 @@
             <div class="col-sm mb-2 mb-sm-0">
                 <h1 class="page-header-title">
                     <i class="tio-hospital"></i> {{ translate('messages.vet_clinics') }}
-                    <span class="badge badge-soft-dark ml-2">{{ $clinics->total() }}</span>
                 </h1>
                 <p class="text-muted mb-0">{{ translate('messages.vet_clinics_hint') }}</p>
             </div>
             <div class="col-sm-auto">
+                <a href="{{ route('vet-clinic.create') }}" target="_blank" class="btn btn--secondary mr-1"
+                   title="{{ translate('messages.vet_apply_public_link_hint') }}">
+                    <i class="tio-open-in-new"></i> {{ translate('messages.vet_apply_public_link') }}
+                </a>
                 <a href="{{ route('admin.vet-clinic.create') }}" class="btn btn--primary">
                     <i class="tio-add"></i> {{ translate('messages.add_vet_clinic') }}
                 </a>
@@ -21,9 +24,25 @@
         </div>
     </div>
 
+    <ul class="nav nav-tabs mb-3 border-0">
+        @foreach([
+            \App\Models\VetClinic::STATUS_APPROVED => 'vet_clinics_live',
+            \App\Models\VetClinic::STATUS_PENDING => 'vet_applications',
+            \App\Models\VetClinic::STATUS_REJECTED => 'vet_rejected',
+        ] as $status => $label)
+            <li class="nav-item">
+                <a class="nav-link {{ $tab === $status ? 'active' : '' }}" href="{{ route('admin.vet-clinic.index', ['status' => $status]) }}">
+                    {{ translate('messages.' . $label) }}
+                    <span class="badge badge-soft-{{ $status === 'pending' && ($counts[$status] ?? 0) ? 'warning' : 'dark' }} ml-1">{{ $counts[$status] ?? 0 }}</span>
+                </a>
+            </li>
+        @endforeach
+    </ul>
+
     <div class="card">
         <div class="card-header border-0">
             <form class="search-form" method="GET">
+                <input type="hidden" name="status" value="{{ $tab }}">
                 <div class="input-group input--group">
                     <input type="search" name="search" class="form-control" value="{{ request('search') }}"
                            placeholder="{{ translate('messages.search_vet_clinics') }}">
@@ -39,8 +58,13 @@
                         <th>{{ translate('messages.vet_clinic') }}</th>
                         <th>{{ translate('messages.clinic_treats') }}</th>
                         <th>{{ translate('messages.clinic_services') }}</th>
+                        @if($tab === 'approved')
                         <th>{{ translate('messages.clinic_vets') }}</th>
                         <th>{{ translate('messages.status') }}</th>
+                        @else
+                        <th>{{ translate('messages.vet_contact_person') }}</th>
+                        <th>{{ translate('messages.vet_submitted') }}</th>
+                        @endif
                         <th class="text-center">{{ translate('messages.action') }}</th>
                     </tr>
                 </thead>
@@ -70,6 +94,7 @@
                                 <span class="badge badge-soft-success">{{ translate('messages.clinic_service_' . $s) }}</span>
                             @endforeach
                         </td>
+                        @if($tab === 'approved')
                         <td>{{ count($clinic->vets ?? []) }}</td>
                         <td>
                             <a href="{{ route('admin.vet-clinic.toggle-status', $clinic->id) }}"
@@ -77,7 +102,22 @@
                                 {{ $clinic->is_active ? translate('messages.active') : translate('messages.inactive') }}
                             </a>
                         </td>
+                        @else
+                        <td>
+                            <div class="font-weight-bold">{{ $clinic->contact_name ?? '—' }}</div>
+                            <small class="text-muted">{{ $clinic->contact_phone }}</small>
+                        </td>
+                        <td>
+                            <div>{{ $clinic->created_at?->format('d M Y') }}</div>
+                            <small class="text-muted">{{ $clinic->created_at?->diffForHumans() }}</small>
+                        </td>
+                        @endif
                         <td class="text-center">
+                            @if($tab !== 'approved')
+                            <a href="{{ route('admin.vet-clinic.show', $clinic->id) }}" class="btn btn-sm btn--primary" title="{{ translate('messages.review') }}">
+                                <i class="tio-visible-outlined"></i> {{ translate('messages.review') }}
+                            </a>
+                            @endif
                             <a href="{{ route('admin.vet-clinic.edit', $clinic->id) }}" class="btn btn-sm btn-white" title="{{ translate('messages.edit') }}">
                                 <i class="tio-edit"></i>
                             </a>
@@ -93,7 +133,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="text-center py-5 text-muted">{{ translate('messages.no_vet_clinics_yet') }}</td>
+                        <td colspan="7" class="text-center py-5 text-muted">{{ translate($tab === 'approved' ? 'messages.no_vet_clinics_yet' : 'messages.vet_no_applications') }}</td>
                     </tr>
                     @endforelse
                 </tbody>

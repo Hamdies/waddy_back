@@ -159,8 +159,19 @@ class OrderController extends Controller
                 collect($paginator->items())->pluck('id')->all()
             )
             : [];
-        $orders = array_map(function ($data) use ($xpEarned) {
+        // Which of these orders the customer has already reviewed, so the
+        // Orders tab only asks for a rating once.
+        $reviewed = $request->user
+            ? DB::table('reviews')
+                ->where('user_id', $request->user->id)
+                ->whereIn('order_id', collect($paginator->items())->pluck('id')->all())
+                ->distinct()
+                ->pluck('order_id')
+                ->flip()
+            : collect();
+        $orders = array_map(function ($data) use ($xpEarned, $reviewed) {
             $data['xp_earned'] = $xpEarned[$data['id']] ?? 0;
+            $data['is_reviewed'] = $reviewed->has($data['id']);
             $data['delivery_address'] = $data['delivery_address'] ? json_decode($data['delivery_address']) : $data['delivery_address'];
             $data['store'] = $data['store'] ? Helpers::store_data_formatting($data['store']) : $data['store'];
             $data['delivery_man'] = $data['delivery_man'] ? Helpers::deliverymen_data_formatting([$data['delivery_man']]) : $data['delivery_man'];

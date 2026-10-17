@@ -34,6 +34,11 @@ class VetClinic extends Model
     /** Opening hours are entered in Cairo time; the app server runs on UTC. */
     public const TIMEZONE = 'Africa/Cairo';
 
+    /** Admin-added clinics are approved; applications from /vet-clinic/apply start pending. */
+    public const STATUS_APPROVED = 'approved';
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_REJECTED = 'rejected';
+
     protected $guarded = ['id'];
 
     protected $casts = [
@@ -46,11 +51,28 @@ class VetClinic extends Model
         'vets' => 'array',
         'priority' => 'integer',
         'is_active' => 'boolean',
+        'reviewed_at' => 'datetime',
     ];
 
+    /** Shown in the app: switched on and, if it came in as an application, approved. */
     public function scopeActive(Builder $query): Builder
     {
-        return $query->where('is_active', true);
+        return $query->where('is_active', true)->where('status', self::STATUS_APPROVED);
+    }
+
+    public function scopeStatus(Builder $query, string $status): Builder
+    {
+        return $query->where('status', $status);
+    }
+
+    public function isPending(): bool
+    {
+        return $this->status === self::STATUS_PENDING;
+    }
+
+    public function licenseUrl(): ?string
+    {
+        return $this->license_document ? asset('storage/' . $this->license_document) : null;
     }
 
     /** The name in the app's language, falling back to English. */

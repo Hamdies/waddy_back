@@ -425,14 +425,20 @@ class ItemController extends Controller
      *
      * `order_count` is how many orders the items came from, so the app can say
      * "From your last 3 orders here" without inventing the number.
+     *
+     * Without `store_id` it is the Orders tab's cross-store rail instead — see
+     * buyAgainAcrossStores().
      */
     public function get_buy_again(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'store_id' => 'required|integer',
+            'store_id' => 'nullable|integer',
         ]);
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+        if (!$request->filled('store_id')) {
+            return $this->buyAgainAcrossStores($request);
         }
 
         $orderIds = DB::table('orders')
@@ -479,6 +485,73 @@ class ItemController extends Controller
             $variation = $line ? json_decode($line->variation ?? '[]', true) : [];
             $products[$key]['last_variation'] = is_array($variation) ? data_get($variation, '0.type') : null;
             $products[$key]['last_preference'] = \App\Support\ProducePreference::sanitize($line->preference ?? null);
+        }
+
+        return response()->json([
+            'order_count' => $orderIds->count(),
+            'products' => $products,
+        ], 200);
+    }
+
+    /**
+     * The Orders tab's "Buy again": the items this customer has bought most
+     * often across their last 20 delivered orders, any store, still on sale
+     * and in a zone the request covers. Each product carries `order_times`
+     * (how many of those orders it was in) and the variation/produce answer it
+     * was last bought with, so "+" repeats that exact line.
+     */
+    private function buyAgainAcrossStores(Request $request)
+    {
+        $orderIds = DB::table('orders')
+            ->where('user_id', $request->user()->id)
+            ->where('is_guest', 0)
+            ->where('order_status', 'delivered')
+            ->orderByDesc('created_at')
+            ->limit(20)
+            ->pluck('id');
+
+        if ($orderIds->isEmpty()) {
+            return response()->json(['order_count' => 0, 'products' => []], 200);
+        }
+
+        $counts = DB::table('order_details')
+            ->whereIn('order_id', $orderIds)
+            ->whereNotNull('item_id')
+            ->groupBy('item_id')
+            ->selectRaw('item_id, COUNT(DISTINCT order_id) as times, MAX(order_id) as last_order')
+            ->orderByDesc('times')
+            ->orderByDesc('last_order')
+            ->limit(30)
+            ->get()
+            ->keyBy('item_id');
+        $itemIds = $counts->keys()->all();
+
+        $lastLines = DB::table('order_details')
+            ->whereIn('order_id', $orderIds)
+            ->whereIn('item_id', $itemIds)
+            ->orderByDesc('id')
+            ->get(['item_id', 'variation', 'preference'])
+            ->unique('item_id')
+            ->keyBy('item_id');
+
+        $zoneIds = json_decode($request->header('zoneId') ?? '', true);
+        $items = Item::active()
+            ->whereIn('id', $itemIds)
+            ->when(is_array($zoneIds) && count($zoneIds), function ($query) use ($zoneIds) {
+                $query->whereHas('store', fn ($q) => $q->whereIn('zone_id', $zoneIds));
+            })
+            ->get()
+            ->sortBy(fn ($item) => array_search($item->id, $itemIds))
+            ->take(12)
+            ->values();
+
+        $products = Helpers::product_data_formatting($items, true, false, app()->getLocale());
+        foreach ($products as $key => $product) {
+            $line = $lastLines[$product['id']] ?? null;
+            $variation = $line ? json_decode($line->variation ?? '[]', true) : [];
+            $products[$key]['last_variation'] = is_array($variation) ? data_get($variation, '0.type') : null;
+            $products[$key]['last_preference'] = \App\Support\ProducePreference::sanitize($line->preference ?? null);
+            $products[$key]['order_times'] = (int) ($counts[$product['id']]->times ?? 0);
         }
 
         return response()->json([

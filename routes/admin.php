@@ -32,6 +32,9 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::put('{clinic}', 'VetClinicController@update')->name('update')->whereNumber('clinic');
             Route::delete('{clinic}', 'VetClinicController@destroy')->name('destroy')->whereNumber('clinic');
             Route::get('{clinic}/toggle-status', 'VetClinicController@toggleStatus')->name('toggle-status')->whereNumber('clinic');
+            Route::get('{clinic}', 'VetClinicController@show')->name('show')->whereNumber('clinic');
+            Route::post('{clinic}/approve', 'VetClinicController@approve')->name('approve')->whereNumber('clinic');
+            Route::post('{clinic}/reject', 'VetClinicController@reject')->name('reject')->whereNumber('clinic');
         });
 
         Route::get('maintenance-mode', 'SystemController@maintenance_mode')->name('maintenance-mode');
@@ -420,6 +423,9 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('notification-status-change/{key}/{user_type}/{type}', 'BusinessSettingsController@notification_status_change')->name('notification_status_change');
 
 
+
+            // QR codes for our links, drawn in the browser; no external generator.
+            Route::get('qr-code', 'QrCodeController@index')->name('qr-code');
 
             Route::group(['prefix' => 'file-manager', 'as' => 'file-manager.'], function () {
                 Route::get('/download/{file_name}/{storage?}', 'FileManagerController@download')->name('download');

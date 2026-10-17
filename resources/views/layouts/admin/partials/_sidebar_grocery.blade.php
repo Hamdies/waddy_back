@@ -540,7 +540,13 @@
                 <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/vet-clinics*') ? 'active' : '' }}">
                     <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.vet-clinic.index') }}" title="{{ translate('messages.vet_clinics') }}">
                         <i class="tio-hospital nav-icon"></i>
-                        <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('messages.vet_clinics') }}</span>
+                        <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                            {{ translate('messages.vet_clinics') }}
+                            @php($vetPending = \App\Models\VetClinic::status(\App\Models\VetClinic::STATUS_PENDING)->count())
+                            @if($vetPending)
+                                <span class="badge badge-soft-warning badge-pill ml-1">{{ $vetPending }}</span>
+                            @endif
+                        </span>
                     </a>
                 </li>
                 @endif

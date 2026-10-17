@@ -338,6 +338,14 @@
                                 <span class="text-truncate text-capitalize">{{ translate('messages.gallery') }}</span>
                             </a>
                         </li>
+                        <li
+                            class="navbar-vertical-aside-has-menu {{ Request::is('admin/business-settings/qr-code*') ? 'active' : '' }}">
+                            <a class="nav-link " href="{{ route('admin.business-settings.qr-code') }}"
+                                title="{{ translate('messages.qr_code_generator') }}">
+                                <span class="tio-qr-code nav-icon"></span>
+                                <span class="text-truncate text-capitalize">{{ translate('messages.qr_code_generator') }}</span>
+                            </a>
+                        </li>
                         <li class="nav-item">
                             <small class="nav-subtitle"
                                 title="{{ translate('messages.business_settings') }}">{{ translate('messages.system_management') }}</small>
