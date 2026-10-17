@@ -30,7 +30,7 @@
                     @unless($live)
                         <span class="ccard-tag">@include('vet-site.partials._icon', ['name' => 'cat']) {{ translate('messages.clinic_species_cat') }}</span>
                         <span class="ccard-tag">@include('vet-site.partials._icon', ['name' => 'dog']) {{ translate('messages.clinic_species_dog') }}</span>
-                        <span class="ccard-tag">@include('vet-site.partials._icon', ['name' => 'syringe']) {{ translate('messages.clinic_service_vaccination') }} <b>· 250</b></span>
+                        <span class="ccard-tag">@include('vet-site.partials._icon', ['name' => 'syringe']) {{ translate('messages.clinic_service_vaccination') }}</span>
                     @endunless
                 </div>
                 <div class="ccard-vets" @if($live) data-pv="vets" hidden @endif>

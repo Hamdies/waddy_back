@@ -104,7 +104,11 @@
             setError($('#pinNote'), has ? '' : lat.dataset.requiredMsg);
             if (!has) { ok = false; first = first || $('#pac-input'); }
         }
-        if (first) first.focus({ preventScroll: false });
+        if (first) {
+            const fold = first.closest('details');
+            if (fold) fold.open = true;
+            first.focus({ preventScroll: false });
+        }
         return ok;
     }
 
@@ -130,7 +134,7 @@
 
     // ---------- Uploads ----------
 
-    const MAX_IMAGE = 4 * 1024 * 1024, MAX_LICENSE = 5 * 1024 * 1024;
+    const MAX_IMAGE = 4 * 1024 * 1024;
 
     $$('.drop').forEach(drop => {
         const input = $('input[type="file"]', drop);
@@ -144,20 +148,13 @@
         });
         input.addEventListener('change', () => {
             const file = input.files[0];
-            const limit = input.name === 'license_document' ? MAX_LICENSE : MAX_IMAGE;
-            if (file && file.size > limit) {
+            if (file && file.size > MAX_IMAGE) {
                 input.value = '';
                 setError(drop, V.tooBig);
                 return;
             }
             setError(drop, '');
             drop.classList.remove('is-invalid');
-            if (input.name === 'license_document') {
-                const chip = $('#licenseChip');
-                chip.classList.toggle('is-on', !!file);
-                $('span', chip).textContent = file ? file.name : '';
-                return;
-            }
             const img = $('img', drop);
             if (!file) { drop.classList.remove('has-file'); updatePreview(); return; }
             const reader = new FileReader();
@@ -203,17 +200,6 @@
         updatePreview();
     });
 
-    // ---------- Services ----------
-
-    $$('.svc').forEach(row => {
-        const cb = $('input[type="checkbox"]', row);
-        const price = $('input[type="number"]', row);
-        cb.addEventListener('change', () => {
-            row.classList.toggle('is-on', cb.checked);
-            if (cb.checked) setTimeout(() => price.focus(), 0);
-        });
-    });
-
     // ---------- Team ----------
 
     const vetsList = $('#vetsList');
@@ -226,11 +212,9 @@
         return clean ? clean.charAt(0).toUpperCase() : '+';
     }
     function wireVet(row) {
-        const name = $('.vet-name', row);
-        name.addEventListener('input', () => { $('.vet-avatar', row).textContent = initial(name.value); });
         $('.vet-remove', row).addEventListener('click', () => {
             if ($$('.vet-row', vetsList).length > 1) row.remove();
-            else $$('input', row).forEach(i => { i.value = ''; }), ($('.vet-avatar', row).textContent = '+');
+            else $$('input', row).forEach(i => { i.value = ''; });
             syncVets();
         });
     }
@@ -310,19 +294,15 @@
 
         const tags = pv('tags');
         tags.innerHTML = '';
-        const add = (iconName, label, price) => {
+        const add = (iconName, label) => {
             const s = document.createElement('span');
             s.className = 'ccard-tag';
             s.innerHTML = icon(iconName);
             s.append(' ' + label);
-            if (price) { const b = document.createElement('b'); b.textContent = ' · ' + price; s.append(b); }
             tags.append(s);
         };
         $$('input[name="species[]"]:checked').forEach(cb => add(cb.dataset.icon, cb.dataset.label));
-        $$('input[name="services[]"]:checked').slice(0, 3).forEach(cb => {
-            const price = form.elements[`service_prices[${cb.value}]`]?.value;
-            add(cb.dataset.icon, cb.dataset.label, price ? Number(price).toLocaleString(V.lang === 'ar' ? 'ar-EG' : 'en-US') : '');
-        });
+        $$('input[name="services[]"]:checked').slice(0, 3).forEach(cb => add(cb.dataset.icon, cb.dataset.label));
 
         const vets = $$('.vet-name').map(i => i.value.trim()).filter(Boolean);
         const vetsBox = pv('vets');
@@ -343,11 +323,15 @@
     form.addEventListener('input', updatePreview);
     form.addEventListener('change', updatePreview);
 
+    // Wide screens keep the preview beside the form; phones see it in the last step, just before submitting.
     const preview = $('#preview');
-    $('#previewOpen')?.addEventListener('click', () => { preview.classList.add('is-open'); $('#previewClose').focus(); });
-    $('#previewClose')?.addEventListener('click', () => preview.classList.remove('is-open'));
-    preview?.addEventListener('click', e => { if (e.target === preview) preview.classList.remove('is-open'); });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') preview?.classList.remove('is-open'); });
+    const wide = window.matchMedia('(min-width: 960px)');
+    function placePreview() {
+        const home = wide.matches ? $('#previewHome') : $('#previewSlot');
+        if (preview && home && preview.parentElement !== home) home.append(preview);
+    }
+    placePreview();
+    wide.addEventListener ? wide.addEventListener('change', placePreview) : wide.addListener(placePreview);
 
     // ---------- Map ----------
 
@@ -410,9 +394,10 @@
     window.vetMapUnavailable = function () {
         $('#vcaMap').style.display = 'none';
         $('#mapFallback').style.display = 'block';
-        $('#pac-input').closest('.prefix').style.display = 'none';
-        $('.map-search').style.position = 'static';
-        $('.map-search').style.padding = '12px';
+        // No map: search can't help, so the location button is the way in.
+        const search = $('#pac-input')?.closest('.prefix');
+        if (search) search.hidden = true;
+        $('.map-tools').style.gridTemplateColumns = '1fr';
     };
     window.gm_authFailure = window.vetMapUnavailable;
 
@@ -421,7 +406,7 @@
         if (!navigator.geolocation) { alertNote(V.locateFailed); return; }
         const label = btn.innerHTML;
         btn.disabled = true;
-        btn.lastChild.textContent = ' ' + V.locating;
+        $('span', btn).textContent = V.locating;
         navigator.geolocation.getCurrentPosition(pos => {
             btn.disabled = false; btn.innerHTML = label;
             const { latitude, longitude } = pos.coords;
@@ -442,6 +427,7 @@
     let start = 0;
     if (V.hasErrors) {
         const bad = steps.findIndex(s => s.querySelector('.is-invalid, .err'));
+        $$('details .is-invalid').forEach(el => { el.closest('details').open = true; });
         if (bad >= 0) start = bad;
     }
     show(start, false);

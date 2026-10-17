@@ -162,6 +162,8 @@
                 </div>
             </div>
 
+            {{-- Older applications carry a license; the public form no longer asks for one. --}}
+            @if($clinic->license_number || $clinic->license_document)
             <div class="card mb-3">
                 <div class="card-header"><h5 class="card-title mb-0"><i class="tio-document-text"></i> {{ translate('messages.vet_license') }}</h5></div>
                 <div class="card-body">
@@ -177,6 +179,7 @@
                     @endif
                 </div>
             </div>
+            @endif
 
             @if($clinic->status !== 'approved')
                 <div class="card mb-3">

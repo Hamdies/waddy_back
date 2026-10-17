@@ -72,24 +72,21 @@ class VetClinicApplicationController extends Controller
             'contact_phone' => 'required|regex:/^([0-9\s\-\+\(\)]*)$/|min:10|max:30',
             'contact_email' => 'nullable|email|max:190',
             'contact_role' => 'nullable|string|max:80',
-            'license_number' => 'required|string|max:80',
-            'license_document' => 'required|file|mimes:jpeg,png,jpg,webp,pdf|max:5120',
             'agree' => 'accepted',
         ], $this->messages(), $this->attributes());
 
-        $data = $this->clinicData($request) + [
+        // Prices are set by admins, not on the public form.
+        $data = array_merge($this->clinicData($request), ['service_prices' => null]) + [
             'contact_name' => $request->contact_name,
             'contact_phone' => $request->contact_phone,
             'contact_email' => $request->contact_email,
             'contact_role' => $request->contact_role,
-            'license_number' => $request->license_number,
             'status' => VetClinic::STATUS_PENDING,
             'is_active' => false,
             'priority' => 0,
         ];
         $data['logo'] = $request->hasFile('logo') ? $this->uploadClinicFile($request->file('logo')) : null;
         $data['cover'] = $request->hasFile('cover') ? $this->uploadClinicFile($request->file('cover')) : null;
-        $data['license_document'] = $this->uploadClinicFile($request->file('license_document'), 'license/');
 
         VetClinic::create($data);
 
@@ -129,8 +126,7 @@ class VetClinicApplicationController extends Controller
         return [
             'name' => translate('messages.vs_f_name_en'),
             'name_ar' => translate('messages.vs_f_name_ar'),
-            'description' => translate('messages.vs_f_about_en'),
-            'description_ar' => translate('messages.vs_f_about_ar'),
+            'description' => translate('messages.vs_f_about'),
             'phone' => translate('messages.vs_f_clinic_phone'),
             'website' => translate('messages.vs_f_website'),
             'logo' => translate('messages.vs_f_logo'),
@@ -139,8 +135,6 @@ class VetClinicApplicationController extends Controller
             'contact_phone' => translate('messages.vs_f_contact_phone'),
             'contact_email' => translate('messages.vs_f_contact_email'),
             'contact_role' => translate('messages.vs_f_contact_role'),
-            'license_number' => translate('messages.vs_f_license_number'),
-            'license_document' => translate('messages.vs_f_license_document'),
             'agree' => translate('messages.vs_f_agree_short'),
         ];
     }
