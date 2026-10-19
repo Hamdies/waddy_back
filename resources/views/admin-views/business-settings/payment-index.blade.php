@@ -253,7 +253,7 @@
                                     @endif
                                 @endforeach
 
-                                @if($payment['key_name'] == 'paystack')
+                                @if($payment['key_name'] == 'paystack' && \Illuminate\Support\Facades\Route::has('paystack.callback'))
                                     <div class="form-floating mb-2" >
                                         <label for="Callback_Url" class="form-label">{{translate('Callback Url')}}</label>
                                         <input id="Callback_Url" type="text"
