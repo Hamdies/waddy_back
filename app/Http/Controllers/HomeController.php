@@ -146,25 +146,9 @@ class HomeController extends Controller
         return view('site.refund');
     }
 
-    public function shipping_policy(Request $request)
+    public function shipping_policy()
     {
-        $data = self::get_settings('shipping_policy');
-        $status = self::get_settings_status('shipping_policy_status');
-
-        abort_if($status == 0, 404);
-        $config = Helpers::get_business_settings('landing_page');
-        $landing_integration_type = Helpers::get_business_data('landing_integration_type');
-        $redirect_url = Helpers::get_business_data('landing_page_custom_url');
-
-        if (isset($config) && $config) {
-            return view('shipping-policy', compact('data'));
-        } elseif ($landing_integration_type == 'file_upload' && File::exists('resources/views/layouts/landing/custom/index.blade.php')) {
-            return view('layouts.landing.custom.index');
-        } elseif ($landing_integration_type == 'url') {
-            return redirect($redirect_url);
-        } else {
-            abort(404);
-        }
+        return view('site.shipping');
     }
 
     public function cancelation(Request $request)

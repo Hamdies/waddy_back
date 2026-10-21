@@ -135,12 +135,5 @@
     </div></div>
   </div>
 </div></section>
-
-<section class="band mint" id="get"><div class="wrap closing">
-  <img src="{{ asset('public/assets/site/img/app_icon.webp') }}" alt="" width="96" style="border-radius:24px; box-shadow:0 20px 40px rgba(4,24,22,.25)">
-  <h2><span lang="en">All of Maadi<span style="color:var(--white)">.</span><br><span style="color:var(--ink)">One app<span style="color:var(--white)">.</span></span></span><span lang="ar">المعادي كلها<span style="color:var(--white)">.</span><br><span style="color:var(--ink)">في تطبيق واحد<span style="color:var(--white)">.</span></span></span></h2>
-  <p class="lead" style="margin:0"><span lang="en">Not in Maadi yet? Download anyway and tell us where you are. We'll let you know the day Waddy reaches you.</span><span lang="ar">لم نصل إلى منطقتك بعد؟ حمّل التطبيق وأخبرنا بموقعك، وسنُعلمك فور وصول وددى إليك.</span></p>
-  <div class="stores"><a class="store" href="https://apps.apple.com/app/id6757408049" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" stroke="none" d="M16.4 12.6c0-2.4 2-3.6 2.1-3.7-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.9-3.2-.8-1.6 0-3.2 1-4 2.4-1.7 3-.4 7.4 1.2 9.8.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.1-.8 1.5 0 1.9.8 3.2.8 1.3 0 2.1-1.2 2.9-2.4.9-1.4 1.3-2.7 1.3-2.8-.1 0-2.5-1-2.4-3.9zM14 5.5c.7-.8 1.1-1.9 1-3-1 0-2.2.7-2.9 1.5-.6.7-1.2 1.8-1 2.9 1.1.1 2.2-.6 2.9-1.4z"/></svg><span><small><span lang="en">Download on the</span><span lang="ar">حمّله من</span></small>App Store</span></a><span class="store soon" aria-disabled="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" stroke="none" d="M4 3.3v17.4c0 .6.6.9 1.1.6l15-8.7c.5-.3.5-1 0-1.3l-15-8.7C4.6 2.4 4 2.7 4 3.3z"/></svg><span><small><span lang="en">Coming soon to</span><span lang="ar">قريبًا على</span></small>Google Play</span></span></div>
-</div></section>
 </main>
 @endsection

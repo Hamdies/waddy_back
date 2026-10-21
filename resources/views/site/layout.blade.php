@@ -19,7 +19,7 @@
     <a href="{{ $home }}#tracking"><span lang="en">Tracking</span><span lang="ar">التتبّع</span></a><a href="{{ $home }}#spots"><span lang="en">Spots</span><span lang="ar">أماكن وددى</span></a><a href="{{ $home }}#pets"><span lang="en">Pets</span><span lang="ar">الحيوانات الأليفة</span></a>
   </nav>
   <button class="lang" id="lang" type="button" aria-label="Switch language">عربي</button>
-  <a class="cta-sm" href="{{ $home }}#get"><span lang="en">Get the app</span><span lang="ar">حمّل التطبيق</span></a>
+  <a class="cta-sm" href="{{ $home }}#top"><span lang="en">Get the app</span><span lang="ar">حمّل التطبيق</span></a>
 </div></header>
 
 @yield('content')
@@ -48,7 +48,8 @@
     <div><h4><span lang="en">Legal</span><span lang="ar">قانوني</span></h4><ul>
       <li><a href="{{ route('privacy-policy') }}"><span lang="en">Privacy policy</span><span lang="ar">سياسة الخصوصية</span></a></li>
       <li><a href="{{ route('terms-and-conditions') }}"><span lang="en">Terms & conditions</span><span lang="ar">الشروط والأحكام</span></a></li>
-      <li><a href="{{ route('refund') }}"><span lang="en">Refund policy</span><span lang="ar">سياسة الاسترداد</span></a></li></ul></div>
+      <li><a href="{{ route('refund') }}"><span lang="en">Refund policy</span><span lang="ar">سياسة الاسترداد</span></a></li>
+      <li><a href="{{ route('shipping-policy') }}"><span lang="en">Shipping policy</span><span lang="ar">سياسة الشحن</span></a></li></ul></div>
     <div><h4><span lang="en">Support</span><span lang="ar">الدعم</span></h4><ul>
       <li class="note"><span lang="en">Chat with us from inside the app, any time.</span><span lang="ar">تحدّث معنا من داخل التطبيق في أي وقت.</span></li>
       
