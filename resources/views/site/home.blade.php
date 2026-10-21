@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Waddy: food, groceries and pet care from Maadi, in one app. Track your rider live and vote for Maadi's favorite spot.">
+<link rel="icon" href="{{ asset('public/assets/site/img/app_icon.webp') }}">
+<title>Waddy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alexandria:wght@600;800;900&display=swap">
+<style>
+/* Layout: alternating brand bands (mint / teal) like the store screenshots; each band = headline + real app screen + one overlay card. */
+@font-face { font-family:"Thmanyah Sans"; font-weight:500; src:url("{{ asset('public/assets/site/fonts/thmanyahsans-Medium.otf') }}") format("opentype"); font-display:swap; }
+@font-face { font-family:"Thmanyah Sans"; font-weight:700; src:url("{{ asset('public/assets/site/fonts/thmanyahsans-Bold.otf') }}") format("opentype"); font-display:swap; }
+:root {
+  --mint:#1EF2A0; --teal:#134E4A; --ink:#0B2F2C; --paper:#F4FBF8; --white:#FFFFFF; --mute:#5E6B69; --pale:#D9F7EA;
+  --display:"Alexandria", "Thmanyah Sans", system-ui, sans-serif;
+  --body:"Thmanyah Sans", "Alexandria", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --pat-on-teal:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22300%22%20height%3D%22250%22%20viewBox%3D%220%200%20300%20250%22%3E%3Cg%20transform%3D%22translate%2870%2070%29%20rotate%28-14%2075%2052%29%20scale%280.1679%29%22%3E%3Cpath%20d%3D%22m462.49%20284.87c-3.34.36-6.74.61-10.11%201.11-21.87%203.29-43.02.13-62.98-8.92-14.34-6.51-27.4-15.68-38.48-26.98-14.77-15.07-26.33-32.44-33.27-52.68-6.75-19.68-8.08-39.77-5.65-60.38%201.87-15.85%205.63-31.17%2011.86-45.75%208.07-18.89%2019.13-35.77%2034.24-49.97%2013.93-13.09%2029.8-22.41%2047.54-29.25%2020.02-7.72%2040.38-7.77%2061.1-5.18%2016.14%202.02%2031.01%208.23%2044.76%2016.31%2015.67%209.21%2028.95%2021.64%2039.73%2036.61%2014.74%2020.46%2024.84%2042.83%2027.62%2068.1%201.33%2012.08%202.71%2024.34%202.07%2036.42-.9%2016.97-3.05%2033.93-5.77%2050.72-5.52%2034.06-15.52%2066.93-28.23%2098.92-7.46%2018.79-15.31%2037.45-23.72%2055.83-6.51%2014.22-14.24%2027.87-21.18%2041.9-.76%201.54-.48%204.21.34%205.85%2010.94%2021.96%2025.69%2040.07%2047.77%2052.06%2018.35%209.96%2036.67%2011.06%2055.16%202.85%2016.75-7.44%2029.81-19.89%2037-37.07%205.79-13.83%2010.6-28.17%2014.65-42.62%208.94-31.91%2016.95-64.09%2025.67-96.07%2010.52-38.59%2021.19-77.15%2032.15-115.62%209.78-34.34%2019.76-68.64%2030.26-102.76%204.02-13.07%2010.29-25.26%2018.06-36.71%209.36-13.78%2021.21-24.78%2035.96-31.72%209.13-4.29%2019.52-7.02%2029.56-7.93%2017.89-1.62%2035.94-1.35%2053.93-1.78%201.92-.05%203.94.34%205.77.94%204.36%201.44%206.02%204.21%204.89%208.81-3.16%2012.85-6.49%2025.66-9.83%2038.47-5.76%2022.07-11.49%2044.16-17.41%2066.19-8.41%2031.28-16.95%2062.53-25.5%2093.77-6.95%2025.38-13.91%2050.76-21.03%2076.09-8.36%2029.74-16.74%2059.48-25.42%2089.12-6.71%2022.92-13.85%2045.72-20.86%2068.55-7.85%2025.59-15.74%2051.17-27.08%2075.49-8.72%2018.69-19.3%2036.27-33.19%2051.48-6.91%207.56-15.22%2013.85-23.06%2020.52-11.5%209.79-24.65%2016.94-38.53%2022.48-11.97%204.78-24.73%206.42-37.56%207.89-19.13%202.18-37.73.17-56.22-4.35-14.67-3.59-28.36-9.93-40.66-18.4-11.39-7.84-22.35-16.75-31.91-26.75-12.31-12.88-23.07-27.27-34.41-41.08-1.85-2.26-3.24-4.9-5.06-7.7-5.45%206.4-10.39%2012.28-15.42%2018.09-7.22%208.35-14.27%2016.88-21.82%2024.93-10.95%2011.65-23.3%2021.64-37.3%2029.41-7.77%204.31-15.63%208.46-23.56%2012.45-24.44%2012.3-50.65%2015.25-77.3%2012.75-13.24-1.25-26.46-4.83-39.17-8.95-9.49-3.08-18.77-7.82-27.09-13.42-19.22-12.93-35.73-28.75-47.44-49.28-12.13-21.25-21.09-43.85-28.35-67.1-10.25-32.78-20-65.73-29.64-98.7-7.39-25.25-14.41-50.6-21.36-75.97-6.98-25.5-13.68-51.08-20.5-76.62-5.69-21.3-11.51-42.56-17.02-63.91-7.53-29.16-14.78-58.39-22.21-87.57-5.47-21.5-11.06-42.98-16.52-64.49-.52-2.04-.92-4.25-.7-6.3.44-4.07%202.59-6.85%207.03-6.85%2022.13-.02%2044.28-.44%2066.4.23%209.91.3%2019.95%202.5%2028.58%208.01%2016.63%2010.63%2031.76%2023.09%2039.35%2042.08%204.78%2011.96%208.38%2024.46%2011.79%2036.91%207.47%2027.28%2014.52%2054.67%2021.66%2082.04%205.72%2021.94%2011.2%2043.94%2016.99%2065.85%207%2026.47%2014.18%2052.89%2021.35%2079.32%207.88%2029.06%2015.42%2058.23%2023.93%2087.1%205.07%2017.21%2011.6%2033.98%2023.48%2048.01%209.17%2010.82%2020.75%2016.6%2034.53%2019.11%2018.02%203.29%2034.5-.98%2049.45-10.38%2013.01-8.18%2024.49-18.59%2034.18-30.79%205.47-6.89%2011.33-13.47%2016.64-20.49%2013.85-18.31%2026.62-37.42%2037.13-57.84%2010.69-20.78%2020.19-42.18%2030.19-63.31.1-.21-.11-.56-.25-1.14zm-19.55-86.09c2.24-.31%205.85-.62%209.38-1.31%2011.83-2.33%2021.29-8.96%2028.24-18.41%209.09-12.36%2012.24-26.52%209.67-41.97-2.15-12.9-7.94-23.88-17.83-31.88-12.14-9.82-26.62-11.38-41.35-7.21-17.19%204.86-27.5%2017.24-32.56%2033.92-4.83%2015.93-3.24%2031.27%206.42%2045.37%208.9%2013%2020.34%2021.35%2038.02%2021.49z%22%20fill%3D%22none%22%20stroke%3D%22%231EF2A0%22%20stroke-opacity%3D%220.16%22%20stroke-width%3D%2219.1%22/%3E%3C/g%3E%3C/svg%3E"); --pat-on-mint:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22300%22%20height%3D%22250%22%20viewBox%3D%220%200%20300%20250%22%3E%3Cg%20transform%3D%22translate%2870%2070%29%20rotate%28-14%2075%2052%29%20scale%280.1679%29%22%3E%3Cpath%20d%3D%22m462.49%20284.87c-3.34.36-6.74.61-10.11%201.11-21.87%203.29-43.02.13-62.98-8.92-14.34-6.51-27.4-15.68-38.48-26.98-14.77-15.07-26.33-32.44-33.27-52.68-6.75-19.68-8.08-39.77-5.65-60.38%201.87-15.85%205.63-31.17%2011.86-45.75%208.07-18.89%2019.13-35.77%2034.24-49.97%2013.93-13.09%2029.8-22.41%2047.54-29.25%2020.02-7.72%2040.38-7.77%2061.1-5.18%2016.14%202.02%2031.01%208.23%2044.76%2016.31%2015.67%209.21%2028.95%2021.64%2039.73%2036.61%2014.74%2020.46%2024.84%2042.83%2027.62%2068.1%201.33%2012.08%202.71%2024.34%202.07%2036.42-.9%2016.97-3.05%2033.93-5.77%2050.72-5.52%2034.06-15.52%2066.93-28.23%2098.92-7.46%2018.79-15.31%2037.45-23.72%2055.83-6.51%2014.22-14.24%2027.87-21.18%2041.9-.76%201.54-.48%204.21.34%205.85%2010.94%2021.96%2025.69%2040.07%2047.77%2052.06%2018.35%209.96%2036.67%2011.06%2055.16%202.85%2016.75-7.44%2029.81-19.89%2037-37.07%205.79-13.83%2010.6-28.17%2014.65-42.62%208.94-31.91%2016.95-64.09%2025.67-96.07%2010.52-38.59%2021.19-77.15%2032.15-115.62%209.78-34.34%2019.76-68.64%2030.26-102.76%204.02-13.07%2010.29-25.26%2018.06-36.71%209.36-13.78%2021.21-24.78%2035.96-31.72%209.13-4.29%2019.52-7.02%2029.56-7.93%2017.89-1.62%2035.94-1.35%2053.93-1.78%201.92-.05%203.94.34%205.77.94%204.36%201.44%206.02%204.21%204.89%208.81-3.16%2012.85-6.49%2025.66-9.83%2038.47-5.76%2022.07-11.49%2044.16-17.41%2066.19-8.41%2031.28-16.95%2062.53-25.5%2093.77-6.95%2025.38-13.91%2050.76-21.03%2076.09-8.36%2029.74-16.74%2059.48-25.42%2089.12-6.71%2022.92-13.85%2045.72-20.86%2068.55-7.85%2025.59-15.74%2051.17-27.08%2075.49-8.72%2018.69-19.3%2036.27-33.19%2051.48-6.91%207.56-15.22%2013.85-23.06%2020.52-11.5%209.79-24.65%2016.94-38.53%2022.48-11.97%204.78-24.73%206.42-37.56%207.89-19.13%202.18-37.73.17-56.22-4.35-14.67-3.59-28.36-9.93-40.66-18.4-11.39-7.84-22.35-16.75-31.91-26.75-12.31-12.88-23.07-27.27-34.41-41.08-1.85-2.26-3.24-4.9-5.06-7.7-5.45%206.4-10.39%2012.28-15.42%2018.09-7.22%208.35-14.27%2016.88-21.82%2024.93-10.95%2011.65-23.3%2021.64-37.3%2029.41-7.77%204.31-15.63%208.46-23.56%2012.45-24.44%2012.3-50.65%2015.25-77.3%2012.75-13.24-1.25-26.46-4.83-39.17-8.95-9.49-3.08-18.77-7.82-27.09-13.42-19.22-12.93-35.73-28.75-47.44-49.28-12.13-21.25-21.09-43.85-28.35-67.1-10.25-32.78-20-65.73-29.64-98.7-7.39-25.25-14.41-50.6-21.36-75.97-6.98-25.5-13.68-51.08-20.5-76.62-5.69-21.3-11.51-42.56-17.02-63.91-7.53-29.16-14.78-58.39-22.21-87.57-5.47-21.5-11.06-42.98-16.52-64.49-.52-2.04-.92-4.25-.7-6.3.44-4.07%202.59-6.85%207.03-6.85%2022.13-.02%2044.28-.44%2066.4.23%209.91.3%2019.95%202.5%2028.58%208.01%2016.63%2010.63%2031.76%2023.09%2039.35%2042.08%204.78%2011.96%208.38%2024.46%2011.79%2036.91%207.47%2027.28%2014.52%2054.67%2021.66%2082.04%205.72%2021.94%2011.2%2043.94%2016.99%2065.85%207%2026.47%2014.18%2052.89%2021.35%2079.32%207.88%2029.06%2015.42%2058.23%2023.93%2087.1%205.07%2017.21%2011.6%2033.98%2023.48%2048.01%209.17%2010.82%2020.75%2016.6%2034.53%2019.11%2018.02%203.29%2034.5-.98%2049.45-10.38%2013.01-8.18%2024.49-18.59%2034.18-30.79%205.47-6.89%2011.33-13.47%2016.64-20.49%2013.85-18.31%2026.62-37.42%2037.13-57.84%2010.69-20.78%2020.19-42.18%2030.19-63.31.1-.21-.11-.56-.25-1.14zm-19.55-86.09c2.24-.31%205.85-.62%209.38-1.31%2011.83-2.33%2021.29-8.96%2028.24-18.41%209.09-12.36%2012.24-26.52%209.67-41.97-2.15-12.9-7.94-23.88-17.83-31.88-12.14-9.82-26.62-11.38-41.35-7.21-17.19%204.86-27.5%2017.24-32.56%2033.92-4.83%2015.93-3.24%2031.27%206.42%2045.37%208.9%2013%2020.34%2021.35%2038.02%2021.49z%22%20fill%3D%22none%22%20stroke%3D%22%23134E4A%22%20stroke-opacity%3D%220.14%22%20stroke-width%3D%2219.1%22/%3E%3C/g%3E%3C/svg%3E");
+  color-scheme:light;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--body); font-size:17px; line-height:1.55; }
+:root:not([data-lang="ar"]) [lang="ar"], :root[data-lang="ar"] [lang="en"] { display:none; }
+img { max-width:100%; height:auto; display:block; }
+a { color:inherit; }
+:focus-visible { outline:3px solid var(--mint); outline-offset:3px; border-radius:8px; }
+.wrap { max-width:1180px; margin:0 auto; padding-left:max(20px, env(safe-area-inset-left, 0px)); padding-right:max(20px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family:var(--display); font-weight:900; letter-spacing:-.02em; line-height:1.02; margin:0; text-wrap:balance; }
+:root[data-lang="ar"] h1, :root[data-lang="ar"] h2, :root[data-lang="ar"] h3 { font-family:"Thmanyah Sans", var(--display); font-weight:700; letter-spacing:0; line-height:1.25; }
+.dot { color:var(--mint); }
+.eyebrow { display:inline-flex; align-items:center; gap:10px; font-family:var(--display); font-weight:800; font-size:14px; letter-spacing:.12em; text-transform:uppercase; }
+:root[data-lang="ar"] .eyebrow { letter-spacing:0; font-size:16px; }
+.eyebrow img { width:34px; }
+
+/* header */
+body::before { content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top, 0px); z-index:30; background:var(--mint); }
+header { position:sticky; top:env(safe-area-inset-top, 0px); z-index:20; background:var(--mint); border-bottom:1px solid rgba(19,78,74,.12); }
+.bar { display:flex; align-items:center; gap:24px; min-height:68px; padding-block:10px; }
+.brand { display:flex; align-items:center; gap:10px; text-decoration:none; font-family:var(--display); font-weight:900; font-size:24px; color:var(--teal); }
+.brand img { width:40px; border-radius:11px; }
+nav { display:flex; gap:22px; margin-inline-start:auto; font-weight:700; }
+nav a { text-decoration:none; color:var(--teal); }
+nav a:hover { text-decoration:underline; text-underline-offset:5px; }
+.lang { border:2px solid var(--teal); background:transparent; color:var(--teal); border-radius:999px; padding:6px 14px; font:700 15px var(--body); cursor:pointer; }
+.lang:hover { background:var(--teal); color:var(--mint); }
+.cta-sm { background:var(--teal); color:var(--mint); text-decoration:none; border-radius:999px; padding:9px 18px; font-weight:700; white-space:nowrap; }
+
+/* bands */
+.band { position:relative; overflow:hidden; }
+.band.mint { background:var(--mint) var(--pat-on-mint); color:var(--teal); }
+.band.teal { background:var(--teal) var(--pat-on-teal); color:var(--white); }
+.band.teal h2 .l1 { color:var(--mint); }
+.band.mint h2 .l2 { color:var(--ink); }
+.split { display:grid; grid-template-columns:1.05fr .95fr; gap:56px; align-items:center; padding-block:96px; }
+.split.flip > .copy { order:2; }
+.copy { min-width:0; display:grid; gap:20px; align-content:start; }
+.copy h2 { font-size:clamp(40px, 5.4vw, 72px); }
+.copy .lead { font-size:20px; max-width:34ch; margin:0; }
+.band.teal .lead { color:#C9F7E4; }
+.ticks { list-style:none; margin:0; padding:0; display:grid; gap:12px; font-weight:700; }
+.ticks li { display:flex; gap:12px; align-items:flex-start; }
+.ticks svg { flex:none; width:26px; height:26px; padding:4px; border-radius:8px; fill:none; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; margin-top:1px; }
+.band.teal .ticks svg { background:var(--mint); stroke:var(--ink); }
+.band.mint .ticks svg { background:var(--teal); stroke:var(--mint); }
+
+/* phone + stage */
+.stage { position:relative; display:grid; justify-items:center; min-width:0; }
+.plate { position:absolute; inset:18% 4% -40% 4%; border-radius:48px; }
+.band.teal .plate { background:var(--mint); }
+.band.mint .plate { background:var(--teal); }
+.phone { position:relative; width:min(330px, 78vw); padding:10px; background:#0F1E1C; border:2px solid #3F5A56; border-radius:48px; box-shadow:0 40px 70px rgba(4,24,22,.35); }
+.phone img { border-radius:39px; width:100%; }
+.phone .isl { position:absolute; top:20px; left:50%; width:82px; height:24px; margin-left:-41px; background:#000; border-radius:999px; }
+.cut { position:absolute; filter:drop-shadow(0 18px 22px rgba(4,24,22,.35)); pointer-events:none; }
+.card { position:absolute; background:var(--white); color:var(--teal); border-radius:26px; box-shadow:0 24px 50px rgba(4,24,22,.28); padding:18px 20px; }
+.card b { font-family:var(--display); font-weight:800; }
+
+/* hero */
+.hero .split { padding-block:72px 0; align-items:end; }
+.hero h1 { font-size:clamp(48px, 6.4vw, 88px); }
+.hero h1 .l2 { color:var(--ink); }
+.hero .copy { padding-bottom:88px; }
+.hero .lead { max-width:30ch; }
+.hero .stage { align-self:end; }
+.hero .phone { margin-bottom:-120px; width:min(360px, 80vw); }
+.hero .plate { inset:22% 0 -40% 0; }
+.stores { display:flex; flex-wrap:wrap; gap:12px; }
+.store { display:inline-flex; align-items:center; gap:10px; background:var(--ink); color:var(--white); text-decoration:none; border-radius:14px; padding:10px 18px 10px 14px; font-family:var(--display); font-weight:800; font-size:19px; line-height:1.1; }
+.store small { display:block; font-family:var(--body); font-weight:500; font-size:12px; opacity:.8; }
+.store svg { width:26px; height:26px; }
+.store.soon { background:transparent; color:var(--ink); border:2px solid currentColor; opacity:.7; }
+.band.teal .store { background:var(--mint); color:var(--ink); }
+.band.teal .store.soon { background:transparent; color:var(--mint); }
+.chips { display:flex; flex-wrap:wrap; gap:10px; }
+.chip { display:inline-flex; align-items:center; gap:8px; background:var(--white); color:var(--teal); border-radius:999px; padding:6px 14px 6px 6px; font-weight:700; box-shadow:0 8px 18px rgba(4,24,22,.12); }
+:root[data-lang="ar"] .chip { padding:6px 6px 6px 14px; }
+.chip img { width:34px; height:34px; object-fit:contain; border-radius:50%; background:var(--pale); padding:3px; }
+
+/* overlay cards */
+.top10 { inset-inline-start:-6%; bottom:14%; display:flex; align-items:center; gap:14px; }
+.top10 .tile { width:56px; height:56px; border-radius:16px; background:var(--mint); display:grid; place-items:center; font-family:var(--display); font-weight:900; font-size:24px; }
+.top10 small { display:block; color:var(--mute); font-weight:500; }
+.ripe { display:grid; grid-template-columns:1fr 1fr; gap:12px; position:absolute; bottom:8%; inset-inline:-8%; }
+.ripe .card { position:relative; inset:auto; }
+.ripe .card img { width:34px; }
+.ripe .card small { display:block; color:var(--mute); line-height:1.35; }
+.ripe .later { background:var(--pale); border:3px solid var(--teal); transform:rotate(-2deg); }
+.ripe .later small { color:#0A7A50; font-weight:700; }
+.pin { inset-inline:-8%; bottom:10%; display:flex; align-items:center; gap:14px; }
+.pin img { width:64px; }
+.pin .digits { display:flex; gap:8px; direction:ltr; margin-top:6px; }
+.pin .digits span { width:40px; height:48px; border:3px solid var(--teal); border-radius:12px; display:grid; place-items:center; font-family:var(--display); font-weight:900; font-size:26px; background:var(--paper); }
+.pin .lbl { font-weight:700; font-size:13px; letter-spacing:.06em; color:#0A7A50; }
+:root[data-lang="ar"] .pin .lbl { letter-spacing:0; font-size:15px; }
+.pin .sh { margin-inline-start:auto; width:52px; height:52px; border-radius:16px; background:var(--mint); display:grid; place-items:center; }
+.pin .sh svg, .steps svg { width:28px; height:28px; fill:none; stroke:var(--ink); stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+.petid { inset-inline-end:-10%; bottom:10%; width:230px; padding:0; overflow:hidden; transform:rotate(3deg); }
+.petid .hd { background:var(--teal); color:var(--mint); padding:10px 16px; font-family:var(--display); font-weight:800; font-size:13px; letter-spacing:.1em; }
+.petid .bd { padding:14px 16px; display:grid; gap:6px; }
+.petid .who { display:flex; align-items:center; gap:10px; font-family:var(--display); font-weight:900; font-size:26px; }
+.petid .who img { width:52px; height:52px; border-radius:50%; object-fit:cover; border:3px solid var(--pale); }
+.petid .row { display:flex; justify-content:space-between; border-bottom:2px dashed #E4ECEA; padding-block:4px; }
+.petid .row span { color:var(--mute); }
+.trophy { inset-inline-end:-4%; top:16%; width:120px; height:120px; border-radius:50%; background:var(--mint); border:6px solid var(--white); display:grid; place-items:center; padding:0; }
+.trophy img { width:64px; }
+
+/* spots steps */
+.steps { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; counter-reset:s; }
+.step { background:var(--ink); color:var(--white); border-radius:20px; padding:16px; display:grid; gap:10px; align-content:start; }
+.band.mint .step { background:var(--teal); }
+.step i { width:48px; height:48px; border-radius:14px; background:var(--mint); display:grid; place-items:center; }
+.step b { font-family:var(--display); font-weight:800; font-size:17px; line-height:1.2; }
+.fine { font-size:13px; opacity:.75; max-width:52ch; margin:0; }
+
+/* categories strip */
+.cats { display:grid; grid-template-columns:repeat(3, 1fr); gap:20px; padding-block:72px; }
+.cat { background:var(--white); border-radius:28px; padding:24px; display:grid; gap:10px; align-content:start; position:relative; overflow:hidden; min-height:230px; text-decoration:none; color:var(--teal); box-shadow:0 1px 0 rgba(19,78,74,.08); }
+.cat h3 { font-size:28px; }
+.cat p { margin:0; color:var(--mute); max-width:24ch; }
+.cat img { position:absolute; width:46%; inset-inline-end:-4%; bottom:-6%; }
+.cat:hover { box-shadow:0 18px 40px rgba(4,24,22,.14); }
+.sectionhead { padding-top:88px; display:grid; gap:10px; }
+.sectionhead h2 { font-size:clamp(34px, 4.4vw, 56px); color:var(--teal); }
+
+/* closing */
+.closing { text-align:center; padding-block:96px; display:grid; gap:24px; justify-items:center; }
+.closing h2 { font-size:clamp(44px, 6.4vw, 88px); }
+
+@media (max-width: 880px) {
+  nav { display:none; }
+  .bar { gap:12px; } .lang { margin-inline-start:auto; }
+  .split, .split.flip { grid-template-columns:1fr; gap:40px; padding-block:64px; }
+  .split.flip > .copy { order:0; }
+  .hero .split { padding-block:48px 0; } .hero .copy { padding-bottom:0; }
+  .cats, .steps { grid-template-columns:1fr; }
+  .top10, .pin { inset-inline:2%; } .ripe { inset-inline:0; }
+  .petid { inset-inline-end:0; width:200px; }
+  .cut { display:none; }
+}
+@media (max-width: 420px) { .cta-sm { display:none; } .ripe { grid-template-columns:1fr; } .ripe .later { display:none; } }
+@media (prefers-reduced-motion: no-preference) {
+  .hero .phone { animation:rise .9s cubic-bezier(.2,.8,.2,1) both; }
+  .hero .cut { animation:rise 1.1s .15s cubic-bezier(.2,.8,.2,1) both, bob 6s 1.3s ease-in-out infinite; }
+  @keyframes rise { from { transform:translateY(40px); } to { transform:none; } }
+}
+
+
+/* footer: mint brand slab, one big WADDY lockup as the sign-off */
+.foot { background:var(--mint); color:var(--teal); }
+.foot a { color:var(--teal); text-decoration:none; }
+.foot .top { display:flex; flex-wrap:wrap; gap:28px 40px; align-items:end; justify-content:space-between; padding-block:80px 48px; border-bottom:2px solid var(--teal); }
+.foot .top h3 { font-size:clamp(34px, 4.6vw, 60px); color:var(--teal); }
+.foot .top h3 span { color:var(--ink); }
+:root[data-lang="ar"] .foot .top h3 { font-family:"Thmanyah Sans", var(--display); font-weight:700; }
+.foot .top .acts { display:grid; gap:16px; justify-items:start; }
+.foot .store { background:var(--teal); color:var(--white); }
+.foot .store.soon { background:transparent; color:var(--teal); border-color:var(--teal); opacity:1; }
+.foot .cols { display:grid; grid-template-columns:repeat(4, 1fr); gap:32px; padding-block:48px; }
+.foot h4 { margin:0 0 16px; font-family:var(--display); font-weight:800; font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink); opacity:.55; }
+:root[data-lang="ar"] .foot h4 { letter-spacing:0; font-size:15px; }
+.foot ul { list-style:none; margin:0; padding:0; display:grid; gap:12px; font-weight:700; font-size:18px; }
+.foot ul a { background:linear-gradient(var(--teal), var(--teal)) 0 100% / 0 2px no-repeat; transition:background-size .3s ease; }
+:root[dir="rtl"] .foot ul a { background-position:100% 100%; }
+.foot ul a:hover { background-size:100% 2px; }
+.foot .note { font-weight:500; font-size:16px; opacity:.8; }
+.social { display:flex; flex-wrap:wrap; gap:10px; }
+.social a { width:48px; height:48px; border-radius:50%; display:grid; place-items:center; background:var(--teal); color:var(--mint); transition:transform .3s cubic-bezier(.34,1.56,.64,1), background-color .2s; }
+.social a:hover { background:var(--ink); transform:translateY(-4px) rotate(-8deg); }
+.social svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.foot .copyable { font:700 18px var(--body); background:none; border:0; padding:0; color:var(--teal); cursor:pointer; text-align:start; }
+.foot .mark { display:flex; align-items:center; justify-content:center; gap:3.2vw; padding-block:8px 36px; direction:ltr; }
+.foot .mark img { width:min(14vw, 230px); height:auto; }
+.foot .mark span { font-family:var(--display); font-weight:900; font-size:min(16vw, 250px); line-height:.82; letter-spacing:-.04em; color:var(--teal); }
+.foot .base { background:var(--teal); color:#C9F7E4; }
+.foot .base .wrap { display:flex; flex-wrap:wrap; gap:10px 28px; align-items:center; padding-block:18px; font-size:14px; }
+.foot .base a { color:var(--mint); }
+.foot .base .sp { margin-inline-start:auto; }
+.totop { display:inline-flex; align-items:center; gap:8px; border:2px solid var(--mint); border-radius:999px; padding:6px 16px; font-weight:700; }
+.totop:hover { background:var(--mint); color:var(--teal) !important; }
+@media (max-width: 880px) { .foot .cols { grid-template-columns:1fr 1fr; } }
+@media (prefers-reduced-motion: no-preference) {
+  .anim .foot .mark.rv { transform:translateY(60px); }
+  .anim .foot .mark.rv.in img { animation:spinin 1s cubic-bezier(.34,1.56,.64,1) both; }
+  @keyframes spinin { from { transform:rotate(-30deg) scale(.6); } to { transform:none; } }
+}
+/* ---------- motion ---------- */
+html { scroll-behavior:smooth; }
+header { transition:box-shadow .3s ease, background-color .3s ease; }
+header .bar { transition:min-height .3s ease; }
+header.scrolled { box-shadow:0 10px 30px rgba(4,24,22,.18); }
+header.scrolled .bar { min-height:58px; }
+main, footer { transition:opacity .25s ease; }
+body.switching main, body.switching footer { opacity:0; }
+.store, .cta-sm, .lang, .chip, .cat { transition:transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s ease, background-color .2s ease, color .2s ease; }
+.store:hover, .cta-sm:hover { transform:translateY(-3px); box-shadow:0 12px 24px rgba(4,24,22,.25); }
+.chip:hover { transform:translateY(-2px) rotate(-2deg); }
+.cat:hover { transform:translateY(-6px); }
+.cat img { transition:transform .5s cubic-bezier(.2,.8,.2,1); }
+.cat:hover img { transform:scale(1.08) rotate(-4deg); }
+.ticker { background:var(--ink); color:var(--mint); overflow:hidden; padding-block:16px; }
+.ticker .track { display:flex; width:max-content; gap:40px; font-family:var(--display); font-weight:800; font-size:22px; white-space:nowrap; }
+.ticker .track span { display:inline-flex; align-items:center; gap:40px; }
+.ticker .track span::after { content:""; width:22px; height:22px; background:url("{{ asset('public/assets/site/img/logo_mint3.webp') }}") center/contain no-repeat; }
+.phone, .card, .cut { translate:0 var(--py, 0px); }
+@media (prefers-reduced-motion: no-preference) {
+  .band { animation:drift 90s linear infinite; }
+  @keyframes drift { to { background-position:300px 250px; } }
+  .ticker .track { animation:marquee 32s linear infinite; }
+  :root[dir="rtl"] .ticker .track { animation-direction:reverse; }
+  @keyframes marquee { to { transform:translateX(-50%); } }
+  .cut { animation:bob 6s ease-in-out infinite; }
+  .cut:nth-of-type(2n) { animation-duration:7.5s; animation-delay:-2s; }
+  @keyframes bob { 50% { translate:0 calc(var(--py, 0px) - 14px); } }
+  .trophy img { animation:wobble 4s ease-in-out infinite; }
+  @keyframes wobble { 0%,100% { transform:rotate(-8deg); } 50% { transform:rotate(8deg) scale(1.06); } }
+  .pin .sh { position:relative; }
+  .pin .sh::after { content:""; position:absolute; inset:0; border-radius:16px; border:3px solid var(--mint); animation:ping 2s ease-out infinite; }
+  @keyframes ping { from { transform:scale(1); opacity:.9; } to { transform:scale(1.6); opacity:0; } }
+
+  /* scroll reveals: only once JS has armed them (class .anim on <html>) */
+  .anim .rv { opacity:0; transform:translateY(34px); transition:opacity .8s cubic-bezier(.2,.8,.2,1), transform .9s cubic-bezier(.2,.8,.2,1); transition-delay:calc(var(--i, 0) * 90ms); }
+  .anim .rv.phone { transform:translateY(80px) rotate(-6deg) scale(.94); }
+  .anim .flip .rv.phone, :root[dir="rtl"].anim .split:not(.flip) .rv.phone { transform:translateY(80px) rotate(6deg) scale(.94); }
+  .anim .rv.pop { transform:scale(.6) translateY(20px); transition-timing-function:cubic-bezier(.34,1.56,.64,1); }
+  .anim .rv.in { opacity:1; transform:none; }
+  .anim .petid.rv.in { transform:rotate(3deg); }
+  .anim .ripe .later.rv.in { transform:rotate(-2deg); }
+  .anim .hero h1 .l1, .anim .hero h1 .l2 { display:inline-block; }
+  .anim .pin .digits span { opacity:0; transform:rotateX(90deg); }
+  .anim .pin.in .digits span { animation:flipin .5s cubic-bezier(.34,1.56,.64,1) forwards; }
+  .anim .pin.in .digits span:nth-child(2) { animation-delay:.12s; }
+  .anim .pin.in .digits span:nth-child(3) { animation-delay:.24s; }
+  .anim .pin.in .digits span:nth-child(4) { animation-delay:.36s; }
+  @keyframes flipin { to { opacity:1; transform:none; } }
+  .anim .ticks svg { transition:transform .5s .3s cubic-bezier(.34,1.56,.64,1); }
+  .anim .ticks li.rv:not(.in) svg { transform:scale(0) rotate(-90deg); }
+}
+</style>
+</head>
+<body>
+
+<header><div class="wrap bar">
+  <a class="brand" href="#top"><img src="{{ asset('public/assets/site/img/app_icon.webp') }}" alt="" width="40"><span lang="en">Waddy</span><span lang="ar">وددى</span></a>
+  <nav aria-label="Sections">
+    <a href="#food"><span lang="en">Food</span><span lang="ar">الطعام</span></a><a href="#groceries"><span lang="en">Groceries</span><span lang="ar">البقالة</span></a>
+    <a href="#tracking"><span lang="en">Tracking</span><span lang="ar">التتبّع</span></a><a href="#spots"><span lang="en">Spots</span><span lang="ar">أماكن وددى</span></a><a href="#pets"><span lang="en">Pets</span><span lang="ar">الحيوانات الأليفة</span></a>
+  </nav>
+  <button class="lang" id="lang" type="button" aria-label="Switch language">عربي</button>
+  <a class="cta-sm" href="#get"><span lang="en">Get the app</span><span lang="ar">حمّل التطبيق</span></a>
+</div></header>
+
+<main id="top">
+<section class="band mint hero"><div class="wrap split">
+  <div class="copy">
+    <span class="eyebrow"><img src="{{ asset('public/assets/site/img/logo_teal3.webp') }}" alt=""><span lang="en">Maadi, Cairo</span><span lang="ar">المعادي، القاهرة</span></span>
+    <h1><span lang="en"><span class="l1">All of Maadi<span class="dot" style="color:var(--white)">.</span></span><br><span class="l2">One app<span class="dot" style="color:var(--white)">.</span></span></span><span lang="ar"><span class="l1">المعادي كلها<span style="color:var(--white)">.</span></span><br><span class="l2">في تطبيق واحد<span style="color:var(--white)">.</span></span></span></h1>
+    <p class="lead"><span lang="en">Food from Maadi's favorite spots, groceries picked the way you like them, and everything your pet needs. Then watch your rider cross Maadi, live.</span><span lang="ar">طعام من أماكن المعادي المفضلة، وبقالة كما تحبها، وكل ما يحتاجه حيوانك الأليف. ثم تابع المندوب وهو يعبر المعادي مباشرةً.</span></p>
+    <div class="stores"><a class="store" href="https://apps.apple.com/app/id6757408049" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" stroke="none" d="M16.4 12.6c0-2.4 2-3.6 2.1-3.7-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.9-3.2-.8-1.6 0-3.2 1-4 2.4-1.7 3-.4 7.4 1.2 9.8.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.1-.8 1.5 0 1.9.8 3.2.8 1.3 0 2.1-1.2 2.9-2.4.9-1.4 1.3-2.7 1.3-2.8-.1 0-2.5-1-2.4-3.9zM14 5.5c.7-.8 1.1-1.9 1-3-1 0-2.2.7-2.9 1.5-.6.7-1.2 1.8-1 2.9 1.1.1 2.2-.6 2.9-1.4z"/></svg><span><small><span lang="en">Download on the</span><span lang="ar">حمّله من</span></small>App Store</span></a><span class="store soon" aria-disabled="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" stroke="none" d="M4 3.3v17.4c0 .6.6.9 1.1.6l15-8.7c.5-.3.5-1 0-1.3l-15-8.7C4.6 2.4 4 2.7 4 3.3z"/></svg><span><small><span lang="en">Coming soon to</span><span lang="ar">قريبًا على</span></small>Google Play</span></span></div>
+    <div class="chips">
+      <span class="chip"><img src="{{ asset('public/assets/site/img/u_combo.webp') }}" alt=""><span lang="en">Food</span><span lang="ar">طعام</span></span>
+      <span class="chip"><img src="{{ asset('public/assets/site/img/u_bag.webp') }}" alt=""><span lang="en">Groceries</span><span lang="ar">بقالة</span></span>
+      <span class="chip"><img src="{{ asset('public/assets/site/img/pet_packs.webp') }}" alt=""><span lang="en">Pet care</span><span lang="ar">حيوانات أليفة</span></span>
+    </div>
+  </div>
+  <div class="stage">
+    <div class="plate"></div>
+    <img class="cut" src="{{ asset('public/assets/site/img/u_bag.webp') }}" alt="" style="width:190px; inset-inline-start:-4%; bottom:120px">
+    <img class="cut" src="{{ asset('public/assets/site/img/u_combo.webp') }}" alt="" style="width:210px; inset-inline-end:-6%; bottom:60px; z-index:2">
+    <div class="phone "><img src="{{ asset('public/assets/site/img/home_clean.jpg') }}" alt="Waddy home screen with Groceries, Food and Pets" width="620"><i class="isl"></i></div>
+  </div>
+</div></section>
+
+<div class="ticker" aria-hidden="true"><div class="track"><span>Food</span><span>Groceries</span><span>Pet care</span><span>Live tracking</span><span>Waddy Spots</span><span>Maadi</span><span>الطعام</span><span>البقالة</span><span>الحيوانات الأليفة</span><span>التتبّع المباشر</span><span>أماكن وددى</span><span>المعادي</span><span>Food</span><span>Groceries</span><span>Pet care</span><span>Live tracking</span><span>Waddy Spots</span><span>Maadi</span><span>الطعام</span><span>البقالة</span><span>الحيوانات الأليفة</span><span>التتبّع المباشر</span><span>أماكن وددى</span><span>المعادي</span></div></div>
+<section class="wrap" aria-labelledby="cats-h">
+  <div class="sectionhead"><span class="eyebrow" style="color:var(--teal)"><span lang="en">One app, three errands</span><span lang="ar">تطبيق واحد لثلاثة مشاوير</span></span>
+    <h2 id="cats-h"><span lang="en">Everything your street orders.</span><span lang="ar">كل ما يطلبه شارعك.</span></h2></div>
+  <div class="cats">
+    <a class="cat" href="#food"><h3><span lang="en">Food</span><span lang="ar">الطعام</span></h3><p><span lang="en">Maadi's top 10, plus every cuisine from Egyptian to sushi.</span><span lang="ar">أفضل ١٠ في المعادي، وكل المطابخ من المصري إلى السوشي.</span></p><img src="{{ asset('public/assets/site/img/u_combo.webp') }}" alt=""></a>
+    <a class="cat" href="#groceries"><h3><span lang="en">Groceries</span><span lang="ar">البقالة</span></h3><p><span lang="en">Fresh produce and home essentials from stores around you.</span><span lang="ar">خضار وفاكهة ومستلزمات البيت من المتاجر القريبة منك.</span></p><img src="{{ asset('public/assets/site/img/u_crate.webp') }}" alt=""></a>
+    <a class="cat" href="#pets"><h3><span lang="en">Pet care</span><span lang="ar">رعاية الحيوانات</span></h3><p><span lang="en">Food, treats and vets nearby, matched to your pet.</span><span lang="ar">طعام ومكافآت وعيادات قريبة، مناسبة لحيوانك.</span></p><img src="{{ asset('public/assets/site/img/pet_packs.webp') }}" alt=""></a>
+  </div>
+</section>
+
+<section class="band teal" id="food"><div class="wrap split">
+  <div class="copy">
+    <span class="eyebrow" style="color:var(--mint)"><img src="{{ asset('public/assets/site/img/logo_mint3.webp') }}" alt=""><span lang="en">Food</span><span lang="ar">الطعام</span></span>
+    <h2><span lang="en"><span class="l1">Maadi's Top</span><br>Bites<span class="dot">.</span></span><span lang="ar"><span class="l1">ألذّ أطباق</span><br>المعادي<span class="dot">.</span></span></h2>
+    <p class="lead"><span lang="en">Browse Maadi's top 10, ranked, then every restaurant by cuisine.</span><span lang="ar">تصفّح أفضل ١٠ أماكن في المعادي، ثم كل المطاعم حسب المطبخ.</span></p>
+    <ul class="ticks">
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span lang="en">Egyptian, burgers, pizza, grills, shawarma and more</span><span lang="ar">مصري، برجر، بيتزا، مشويات، شاورما والمزيد</span></li>
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span lang="en">Customize every item and reorder in seconds</span><span lang="ar">خصّص كل صنف وأعد الطلب في ثوانٍ</span></li>
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span lang="en">See offers and free-delivery spots before you order</span><span lang="ar">شاهد العروض وأماكن التوصيل المجاني قبل الطلب</span></li>
+    </ul>
+  </div>
+  <div class="stage">
+    <div class="plate"></div>
+    <img class="cut" src="{{ asset('public/assets/site/img/u_pizza_l.webp') }}" alt="" style="width:150px; inset-inline-end:-2%; top:10%; z-index:2">
+    <div class="phone "><img src="{{ asset('public/assets/site/img/food_new.jpg') }}" alt="Top 10 Maadi spots, ranked" width="620"><i class="isl"></i></div>
+    <div class="card top10"><span class="tile">10</span><span><b><span lang="en">Top 10 Maadi spots</span><span lang="ar">أفضل ١٠ أماكن في المعادي</span></b><small><span lang="en">Our top 10, ranked</span><span lang="ar">أفضل ١٠ لدينا، مرتبة</span></small></span></div>
+  </div>
+</div></section>
+
+<section class="band mint" id="groceries"><div class="wrap split flip">
+  <div class="copy">
+    <span class="eyebrow"><img src="{{ asset('public/assets/site/img/logo_teal3.webp') }}" alt=""><span lang="en">Groceries</span><span lang="ar">البقالة</span></span>
+    <h2><span lang="en"><span class="l1">Your groceries</span><br><span class="l2">Your rules<span class="dot" style="color:var(--white)">.</span></span></span><span lang="ar"><span class="l1">بقالتك</span><br><span class="l2">على طريقتك<span style="color:var(--white)">.</span></span></span></h2>
+    <p class="lead"><span lang="en">Pick how ripe your fruit should be: ready to eat today, or ripe in 2–3 days.</span><span lang="ar">اختر درجة نضج الفاكهة: جاهزة للأكل اليوم، أو تنضج خلال 2–3 أيام.</span></p>
+    <ul class="ticks">
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span lang="en">Produce, dairy, bakery, snacks and home essentials</span><span lang="ar">خضار وألبان ومخبوزات ووجبات خفيفة ومستلزمات البيت</span></li>
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span lang="en">Shop by aisle or search for exactly what you need</span><span lang="ar">تسوّق حسب القسم أو ابحث عمّا تحتاجه</span></li>
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span lang="en">Clear prices before you add to cart</span><span lang="ar">أسعار واضحة قبل الإضافة إلى السلة</span></li>
+    </ul>
+  </div>
+  <div class="stage">
+    <div class="plate"></div>
+    <img class="cut" src="{{ asset('public/assets/site/img/u_crate.webp') }}" alt="" style="width:180px; inset-inline-start:-6%; top:12%">
+    <div class="phone "><img src="{{ asset('public/assets/site/img/grocery.jpg') }}" alt="Bananas with a ripeness choice" width="620"><i class="isl"></i></div>
+    <div class="ripe">
+      <div class="card"><img src="{{ asset('public/assets/site/img/emo_yum.webp') }}" alt=""><b><span lang="en">Ready to eat</span><span lang="ar">جاهزة للأكل</span></b><small><span lang="en">Ripe and sweet, for today</span><span lang="ar">ناضجة وحلوة، للاستهلاك اليوم</span></small></div>
+      <div class="card later"><img src="{{ asset('public/assets/site/img/emo_cal.webp') }}" alt=""><b><span lang="en">Ripe in 2–3 days</span><span lang="ar">تنضج خلال 2–3 أيام</span></b><small><span lang="en">A little firm, ripens at home</span><span lang="ar">متماسكة قليلًا، تنضج في المنزل</span></small></div>
+    </div>
+  </div>
+</div></section>
+
+<section class="band teal" id="tracking"><div class="wrap split">
+  <div class="copy">
+    <span class="eyebrow" style="color:var(--mint)"><img src="{{ asset('public/assets/site/img/logo_mint3.webp') }}" alt=""><span lang="en">Live tracking</span><span lang="ar">التتبّع المباشر</span></span>
+    <h2><span lang="en"><span class="l1">No more</span><br>where are you?</span><span lang="ar"><span class="l1">وداعًا لسؤال</span><br>أين أنت؟</span></h2>
+    <p class="lead"><span lang="en">Watch your rider cross Maadi on a live map, with an ETA that updates as they move.</span><span lang="ar">تابع المندوب وهو يعبر المعادي على خريطة مباشرة، مع وقت وصول يتحدّث مع حركته.</span></p>
+    <ul class="ticks">
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span lang="en">Follow your order from placed to on the way</span><span lang="ar">تابع طلبك من التأكيد حتى يصبح في الطريق</span></li>
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span lang="en">Give your rider your delivery PIN at the door</span><span lang="ar">أعطِ المندوب رمز الاستلام عند الباب</span></li>
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span lang="en">Your order reaches you, and only you</span><span lang="ar">يصل طلبك إليك أنت فقط</span></li>
+    </ul>
+  </div>
+  <div class="stage">
+    <div class="plate"></div>
+    <div class="phone "><img src="{{ asset('public/assets/site/img/tracking.jpg') }}" alt="Live map with estimated arrival" width="620"><i class="isl"></i></div>
+    <div class="card pin"><img src="{{ asset('public/assets/site/img/helmet.webp') }}" alt=""><span><span class="lbl"><span lang="en">YOUR DELIVERY PIN</span><span lang="ar">رمز الاستلام</span></span><span class="digits"><span>1</span><span>3</span><span>0</span><span>4</span></span></span><i class="sh"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M8.5 12l2.5 2.5L15.5 10"/></svg></i></div>
+  </div>
+</div></section>
+
+<section class="band mint" id="spots"><div class="wrap split flip">
+  <div class="copy">
+    <span class="eyebrow"><img src="{{ asset('public/assets/site/img/logo_teal3.webp') }}" alt=""><span lang="en">Waddy Spots</span><span lang="ar">أماكن وددى</span></span>
+    <h2><span lang="en"><span class="l1">Who's ruling</span><br><span class="l2">Maadi?</span></span><span lang="ar"><span class="l1">مَن يتصدّر</span><br><span class="l2">المعادي؟</span></span></h2>
+    <p class="lead"><span lang="en">Every week, Maadi votes for its favorite café, restaurant or hangout. One vote each.</span><span lang="ar">كل أسبوع، تصوّت المعادي لمقهاها أو مطعمها أو مكانها المفضل. صوت واحد لكل شخص.</span></p>
+    <div class="steps">
+      <div class="step"><i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></i><b><span lang="en">Vote a spot</span><span lang="ar">صوّت لمكان</span></b><span><span lang="en">One vote per person, every week.</span><span lang="ar">صوت واحد لكل شخص كل أسبوع.</span></span></div>
+      <div class="step"><i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z"/></svg></i><b><span lang="en">It's crowned</span><span lang="ar">يتوَّج المكان</span></b><span><span lang="en">The most-voted spot wins the week.</span><span lang="ar">الأكثر تصويتًا يفوز بالأسبوع.</span></span></div>
+      <div class="step"><i><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="9" width="16" height="11" rx="1.5"/><path d="M12 9v11M3.5 9h17M12 9c-1.5-3-5-4-5-1.5S10 9 12 9zM12 9c1.5-3 5-4 5-1.5S14 9 12 9z"/></svg></i><b><span lang="en">5 voters win</span><span lang="ar">٥ مصوّتين يربحون</span></b><span><span lang="en">Picked at random for a free-item voucher.</span><span lang="ar">يُختارون عشوائيًا لقسيمة صنف مجاني.</span></span></div>
+    </div>
+    <p class="fine"><span lang="en">Waddy runs the Spots draw. Apple and Google are not sponsors and are not involved in any way. Full rules are in the app.</span><span lang="ar">وددى هي الجهة المنظِّمة لسحب أماكن وددى، وشركتا Apple وGoogle ليستا راعيتين له ولا علاقة لهما به. الشروط الكاملة داخل التطبيق.</span></p>
+  </div>
+  <div class="stage">
+    <div class="plate"></div>
+    <div class="phone "><img src="{{ asset('public/assets/site/img/spots_new.jpg') }}" alt="This week's race leaderboard" width="620"><i class="isl"></i></div>
+    <div class="card trophy"><img src="{{ asset('public/assets/site/img/trophy.webp') }}" alt=""></div>
+  </div>
+</div></section>
+
+<section class="band teal" id="pets"><div class="wrap split">
+  <div class="copy">
+    <span class="eyebrow" style="color:var(--mint)"><img src="{{ asset('public/assets/site/img/logo_mint3.webp') }}" alt=""><span lang="en">Pet care</span><span lang="ar">رعاية الحيوانات الأليفة</span></span>
+    <h2><span lang="en"><span class="l1">Sit. Stay.</span><br>We'll deliver<span class="dot">.</span></span><span lang="ar"><span class="l1">اجلس. انتظر.</span><br>والتوصيل علينا<span class="dot">.</span></span></h2>
+    <p class="lead"><span lang="en">Add your cat, dog, bird or fish, and the shop fills with things they'll actually like.</span><span lang="ar">أضف قطتك أو كلبك أو طائرك أو سمكتك، ليمتلئ المتجر بما يحبه فعلًا.</span></p>
+    <ul class="ticks">
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span lang="en">Food, treats, litter, toys and grooming</span><span lang="ar">طعام ومكافآت ورمل وألعاب ومستلزمات عناية</span></li>
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span lang="en">Vet clinics nearby: call, WhatsApp or get directions</span><span lang="ar">عيادات بيطرية قريبة: اتصال أو واتساب أو اتجاهات</span></li>
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span lang="en">A reminder before their usual runs out</span><span lang="ar">تذكير قبل أن ينفد طعامه المعتاد</span></li>
+    </ul>
+  </div>
+  <div class="stage">
+    <div class="plate"></div>
+    <img class="cut" src="{{ asset('public/assets/site/img/pet_packs.webp') }}" alt="" style="width:200px; inset-inline-start:-8%; top:14%">
+    <div class="phone "><img src="{{ asset('public/assets/site/img/pets_new.jpg') }}" alt="Everything Max needs: vets and pet shops nearby" width="620"><i class="isl"></i></div>
+    <div class="card petid"><div class="hd"><span lang="en">YOUR PET</span><span lang="ar">حيوانك</span></div><div class="bd">
+      <div class="who"><img src="{{ asset('public/assets/site/img/dog.webp') }}" alt=""><span lang="en">Max</span><span lang="ar">ماكس</span></div>
+      <div class="row"><span><span lang="en">Type</span><span lang="ar">النوع</span></span><b><span lang="en">Dog</span><span lang="ar">كلب</span></b></div>
+      <div class="row"><span><span lang="en">Age</span><span lang="ar">العمر</span></span><b><span lang="en">Grown-up</span><span lang="ar">بالغ</span></b></div>
+      <div class="row"><span><span lang="en">Diet</span><span lang="ar">الطعام</span></span><b><span lang="en">Dry food</span><span lang="ar">طعام جاف</span></b></div>
+    </div></div>
+  </div>
+</div></section>
+
+<section class="band mint" id="get"><div class="wrap closing">
+  <img src="{{ asset('public/assets/site/img/app_icon.webp') }}" alt="" width="96" style="border-radius:24px; box-shadow:0 20px 40px rgba(4,24,22,.25)">
+  <h2><span lang="en">All of Maadi<span style="color:var(--white)">.</span><br><span style="color:var(--ink)">One app<span style="color:var(--white)">.</span></span></span><span lang="ar">المعادي كلها<span style="color:var(--white)">.</span><br><span style="color:var(--ink)">في تطبيق واحد<span style="color:var(--white)">.</span></span></span></h2>
+  <p class="lead" style="margin:0"><span lang="en">Not in Maadi yet? Download anyway and tell us where you are. We'll let you know the day Waddy reaches you.</span><span lang="ar">لم نصل إلى منطقتك بعد؟ حمّل التطبيق وأخبرنا بموقعك، وسنُعلمك فور وصول وددى إليك.</span></p>
+  <div class="stores"><a class="store" href="https://apps.apple.com/app/id6757408049" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" stroke="none" d="M16.4 12.6c0-2.4 2-3.6 2.1-3.7-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.9-3.2-.8-1.6 0-3.2 1-4 2.4-1.7 3-.4 7.4 1.2 9.8.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.1-.8 1.5 0 1.9.8 3.2.8 1.3 0 2.1-1.2 2.9-2.4.9-1.4 1.3-2.7 1.3-2.8-.1 0-2.5-1-2.4-3.9zM14 5.5c.7-.8 1.1-1.9 1-3-1 0-2.2.7-2.9 1.5-.6.7-1.2 1.8-1 2.9 1.1.1 2.2-.6 2.9-1.4z"/></svg><span><small><span lang="en">Download on the</span><span lang="ar">حمّله من</span></small>App Store</span></a><span class="store soon" aria-disabled="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" stroke="none" d="M4 3.3v17.4c0 .6.6.9 1.1.6l15-8.7c.5-.3.5-1 0-1.3l-15-8.7C4.6 2.4 4 2.7 4 3.3z"/></svg><span><small><span lang="en">Coming soon to</span><span lang="ar">قريبًا على</span></small>Google Play</span></span></div>
+</div></section>
+</main>
+
+<footer class="foot">
+  <div class="wrap top">
+    <h3><span lang="en">All of Maadi.<br><span>One app.</span></span><span lang="ar">المعادي كلها.<br><span>في تطبيق واحد.</span></span></h3>
+    <div class="acts"><div class="stores"><a class="store" href="https://apps.apple.com/app/id6757408049" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" stroke="none" d="M16.4 12.6c0-2.4 2-3.6 2.1-3.7-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.9-3.2-.8-1.6 0-3.2 1-4 2.4-1.7 3-.4 7.4 1.2 9.8.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.1-.8 1.5 0 1.9.8 3.2.8 1.3 0 2.1-1.2 2.9-2.4.9-1.4 1.3-2.7 1.3-2.8-.1 0-2.5-1-2.4-3.9zM14 5.5c.7-.8 1.1-1.9 1-3-1 0-2.2.7-2.9 1.5-.6.7-1.2 1.8-1 2.9 1.1.1 2.2-.6 2.9-1.4z"/></svg><span><small><span lang="en">Download on the</span><span lang="ar">حمّله من</span></small>App Store</span></a><span class="store soon" aria-disabled="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" stroke="none" d="M4 3.3v17.4c0 .6.6.9 1.1.6l15-8.7c.5-.3.5-1 0-1.3l-15-8.7C4.6 2.4 4 2.7 4 3.3z"/></svg><span><small><span lang="en">Coming soon to</span><span lang="ar">قريبًا على</span></small>Google Play</span></span></div>
+      <div class="social"><a href="#top" aria-label="Instagram"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor"/></svg></a><a href="#top" aria-label="Facebook"><svg viewBox="0 0 24 24"><path d="M14 8h3V4h-3a4 4 0 0 0-4 4v3H7v4h3v6h4v-6h3l1-4h-4V8z"/></svg></a><a href="#top" aria-label="TikTok"><svg viewBox="0 0 24 24"><path d="M14 3v11.5a3.5 3.5 0 1 1-3.5-3.5M14 3c.5 2.6 2.2 4.2 5 4.5"/></svg></a><a href="#top" aria-label="X"><svg viewBox="0 0 24 24"><path d="M4 4l16 16M20 4L4 20"/></svg></a><a href="#top" aria-label="WhatsApp"><svg viewBox="0 0 24 24"><path d="M4 20l1.3-4A8 8 0 1 1 8 18.7z"/><path d="M9 9.5c.3 2 2.5 4.2 4.5 4.5l1-1.2 2 .9c-.2 1.2-1.2 1.8-2.3 1.6C11 14.8 9 12.7 8.6 10.4c-.2-1.1.4-2.1 1.6-2.3l.9 2z"/></svg></a></div>
+    </div>
+  </div>
+  <div class="wrap cols">
+    <div><h4><span lang="en">Explore</span><span lang="ar">استكشف</span></h4><ul>
+      <li><a href="#food"><span lang="en">Food</span><span lang="ar">الطعام</span></a></li><li><a href="#groceries"><span lang="en">Groceries</span><span lang="ar">البقالة</span></a></li>
+      <li><a href="#tracking"><span lang="en">Live tracking</span><span lang="ar">التتبّع المباشر</span></a></li><li><a href="#spots"><span lang="en">Waddy Spots</span><span lang="ar">أماكن وددى</span></a></li>
+      <li><a href="#pets"><span lang="en">Pet care</span><span lang="ar">رعاية الحيوانات الأليفة</span></a></li></ul></div>
+    <div><h4><span lang="en">Company</span><span lang="ar">الشركة</span></h4><ul>
+      <li><a href="{{ route('about-us') }}" target="_blank" rel="noopener"><span lang="en">About us</span><span lang="ar">من نحن</span></a></li>
+      <li><a href="{{ route('contact-us') }}" target="_blank" rel="noopener"><span lang="en">Contact us</span><span lang="ar">تواصل معنا</span></a></li></ul></div>
+    <div><h4><span lang="en">Legal</span><span lang="ar">قانوني</span></h4><ul>
+      <li><a href="{{ route('privacy-policy') }}" target="_blank" rel="noopener"><span lang="en">Privacy policy</span><span lang="ar">سياسة الخصوصية</span></a></li>
+      <li><a href="{{ route('terms-and-conditions') }}" target="_blank" rel="noopener"><span lang="en">Terms & conditions</span><span lang="ar">الشروط والأحكام</span></a></li>
+      <li><a href="{{ route('refund') }}" target="_blank" rel="noopener"><span lang="en">Refund policy</span><span lang="ar">سياسة الاسترداد</span></a></li></ul></div>
+    <div><h4><span lang="en">Support</span><span lang="ar">الدعم</span></h4><ul>
+      <li class="note"><span lang="en">Chat with us from inside the app, any time.</span><span lang="ar">تحدّث معنا من داخل التطبيق في أي وقت.</span></li>
+      
+      
+      <li><a href="{{ route('contact-us') }}" target="_blank" rel="noopener"><span lang="en">Support page</span><span lang="ar">صفحة الدعم</span></a></li>
+      <li class="note"><span lang="en">Maadi, Cairo, Egypt</span><span lang="ar">المعادي، القاهرة، مصر</span></li></ul></div>
+  </div>
+  <div class="wrap mark" aria-label="Waddy"><img src="{{ asset('public/assets/site/img/logo_teal3.webp') }}" alt=""><span>WADDY</span></div>
+  <div class="base"><div class="wrap">
+    <span>© 2026 Waddy. <span lang="en">All rights reserved.</span><span lang="ar">جميع الحقوق محفوظة.</span></span>
+    <span><span lang="en">Available in English and Arabic</span><span lang="ar">متوفر بالعربية والإنجليزية</span></span>
+    <a class="totop sp" href="#top"><span lang="en">Back to top</span><span lang="ar">إلى الأعلى</span> ↑</a>
+  </div></div>
+</footer>
+
+<script>
+(function () {
+  var root = document.documentElement, btn = document.getElementById('lang'), body = document.body;
+  function set(l) {
+    root.setAttribute('data-lang', l); root.lang = l; root.dir = l === 'ar' ? 'rtl' : 'ltr';
+    btn.textContent = l === 'ar' ? 'English' : 'عربي';
+    try { localStorage.setItem('waddy-lang', l); } catch (e) {}
+  }
+  var saved = 'en'; try { saved = localStorage.getItem('waddy-lang') || 'en'; } catch (e) {}
+  set(saved);
+  btn.addEventListener('click', function () {
+    body.classList.add('switching');
+    setTimeout(function () { set(root.getAttribute('data-lang') === 'ar' ? 'en' : 'ar'); body.classList.remove('switching'); }, 250);
+  });
+
+  var header = document.querySelector('header');
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* scroll reveals */
+  if (!reduce && 'IntersectionObserver' in window && !navigator.webdriver) {
+    var groups = [];
+    document.querySelectorAll('.copy, .closing, .sectionhead').forEach(function (g) { groups.push([].slice.call(g.children)); });
+    document.querySelectorAll('.ticks, .steps, .cats, .foot .cols').forEach(function (g) { groups.push([].slice.call(g.children)); });
+    groups.forEach(function (els) { els.forEach(function (el, i) { el.classList.add('rv'); el.style.setProperty('--i', i); }); });
+    document.querySelectorAll('.stage .phone, .foot .mark, .foot .top').forEach(function (el) { el.classList.add('rv'); });
+    document.querySelectorAll('.stage .card, .ripe .card, .stage .cut').forEach(function (el, i) { el.classList.add('rv', 'pop'); el.style.setProperty('--i', 4 + (i % 3)); });
+    root.classList.add('anim');
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+    document.querySelectorAll('.rv').forEach(function (el) { io.observe(el); });
+  }
+
+  /* header + gentle parallax on the phones and cards */
+  var stages = [].slice.call(document.querySelectorAll('.stage'));
+  var ticking = false;
+  function onScroll() {
+    header.classList.toggle('scrolled', window.scrollY > 8);
+    if (!reduce) {
+      var vh = window.innerHeight;
+      stages.forEach(function (st) {
+        var r = st.getBoundingClientRect(); if (r.bottom < 0 || r.top > vh) return;
+        var p = (r.top + r.height / 2 - vh / 2) / vh;
+        st.querySelectorAll('.phone').forEach(function (el) { el.style.setProperty('--py', (p * 40).toFixed(1) + 'px'); });
+        st.querySelectorAll('.card, .cut').forEach(function (el) { el.style.setProperty('--py', (p * -60).toFixed(1) + 'px'); });
+      });
+    }
+    ticking = false;
+  }
+  window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(onScroll); } }, { passive: true });
+  onScroll();
+
+  document.querySelectorAll('[data-copy]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var t = b.getAttribute('data-copy'), old = b.textContent;
+      function done() { b.textContent = root.lang === 'ar' ? 'تم النسخ' : 'Copied'; setTimeout(function () { b.textContent = old; }, 1400); }
+      if (navigator.clipboard) navigator.clipboard.writeText(t).then(done, function () {}); 
+    });
+  });
+
+  /* hero phone follows the pointer a little */
+  var hero = document.querySelector('.hero .phone');
+  if (hero && !reduce && window.matchMedia('(pointer: fine)').matches) {
+    hero.style.transition = 'rotate .4s ease-out';
+    document.querySelector('.hero').addEventListener('pointermove', function (e) {
+      var x = e.clientX / window.innerWidth - .5;
+      hero.style.rotate = (x * 6).toFixed(2) + 'deg';
+    });
+  }
+})();
+</script>
+
+</body>
+</html>
