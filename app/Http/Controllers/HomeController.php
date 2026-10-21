@@ -29,63 +29,68 @@ class HomeController extends Controller
         return view('site.home');
     }
 
-    public function terms_and_conditions(Request $request)
+    public function terms_and_conditions()
     {
-        $data = self::get_settings('terms_and_conditions');
-        $config = Helpers::get_business_settings('landing_page');
-        $landing_integration_type = Helpers::get_business_data('landing_integration_type');
-        $redirect_url = Helpers::get_business_data('landing_page_custom_url');
-
-        if (isset($config) && $config) {
-            return view('terms-and-conditions', compact('data'));
-        } elseif ($landing_integration_type == 'file_upload' && File::exists('resources/views/layouts/landing/custom/index.blade.php')) {
-            return view('layouts.landing.custom.index');
-        } elseif ($landing_integration_type == 'url') {
-            return redirect($redirect_url);
-        } else {
-            abort(404);
-        }
+        return view('site.terms');
     }
 
-    public function about_us(Request $request)
+    public function about_us()
     {
-        $data = self::get_settings('about_us');
-        $data_title = self::get_settings('about_title');
-
-        $config = Helpers::get_business_settings('landing_page');
-        $landing_integration_type = Helpers::get_business_data('landing_integration_type');
-        $redirect_url = Helpers::get_business_data('landing_page_custom_url');
-
-        if (isset($config) && $config) {
-            return view('about-us', compact('data', 'data_title'));
-        } elseif ($landing_integration_type == 'file_upload' && File::exists('resources/views/layouts/landing/custom/index.blade.php')) {
-            return view('layouts.landing.custom.index');
-        } elseif ($landing_integration_type == 'url') {
-            return redirect($redirect_url);
-        } else {
-            abort(404);
-        }
+        return view('site.about');
     }
 
     public function contact_us()
     {
-        $config = Helpers::get_business_settings('landing_page');
-        $landing_integration_type = Helpers::get_business_data('landing_integration_type');
-        $redirect_url = Helpers::get_business_data('landing_page_custom_url');
+        return view('site.contact');
+    }
 
-        $custome_recaptcha = new CaptchaBuilder;
-        $custome_recaptcha->build();
-        Session::put('six_captcha', $custome_recaptcha->getPhrase());
+    /**
+     * JSON endpoint for the website contact form; messages land in the admin contacts inbox.
+     */
+    public function contact_message(Request $request)
+    {
+        $topics = [
+            'order' => 'Help with an order',
+            'refund' => 'Refund or payment',
+            'account' => 'My account',
+            'partner' => 'Partner with Waddy',
+            'rider' => 'Deliver with Waddy',
+            'other' => 'Something else',
+        ];
 
-        if (isset($config) && $config) {
-            return view('contact-us', compact('custome_recaptcha'));
-        } elseif ($landing_integration_type == 'file_upload' && File::exists('resources/views/layouts/landing/custom/index.blade.php')) {
-            return view('layouts.landing.custom.index');
-        } elseif ($landing_integration_type == 'url') {
-            return redirect($redirect_url);
-        } else {
-            abort(404);
+        // Honeypot field: bots fill it, people never see it. Pretend it worked.
+        if ($request->filled('_gotcha')) {
+            return response()->json(['ok' => true]);
         }
+
+        $data = $request->validate([
+            'name' => 'required|string|min:2|max:80',
+            'email' => 'required|email|max:100',
+            'phone' => 'nullable|string|max:20',
+            'topic' => 'required|in:' . implode(',', array_keys($topics)),
+            'order' => 'nullable|string|max:20',
+            'message' => 'required|string|min:10|max:1000',
+            'consent' => 'accepted',
+        ]);
+
+        $subject = $topics[$data['topic']];
+        if (!empty($data['order'])) {
+            $subject .= ' (order #' . $data['order'] . ')';
+        }
+
+        $message = $data['message'];
+        if (!empty($data['phone'])) {
+            $message .= "\n\nPhone: " . $data['phone'];
+        }
+
+        $contact = new Contact;
+        $contact->name = $data['name'];
+        $contact->email = $data['email'];
+        $contact->subject = $subject;
+        $contact->message = $message;
+        $contact->save();
+
+        return response()->json(['ok' => true]);
     }
 
     public function send_message(Request $request)
@@ -131,43 +136,14 @@ class HomeController extends Controller
         return back();
     }
 
-    public function privacy_policy(Request $request)
+    public function privacy_policy()
     {
-        $data = self::get_settings('privacy_policy');
-
-        $config = Helpers::get_business_settings('landing_page');
-        $landing_integration_type = Helpers::get_business_data('landing_integration_type');
-        $redirect_url = Helpers::get_business_data('landing_page_custom_url');
-
-        if (isset($config) && $config) {
-            return view('privacy-policy', compact('data'));
-        } elseif ($landing_integration_type == 'file_upload' && File::exists('resources/views/layouts/landing/custom/index.blade.php')) {
-            return view('layouts.landing.custom.index');
-        } elseif ($landing_integration_type == 'url') {
-            return redirect($redirect_url);
-        } else {
-            abort(404);
-        }
+        return view('site.privacy');
     }
 
-    public function refund_policy(Request $request)
+    public function refund_policy()
     {
-        $data = self::get_settings('refund_policy');
-        $status = self::get_settings_status('refund_policy_status');
-        abort_if($status == 0, 404);
-        $config = Helpers::get_business_settings('landing_page');
-        $landing_integration_type = Helpers::get_business_data('landing_integration_type');
-        $redirect_url = Helpers::get_business_data('landing_page_custom_url');
-
-        if (isset($config) && $config) {
-            return view('refund', compact('data'));
-        } elseif ($landing_integration_type == 'file_upload' && File::exists('resources/views/layouts/landing/custom/index.blade.php')) {
-            return view('layouts.landing.custom.index');
-        } elseif ($landing_integration_type == 'url') {
-            return redirect($redirect_url);
-        } else {
-            abort(404);
-        }
+        return view('site.refund');
     }
 
     public function shipping_policy(Request $request)

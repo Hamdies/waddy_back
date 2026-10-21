@@ -28,9 +28,11 @@ Route::get('terms-and-conditions', 'HomeController@terms_and_conditions')->name(
 Route::get('about-us', 'HomeController@about_us')->name('about-us');
 Route::get('contact-us', 'HomeController@contact_us')->name('contact-us');
 Route::post('send-message', 'HomeController@send_message')->name('send-message');
+Route::post('contact-us', 'HomeController@contact_message')->name('contact-us.send')->middleware('throttle:5,10');
 Route::get('privacy-policy', 'HomeController@privacy_policy')->name('privacy-policy');
 Route::get('cancelation', 'HomeController@cancelation')->name('cancelation');
-Route::get('refund', 'HomeController@refund_policy')->name('refund');
+Route::get('refund-policy', 'HomeController@refund_policy')->name('refund');
+Route::redirect('refund', 'refund-policy', 301);
 Route::get('shipping-policy', 'HomeController@shipping_policy')->name('shipping-policy');
 Route::post('newsletter/subscribe', 'NewsletterController@newsLetterSubscribe')->name('newsletter.subscribe');
 Route::get('subscription-invoice/{id}', 'HomeController@subscription_invoice')->name('subscription_invoice');
