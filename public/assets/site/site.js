@@ -4,24 +4,45 @@
     root.setAttribute('data-lang', l); root.lang = l; root.dir = l === 'ar' ? 'rtl' : 'ltr';
     btn.textContent = l === 'ar' ? 'English' : 'عربي';
     try { localStorage.setItem('waddy-lang', l); } catch (e) {}
+    try { var u = new URL(location.href); if (l === 'ar') u.searchParams.set('lang', 'ar'); else u.searchParams.delete('lang'); history.replaceState(null, '', u); } catch (e) {}
   }
-  var saved = 'en'; try { saved = localStorage.getItem('waddy-lang') || 'en'; } catch (e) {}
-  set(saved);
+  set(root.getAttribute('data-lang') === 'ar' ? 'ar' : 'en');
   btn.addEventListener('click', function () {
     body.classList.add('switching');
     setTimeout(function () { set(root.getAttribute('data-lang') === 'ar' ? 'en' : 'ar'); body.classList.remove('switching'); }, 250);
   });
 
   var header = document.querySelector('header');
+
+  /* send "Get the app" straight to the visitor's store, and lead with it */
+  var ua = navigator.userAgent, os = /android/i.test(ua) ? 'android' : /iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1) ? 'ios' : null;
+  if (os) {
+    var store = document.querySelector('.store[data-store="' + os + '"]'), cta = document.querySelector('.cta-sm');
+    if (store && cta) { cta.href = store.href; cta.target = '_blank'; cta.rel = 'noopener'; }
+    document.querySelectorAll('.store[data-store="' + os + '"]').forEach(function (s) { s.parentNode.insertBefore(s, s.parentNode.firstChild); });
+  }
+
+  /* mark the section in view in the nav */
+  var navLinks = [].slice.call(document.querySelectorAll('nav a[href*="#"]'));
+  if (navLinks.length && 'IntersectionObserver' in window) {
+    var nio = new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        navLinks.forEach(function (a) { if (a.hash === '#' + e.target.id) a.setAttribute('aria-current', 'location'); else a.removeAttribute('aria-current'); });
+      });
+    }, { rootMargin: '-45% 0px -50% 0px' });
+    navLinks.forEach(function (a) { var t = a.hash && document.getElementById(a.hash.slice(1)); if (t) nio.observe(t); });
+  }
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) document.querySelectorAll('.map svg').forEach(function (m) { if (m.pauseAnimations) { m.pauseAnimations(); m.setCurrentTime(7.6); } });
 
   /* scroll reveals */
   if (!reduce && 'IntersectionObserver' in window && !navigator.webdriver) {
     var groups = [];
     document.querySelectorAll('.copy, .closing, .sectionhead').forEach(function (g) { groups.push([].slice.call(g.children)); });
-    document.querySelectorAll('.ticks, .steps, .cats, .foot .cols').forEach(function (g) { groups.push([].slice.call(g.children)); });
+    document.querySelectorAll('.ticks, .steps, .cats, .podium, .foot .cols').forEach(function (g) { groups.push([].slice.call(g.children)); });
     groups.forEach(function (els) { els.forEach(function (el, i) { el.classList.add('rv'); el.style.setProperty('--i', i); }); });
-    document.querySelectorAll('.stage .phone, .foot .mark').forEach(function (el) { el.classList.add('rv'); });
+    document.querySelectorAll('.stage .phone, .receipt-wrap, .foot .mark').forEach(function (el) { el.classList.add('rv'); });
     document.querySelectorAll('.stage .card, .ripe .card, .stage .cut').forEach(function (el, i) { el.classList.add('rv', 'pop'); el.style.setProperty('--i', 4 + (i % 3)); });
     root.classList.add('anim');
     var io = new IntersectionObserver(function (es) {

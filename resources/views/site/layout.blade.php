@@ -1,12 +1,15 @@
 @php($home = request()->routeIs('home') ? '' : route('home'))
+@php($lang = request('lang') === 'ar' ? 'ar' : 'en')
 <!doctype html>
-<html lang="en" dir="ltr">
+<html lang="{{ $lang }}" dir="{{ $lang === 'ar' ? 'rtl' : 'ltr' }}" data-lang="{{ $lang }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="@yield('description')">
 <link rel="icon" href="{{ asset('public/assets/site/img/app_icon.webp') }}">
 <title>@yield('title')</title>
+<link rel="alternate" hreflang="en" href="{{ url()->current() }}"><link rel="alternate" hreflang="ar" href="{{ url()->current() }}?lang=ar"><link rel="alternate" hreflang="x-default" href="{{ url()->current() }}">
+<script>(function(){var r=document.documentElement,l=null;try{l=new URLSearchParams(location.search).get('lang')||localStorage.getItem('waddy-lang');}catch(e){}if(l!=='ar'&&l!=='en')l=/^ar/i.test(navigator.language||'')?'ar':'en';r.setAttribute('data-lang',l);r.lang=l;r.dir=l==='ar'?'rtl':'ltr';})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alexandria:wght@600;800;900&display=swap">
 <link rel="stylesheet" href="{{ asset('public/assets/site/site.css') }}?v={{ @filemtime(public_path('assets/site/site.css')) }}">
@@ -18,7 +21,7 @@
     <a href="{{ $home }}#food"><span lang="en">Food</span><span lang="ar">الطعام</span></a><a href="{{ $home }}#groceries"><span lang="en">Groceries</span><span lang="ar">البقالة</span></a>
     <a href="{{ $home }}#tracking"><span lang="en">Tracking</span><span lang="ar">التتبّع</span></a><a href="{{ $home }}#spots"><span lang="en">Spots</span><span lang="ar">أماكن وددى</span></a><a href="{{ $home }}#pets"><span lang="en">Pets</span><span lang="ar">الحيوانات الأليفة</span></a>
   </nav>
-  <button class="lang" id="lang" type="button" aria-label="Switch language">عربي</button>
+  <button class="lang" id="lang" type="button">عربي</button>
   <a class="cta-sm" href="{{ $home }}#top"><span lang="en">Get the app</span><span lang="ar">حمّل التطبيق</span></a>
 </div></header>
 
@@ -38,26 +41,24 @@
       <p class="note"><span lang="en">Food, groceries and pet care from across Maadi, delivered and tracked live.</span><span lang="ar">طعام وبقالة ومستلزمات الحيوانات الأليفة من كل المعادي، مع تتبّع مباشر.</span></p>
       @if($social)<div class="social">@foreach($social as $label => $s)<a href="{{ $s['url'] }}" target="_blank" rel="noopener" aria-label="{{ $label }}">{!! $s['icon'] !!}</a>@endforeach</div>@endif
     </div>
-    <div><h4><span lang="en">Explore</span><span lang="ar">استكشف</span></h4><ul>
+    <div><h2 class="fh"><span lang="en">Explore</span><span lang="ar">استكشف</span></h2><ul>
       <li><a href="{{ $home }}#food"><span lang="en">Food</span><span lang="ar">الطعام</span></a></li><li><a href="{{ $home }}#groceries"><span lang="en">Groceries</span><span lang="ar">البقالة</span></a></li>
       <li><a href="{{ $home }}#tracking"><span lang="en">Live tracking</span><span lang="ar">التتبّع المباشر</span></a></li><li><a href="{{ $home }}#spots"><span lang="en">Waddy Spots</span><span lang="ar">أماكن وددى</span></a></li>
       <li><a href="{{ $home }}#pets"><span lang="en">Pet care</span><span lang="ar">رعاية الحيوانات الأليفة</span></a></li></ul></div>
-    <div><h4><span lang="en">Company</span><span lang="ar">الشركة</span></h4><ul>
+    <div><h2 class="fh"><span lang="en">Company</span><span lang="ar">الشركة</span></h2><ul>
       <li><a href="{{ route('about-us') }}"><span lang="en">About us</span><span lang="ar">من نحن</span></a></li>
       <li><a href="{{ route('contact-us') }}"><span lang="en">Contact us</span><span lang="ar">تواصل معنا</span></a></li></ul></div>
-    <div><h4><span lang="en">Legal</span><span lang="ar">قانوني</span></h4><ul>
+    <div><h2 class="fh"><span lang="en">Legal</span><span lang="ar">قانوني</span></h2><ul>
       <li><a href="{{ route('privacy-policy') }}"><span lang="en">Privacy policy</span><span lang="ar">سياسة الخصوصية</span></a></li>
       <li><a href="{{ route('terms-and-conditions') }}"><span lang="en">Terms & conditions</span><span lang="ar">الشروط والأحكام</span></a></li>
       <li><a href="{{ route('refund') }}"><span lang="en">Refund policy</span><span lang="ar">سياسة الاسترداد</span></a></li>
       <li><a href="{{ route('shipping-policy') }}"><span lang="en">Shipping policy</span><span lang="ar">سياسة الشحن</span></a></li></ul></div>
-    <div><h4><span lang="en">Support</span><span lang="ar">الدعم</span></h4><ul>
+    <div><h2 class="fh"><span lang="en">Support</span><span lang="ar">الدعم</span></h2><ul>
       <li class="note"><span lang="en">Chat with us from inside the app, any time.</span><span lang="ar">تحدّث معنا من داخل التطبيق في أي وقت.</span></li>
-      
-      
       <li><a href="{{ route('contact-us') }}"><span lang="en">Support page</span><span lang="ar">صفحة الدعم</span></a></li>
       <li class="note"><span lang="en">Maadi, Cairo, Egypt</span><span lang="ar">المعادي، القاهرة، مصر</span></li></ul></div>
   </div>
-  <div class="wrap mark" aria-label="Waddy"><img src="{{ asset('public/assets/site/img/logo_teal3.webp') }}" alt=""><span>WADDY</span></div>
+  <div class="wrap mark" aria-hidden="true"><img src="{{ asset('public/assets/site/img/logo_teal3.webp') }}" alt=""><span>WADDY</span></div>
   <div class="base"><div class="wrap">
     <span>© 2026 Waddy. <span lang="en">All rights reserved.</span><span lang="ar">جميع الحقوق محفوظة.</span></span>
     <span><span lang="en">Available in English and Arabic</span><span lang="ar">متوفر بالعربية والإنجليزية</span></span>
