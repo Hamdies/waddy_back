@@ -563,7 +563,7 @@ trait PlaceNewOrder
 
             $securityService->storeSecurityFields($order, $request);
 
-            $order->save();
+            $this->saveOrderWithFreshId($order);
             if ($request->order_type !== 'parcel') {
                 $taxMapCollection = collect($taxMap);
                 foreach ($order_details as $key => $item) {
@@ -2021,5 +2021,28 @@ trait PlaceNewOrder
             'price' => 0,
             'price_type' => 'amount',
         ];
+    }
+
+    /**
+     * Saves a new order, taking the next free number if another checkout got this one first.
+     * The number is "highest id + 1" (set above), so two orders placed in the same moment picked
+     * the same one and the second failed with a duplicate-key error: 7-8% of orders at 20-40
+     * orders/minute in the 2026-10-22 load test. Inside the order transaction a plain read can
+     * miss the other order, so each retry also moves at least one number past the one that failed.
+     */
+    private function saveOrderWithFreshId(Order $order): void
+    {
+        for ($attempt = 1; ; $attempt++) {
+            try {
+                $order->save();
+                return;
+            } catch (\Illuminate\Database\QueryException $exception) {
+                $duplicateId = ($exception->errorInfo[1] ?? null) === 1062 && str_contains($exception->getMessage(), 'PRIMARY');
+                if (!$duplicateId || $attempt >= 5) {
+                    throw $exception;
+                }
+                $order->id = max((int) Order::query()->lockForUpdate()->max('id'), (int) $order->id) + 1;
+            }
+        }
     }
 }
