@@ -75,6 +75,7 @@ class Kernel extends HttpKernel
         'module-check' => \App\Http\Middleware\ModuleCheckMiddleware::class,
         'current-module' => \App\Http\Middleware\CurrentModule::class,
         'apiGuestCheck' => \App\Http\Middleware\APIGuestMiddleware::class,
+        'cache.response' => \App\Http\Middleware\CacheApiResponse::class,
         'subscription' => \App\Http\Middleware\Subscription::class,
         'admin-rental-module' => \App\Http\Middleware\AdminRentalModuleCheckMiddleware::class,
         'provider-rental-module' => \App\Http\Middleware\ProviderRentalModuleCheckMiddleware::class,

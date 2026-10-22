@@ -43,6 +43,14 @@ STEPS.forEach((users, i) => {
     thresholds['http_reqs{step:' + tag + '}'] = ['count>=0'];
 });
 
+// Every endpoint name used below, so the summary can rank them by speed.
+const NAMES = ['config', 'modules', 'banners', 'categories', 'stores_popular', 'items_popular', 'items_discounted', 'campaigns',
+    'flash_sales', 'store_details', 'store_items', 'item_details', 'places', 'places_categories', 'places_banners',
+    'places_trending', 'place_details', 'place_reviews'];
+NAMES.forEach((n) => {
+    thresholds['http_req_duration{name:' + n + '}'] = ['max>=0'];
+});
+
 export const options = {
     scenarios,
     thresholds,
@@ -183,5 +191,8 @@ export function handleSummary(data) {
     } else if (rows.length) {
         out += '\n  Even the first level (' + STEPS[0] + ' users) was not OK; run again with smaller STEPS, e.g. -e STEPS=2,5,10,15,20\n';
     }
+    const slow = NAMES.map((n) => ({ n, med: v('http_req_duration{name:' + n + '}', 'med'), p95: v('http_req_duration{name:' + n + '}', 'p(95)') }))
+        .filter((x) => x.p95 !== null && x.p95 > 0).sort((a, b) => b.p95 - a.p95);
+    out += '\n  SLOWEST ENDPOINTS (whole run)\n' + slow.map((x) => '  ' + pad(x.n, 20) + 'median ' + pad(ms(x.med), 9) + 'p95 ' + ms(x.p95)).join('\n') + '\n';
     return { stdout: out + '\n' };
 }

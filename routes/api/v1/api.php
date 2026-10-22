@@ -86,7 +86,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
     });
 
     // Module
-    Route::get('module', 'ModuleController@index');
+    Route::get('module', 'ModuleController@index')->middleware('cache.response:60');
 
     // Pets module: nearby vet clinics and the species → needs category tree.
     // Public, so guests see them too.
@@ -324,7 +324,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
     });
 
     Route::group(['prefix' => 'config'], function () {
-        Route::get('/', 'ConfigController@configuration');
+        Route::get('/', 'ConfigController@configuration')->middleware('cache.response:60');
         Route::get('/get-zone-id', 'ConfigController@get_zone');
         Route::get('place-api-autocomplete', 'ConfigController@place_api_autocomplete');
         Route::get('distance-api', 'ConfigController@distance_api');
@@ -475,11 +475,11 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
         });
 
         Route::group(['prefix' => 'items'], function () {
-            Route::get('latest', 'ItemController@get_latest_products');
-            Route::get('new-arrival', 'ItemController@get_new_products');
-            Route::get('popular', 'ItemController@get_popular_products');
+            Route::get('latest', 'ItemController@get_latest_products')->middleware('cache.response:60');
+            Route::get('new-arrival', 'ItemController@get_new_products')->middleware('cache.response:60');
+            Route::get('popular', 'ItemController@get_popular_products')->middleware('cache.response:60');
             Route::get('most-reviewed', 'ItemController@get_most_reviewed_products');
-            Route::get('discounted', 'ItemController@get_discounted_products');
+            Route::get('discounted', 'ItemController@get_discounted_products')->middleware('cache.response:60');
             Route::get('set-menu', 'ItemController@get_set_menus');
             Route::get('search', 'ItemController@get_searched_products');
             Route::get('search-suggestion', 'ItemController@get_searched_products_suggestion');
@@ -492,7 +492,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
             Route::get('rating/{item_id}', 'ItemController@get_product_rating');
             Route::get('recommended', 'ItemController@get_recommended');
             Route::get('ramadan-featured', 'ItemController@get_ramadan_featured_products');
-            Route::get('basic', 'ItemController@get_popular_basic_products');
+            Route::get('basic', 'ItemController@get_popular_basic_products')->middleware('cache.response:60');
             Route::get('suggested', 'ItemController@get_cart_suggest_products');
             Route::get('item-or-store-search', 'ItemController@item_or_store_search');
             Route::post('reviews/submit', 'ItemController@submit_product_review')->middleware('auth:api');
@@ -519,18 +519,18 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
         Route::get('search/global', 'GlobalSearchController@search');
 
         Route::group(['prefix' => 'banners'], function () {
-            Route::get('/', 'BannerController@get_banners');
+            Route::get('/', 'BannerController@get_banners')->middleware('cache.response:60');
             Route::get('{store_id}/', 'BannerController@get_store_banners');
         });
 
         Route::group(['prefix' => 'other-banners'], function () {
-            Route::get('/', 'OtherBannerController@get_banners');
+            Route::get('/', 'OtherBannerController@get_banners')->middleware('cache.response:60');
             Route::get('video-content', 'OtherBannerController@get_video_content');
             Route::get('why-choose', 'OtherBannerController@get_why_choose');
         });
 
         Route::group(['prefix' => 'categories'], function () {
-            Route::get('/', 'CategoryController@get_categories');
+            Route::get('/', 'CategoryController@get_categories')->middleware('cache.response:60');
             Route::get('childes/{category_id}', 'CategoryController@get_childes');
             Route::get('items/list', 'CategoryController@get_category_products');
             Route::get('stores/list', 'CategoryController@get_category_stores');
@@ -558,13 +558,13 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
         });
 
         Route::group(['prefix' => 'campaigns'], function () {
-            Route::get('basic', 'CampaignController@get_basic_campaigns');
+            Route::get('basic', 'CampaignController@get_basic_campaigns')->middleware('cache.response:60');
             Route::get('basic-campaign-details', 'CampaignController@basic_campaign_details');
             Route::get('item', 'CampaignController@get_item_campaigns');
         });
 
         Route::group(['prefix' => 'flash-sales'], function () {
-            Route::get('/', 'FlashSaleController@get_flash_sales');
+            Route::get('/', 'FlashSaleController@get_flash_sales')->middleware('cache.response:60');
             Route::get('/items', 'FlashSaleController@get_flash_sale_items');
         });
 
