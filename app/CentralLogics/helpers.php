@@ -1643,16 +1643,36 @@ class Helpers
         return $discount;
     }
 
+    private static ?array $flashSaleItemIds = null;
+    private static int $flashSaleItemIdsAt = 0;
+
+    /**
+     * Ids of items in a running flash sale. product_discount_calculate() runs once per item in every
+     * list, and asking the flash sale tables per item was one query per row; one query now answers
+     * the whole list. Kept for at most 30 s so a long-running worker still sees sales start and end.
+     */
+    private static function runningFlashSaleItemIds(): array
+    {
+        if (self::$flashSaleItemIds === null || time() - self::$flashSaleItemIdsAt > 30) {
+            self::$flashSaleItemIds = FlashSaleItem::Active()->whereHas('flashSale', function ($query) {
+                $query->Active()->Running();
+            })->pluck('item_id')->map(fn ($id) => (int) $id)->all();
+            self::$flashSaleItemIdsAt = time();
+        }
+        return self::$flashSaleItemIds;
+    }
+
     public static function product_discount_calculate($product, $price, $store , $check_store_discount = true)
     {
         $discount_percentage=0;
         $store_discount_percentage=0;
         $store_discount= null;
 
-        $running_flash_sale = FlashSaleItem::Active()->whereHas('flashSale', function ($query) {
-            $query->Active()->Running();
-        })
-            ->where(['item_id' => $product->id])->first();
+        $running_flash_sale = in_array((int) $product->id, self::runningFlashSaleItemIds(), true)
+            ? FlashSaleItem::Active()->whereHas('flashSale', function ($query) {
+                $query->Active()->Running();
+            })->where(['item_id' => $product->id])->first()
+            : null;
 
         if($running_flash_sale){
             $discount_percentage=$running_flash_sale['discount'];
