@@ -13,13 +13,16 @@ use Illuminate\Support\Facades\Cache;
  * who is asking, so every app user in the same zone shares one copy instead of each one re-running the
  * same heavy list queries. Under load those queries were the server's ceiling (capacity test, 2026-10-22).
  *
- * Only for GET routes whose response does not depend on the user or their location.
+ * Only for GET routes whose response does not depend on the user or their location. Pass `guest`
+ * (cache.response:60,guest) for a route that adds per-user fields such as favourites: signed-in
+ * requests then always run the route, and only guests share the cached copy.
  */
 class CacheApiResponse
 {
-    public function handle(Request $request, Closure $next, int $seconds = 60)
+    public function handle(Request $request, Closure $next, int $seconds = 60, string $who = 'all')
     {
-        if (!$request->isMethod('GET')) {
+        $signedIn = substr_count((string) $request->bearerToken(), '.') === 2;
+        if (!$request->isMethod('GET') || ($who === 'guest' && $signedIn)) {
             return $next($request);
         }
 

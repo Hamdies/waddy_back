@@ -12,13 +12,13 @@ Route::group(['prefix' => 'places'], function () {
     
     // ==================== Public Routes ====================
     
-    Route::get('categories', 'PlaceCategoryController@index');
+    Route::get('categories', 'PlaceCategoryController@index')->middleware('cache.response:60');
     Route::get('categories/{category}', 'PlaceCategoryController@show');
     Route::get('tags', 'PlaceCategoryController@tags');
-    Route::get('/', 'PlaceController@index');
+    Route::get('/', 'PlaceController@index')->middleware('cache.response:60,guest');
     Route::get('leaderboard', 'PlaceController@leaderboard');
     Route::get('top-voters', 'PlaceController@topVoters');
-    Route::get('trending', 'PlaceController@trending');
+    Route::get('trending', 'PlaceController@trending')->middleware('cache.response:60');
 
     // Weekly winners (hall of fame + latest champion)
     Route::get('winners', 'WinnerController@index');
@@ -39,7 +39,7 @@ Route::group(['prefix' => 'places'], function () {
     Route::post('events', 'PlaceEventController@store')->middleware('throttle:60,1');
     
     // Banners (public)
-    Route::get('banners', 'PlaceBannerController@index');
+    Route::get('banners', 'PlaceBannerController@index')->middleware('cache.response:60');
     Route::get('banners/featured', 'PlaceBannerController@featured');
     
     // Zones
