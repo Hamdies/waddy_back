@@ -9,7 +9,9 @@
 // STEPS      orders started per minute, one level after another   default: a single order
 // STEP_TIME  seconds per level                                    default 90
 // BROWSE     app users browsing at the same time (capacity.js)    default 0
-// STORE_ID / MODULE / ZONE / LAT / LNG   where to order           default store 29 (module 1, zone 1, Maadi)
+// STORES     module:store pairs to spread orders over            default the Food stores + The Pet Mart in Maadi
+//            (Groceries is left out: its cash-on-delivery cap was 10 EGP on 2026-10-22, below every store minimum)
+// ZONE / LAT / LNG   delivery zone and customer location          default zone 1 (Maadi)
 import http from 'k6/http';
 import { sleep, fail } from 'k6';
 import { Counter, Rate, Trend } from 'k6/metrics';
@@ -19,8 +21,10 @@ const BASE = (__ENV.BASE_URL || 'https://waddyapp.com').replace(/\/$/, '') + '/a
 const STEPS = __ENV.STEPS ? __ENV.STEPS.split(',').map((n) => parseInt(n, 10)) : null;
 const STEP_TIME = parseInt(__ENV.STEP_TIME || '90', 10);
 const BROWSE = parseInt(__ENV.BROWSE || '0', 10);
-const STORE_ID = __ENV.STORE_ID || '29';
-const MODULE = __ENV.MODULE || '1';
+const STORES = (__ENV.STORES || '2:32,2:33,2:34,2:35,2:36,7:61').split(',').map((pair) => {
+    const [module, store] = pair.split(':');
+    return { module, store };
+});
 const ZONE = __ENV.ZONE || '1';
 const LAT = __ENV.LAT || '29.9635';
 const LNG = __ENV.LNG || '31.2933';
@@ -62,8 +66,8 @@ export function browse() {
     browser();
 }
 
-function headers(token) {
-    const h = { Accept: 'application/json', zoneId: '[' + ZONE + ']', moduleId: MODULE, latitude: LAT, longitude: LNG, 'X-localization': 'en' };
+function headers(token, module) {
+    const h = { Accept: 'application/json', zoneId: '[' + ZONE + ']', moduleId: module || STORES[0].module, latitude: LAT, longitude: LNG, 'X-localization': 'en' };
     if (token) {
         h['guest-token'] = token;
     }
@@ -90,10 +94,11 @@ export function buyer() {
         return give('no guest token');
     }
     const token = g.guest_token;
+    const { module: MODULE, store: STORE_ID } = STORES[Math.floor(Math.random() * STORES.length)];
 
     // 2. Browse the store and fill the bag past its minimum order.
-    const store = json(http.get(BASE + 'stores/details/' + STORE_ID, { headers: headers(token), tags: { name: 'order_store' } })) || {};
-    const list = json(http.get(BASE + 'items/latest?store_id=' + STORE_ID + '&category_id=0&offset=1&limit=24', { headers: headers(token), tags: { name: 'order_items' } }));
+    const store = json(http.get(BASE + 'stores/details/' + STORE_ID, { headers: headers(token, MODULE), tags: { name: 'order_store' } })) || {};
+    const list = json(http.get(BASE + 'items/latest?store_id=' + STORE_ID + '&category_id=0&offset=1&limit=24', { headers: headers(token, MODULE), tags: { name: 'order_items' } }));
     const items = ((list && list.products) || []).filter((p) => p.stock > 0 && !(p.variations || []).length && !(p.food_variations || []).length);
     if (!items.length) {
         return give('store ' + STORE_ID + ' has no simple in-stock items');
@@ -105,7 +110,7 @@ export function buyer() {
     let total = 0;
     for (let i = 0; i < cheap.length && (total <= minimum || i === 0); i++) {
         const item = cheap[i];
-        const res = http.post(BASE + 'customer/cart/add', { item_id: item.id, model: 'Item', price: item.price, quantity: 1 }, { headers: headers(token), tags: { name: 'order_cart_add' } });
+        const res = http.post(BASE + 'customer/cart/add', { item_id: item.id, model: 'Item', price: item.price, quantity: 1 }, { headers: headers(token, MODULE), tags: { name: 'order_cart_add' } });
         if (res.status !== 200) {
             return give('cart add answered ' + res.status + ' ' + String(res.body).slice(0, 200));
         }
@@ -121,7 +126,7 @@ export function buyer() {
         address: 'k6 load test, 1 Test Street', latitude: LAT, longitude: LNG,
         contact_person_name: 'k6 Load Test', contact_person_number: '+2010' + String(Math.floor(Math.random() * 1e8)).padStart(8, '0'),
         contact_person_email: 'k6-' + tag + '@loadtest.invalid', order_amount: String(total),
-    }, { headers: headers(token), tags: { name: 'order_place' }, timeout: '60s' });
+    }, { headers: headers(token, MODULE), tags: { name: 'order_place' }, timeout: '60s' });
     placeTime.add(Date.now() - started);
     const body = json(res);
     if (res.status !== 200 || !body || !body.order_id) {
@@ -130,7 +135,7 @@ export function buyer() {
     placed.add(1);
     failed.add(false);
     if (!STEPS) {
-        console.log('order placed: #' + body.order_id + ' for ' + total + ' in ' + (Date.now() - started) + ' ms');
+        console.log('order placed: #' + body.order_id + ' at store ' + STORE_ID + ' for ' + total + ' in ' + (Date.now() - started) + ' ms');
     }
 }
 
