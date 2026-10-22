@@ -96,7 +96,25 @@ class RouteServiceProvider extends ServiceProvider
                 return Limit::none();
             }
 
-            return Limit::perMinute(120)->by(optional($request->user())->id ?: $request->ip());
+            // The default guard is `web`, so $request->user() is always null on the API and every
+            // app user used to be counted by IP. Resolve the Passport user from the bearer token.
+            $userId = null;
+            if (substr_count((string) $request->bearerToken(), '.') === 2) {
+                try {
+                    $userId = auth('api')->id();
+                } catch (\Throwable $e) {
+                    // Expired or malformed token: treat as a guest.
+                }
+            }
+            if ($userId) {
+                return Limit::perMinute(120)->by('user:' . $userId);
+            }
+
+            // Guests send no per-device id on browsing calls, so the IP is all there is. CGNAT puts
+            // many real customers behind one IP (see `auth` below), so the bucket is sized for a
+            // crowd: one app session is ~15 requests a minute, so 600 is ~40 guests on one IP,
+            // while one scraper is still cut off at 10 requests/second.
+            return Limit::perMinute(600)->by('ip:' . $request->ip());
         });
 
         // Egyptian carriers run heavy CGNAT (see routes/api/v1/api.php), so a tight
