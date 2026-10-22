@@ -9,8 +9,7 @@
 // STEPS      orders started per minute, one level after another   default: a single order
 // STEP_TIME  seconds per level                                    default 90
 // BROWSE     app users browsing at the same time (capacity.js)    default 0
-// STORES     module:store pairs to spread orders over            default the Food stores + The Pet Mart in Maadi
-//            (Groceries is left out: its cash-on-delivery cap was 10 EGP on 2026-10-22, below every store minimum)
+// STORES     module:store pairs to spread orders over            default Seoudi (Groceries), the Food stores and The Pet Mart in Maadi
 // ZONE / LAT / LNG   delivery zone and customer location          default zone 1 (Maadi)
 import http from 'k6/http';
 import { sleep, fail } from 'k6';
@@ -21,7 +20,7 @@ const BASE = (__ENV.BASE_URL || 'https://waddyapp.com').replace(/\/$/, '') + '/a
 const STEPS = __ENV.STEPS ? __ENV.STEPS.split(',').map((n) => parseInt(n, 10)) : null;
 const STEP_TIME = parseInt(__ENV.STEP_TIME || '90', 10);
 const BROWSE = parseInt(__ENV.BROWSE || '0', 10);
-const STORES = (__ENV.STORES || '2:32,2:33,2:34,2:35,2:36,7:61').split(',').map((pair) => {
+const STORES = (__ENV.STORES || '1:29,2:32,2:33,2:34,2:35,2:36,7:61').split(',').map((pair) => {
     const [module, store] = pair.split(':');
     return { module, store };
 });
