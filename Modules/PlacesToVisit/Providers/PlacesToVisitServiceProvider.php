@@ -43,6 +43,7 @@ class PlacesToVisitServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->registerConfig();
+        $this->applyRaceOverrides();
         $this->registerViews();
         $this->registerTranslations();
         $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
@@ -59,6 +60,19 @@ class PlacesToVisitServiceProvider extends ServiceProvider
             module_path($this->moduleName, 'Config/config.php'),
             $this->moduleNameLower
         );
+    }
+
+    /**
+     * Race settings edited in the admin panel (business_settings
+     * `spots_race_settings`) win over this module's config file.
+     */
+    protected function applyRaceOverrides(): void
+    {
+        try {
+            config(\App\Services\AdminPanel\Settings::raceOverrides());
+        } catch (\Throwable $e) {
+            // No database yet (install, first migrate): the file defaults stand.
+        }
     }
 
     protected function registerViews(): void

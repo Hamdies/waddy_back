@@ -65,7 +65,7 @@ class PlacePushService
         if (Cache::has($cooldownKey)) {
             return;
         }
-        Cache::put($cooldownKey, 1, now()->addMinutes(self::COOLDOWN_MINUTES));
+        Cache::put($cooldownKey, 1, now()->addMinutes((int) config('placestovisit.race.lead_push_cooldown_minutes', self::COOLDOWN_MINUTES)));
 
         $hoursLeft = max(1, (int) RaceClock::now()->diffInHours(RaceClock::lockTime()));
         Helpers::send_push_notif_to_topic(

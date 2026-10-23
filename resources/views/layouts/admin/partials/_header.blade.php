@@ -21,6 +21,13 @@
                 <ul class="navbar-nav align-items-center flex-row flex-grow-1 __navbar-nav">
 
                     <li class="nav-item __nav-item">
+                        <a href="{{ route('admin.panel.index') }}" class="__nav-link">
+                            <img src="{{asset('/public/assets/admin/panel/waddy-logo.png')}}" alt="Waddy" style="width:20px;height:20px;border-radius:6px;background:#fff">
+                            <span>{{ translate('New panel') }}</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item __nav-item">
                         <a href="{{ route('admin.users.dashboard')}}" id="tourb-6"
                            class="__nav-link {{ Request::is('admin/users*') ? 'active' : '' }}">
                             <img src="{{asset('/public/assets/admin/img/new-img/user.svg')}}" alt="public/img">

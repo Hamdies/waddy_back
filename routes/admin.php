@@ -23,6 +23,33 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         //dashboard
         Route::get('/', 'DashboardController@dashboard')->name('dashboard');
 
+        // Redesigned admin panel: one page, JSON endpoints, and live ops.
+        Route::group(['prefix' => 'panel', 'as' => 'panel.'], function () {
+            Route::get('/', 'PanelController@index')->name('index');
+            Route::get('live', 'PanelController@live')->name('live');
+            Route::group(['prefix' => 'api'], function () {
+                Route::get('counts', 'PanelController@counts')->name('counts');
+                Route::get('home', 'PanelController@home')->name('home');
+                Route::get('search', 'PanelController@search')->name('search');
+                Route::get('settings', 'PanelController@settings')->name('settings');
+                Route::post('settings', 'PanelController@saveSettings')->name('settings.save');
+                Route::get('race', 'PanelController@race')->name('race');
+                Route::post('race', 'PanelController@saveRace')->name('race.save');
+                Route::post('jobs', 'PanelController@runJob')->name('jobs');
+                Route::get('live', 'PanelController@liveData')->name('live.data');
+                Route::post('live', 'PanelController@liveAction')->name('live.action');
+                Route::post('tickets/{id}/reply', 'PanelController@reply')->name('reply')->whereNumber('id');
+                Route::get('res/{res}', 'PanelController@list')->name('list');
+                Route::get('res/{res}/export', 'PanelController@export')->name('export');
+                Route::get('res/{res}/new', 'PanelController@blank')->name('blank');
+                Route::post('res/{res}', 'PanelController@store')->name('store');
+                Route::get('res/{res}/{id}', 'PanelController@show')->name('show');
+                Route::put('res/{res}/{id}', 'PanelController@update')->name('update');
+                Route::delete('res/{res}/{id}', 'PanelController@destroy')->name('destroy');
+                Route::post('res/{res}/{id}/{action}', 'PanelController@action')->name('action');
+            });
+        });
+
         // Pets module: vet clinics, their own records apart from Spots.
         Route::group(['prefix' => 'vet-clinics', 'as' => 'vet-clinic.'], function () {
             Route::get('/', 'VetClinicController@index')->name('index');

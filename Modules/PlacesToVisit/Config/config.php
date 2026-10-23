@@ -85,6 +85,15 @@ return [
         'max_entrants' => 60,
     ],
 
+    // ==================== Race pushes ====================
+
+    'race' => [
+        // Thursday-evening push goes out where #1 leads #2 by this many votes or fewer
+        'final_hours_gap' => 3,
+        // Minimum minutes between two lead-change pushes for the same scope
+        'lead_push_cooldown_minutes' => 30,
+    ],
+
     // ==================== Moderation ====================
 
     'report_auto_flag_threshold' => 3, // Number of reports before auto-flagging a review

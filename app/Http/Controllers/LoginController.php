@@ -225,7 +225,7 @@ class LoginController extends Controller
             $modules = Module::Active()->get();
             if (isset($modules) && ($modules->count() > 0)) {
 
-                return redirect()->route('admin.dashboard')->withCookies($forgetCookies);
+                return redirect()->route('admin.panel.index')->withCookies($forgetCookies);
             }
             return redirect()->route('admin.business-settings.business-setup')->withCookies($forgetCookies);
         }

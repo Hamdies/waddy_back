@@ -23,7 +23,7 @@ class RedirectIfAuthenticated
         switch ($guard) {
             case 'admin':
                 if (Auth::guard($guard)->check()) {
-                    return redirect()->route('admin.dashboard');
+                    return redirect()->route('admin.panel.index');
                 }
                 break;
             case 'vendor':
