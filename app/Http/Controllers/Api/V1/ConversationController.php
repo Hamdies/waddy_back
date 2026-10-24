@@ -541,7 +541,7 @@ class ConversationController extends Controller
         $offset = $request['offset']??1;
         $fcm_token_web = null;
 
-        $dm = DeliveryMan::where(['auth_token' => $request['token']])->first();
+        $dm = $request['dm'];
 
         $sender = UserInfo::where('deliveryman_id', $dm->id)->first();
         if(!$sender){
@@ -707,7 +707,7 @@ class ConversationController extends Controller
         $limit = $request['limit']??10;
         $offset = $request['offset']??1;
 
-        $delivery_man = DeliveryMan::where(['auth_token' => $request['token']])->first();
+        $delivery_man = $request['dm'];
 
         $sender = UserInfo::where('deliveryman_id', $delivery_man->id)->first();
         if(!$sender){
@@ -750,7 +750,7 @@ class ConversationController extends Controller
         $limit = $request['limit']??10;
         $offset = $request['offset']??1;
 
-        $delivery_man = DeliveryMan::where(['auth_token' => $request['token']])->first();
+        $delivery_man = $request['dm'];
 
         $sender = UserInfo::where('deliveryman_id', $delivery_man->id)->first();
         if(!$sender){
@@ -794,7 +794,7 @@ class ConversationController extends Controller
         $limit = $request['limit']??10;
         $offset = $request['offset']??1;
 
-        $dm = DeliveryMan::where(['auth_token' => $request['token']])->first();
+        $dm = $request['dm'];
         $delivery_man = UserInfo::where('deliveryman_id',$dm->id)->first();
 
         if(!$delivery_man){

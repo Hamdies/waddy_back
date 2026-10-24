@@ -34,7 +34,10 @@ class DmTokenIsValid
                 ]
             ], 401);
         }
-        $request->merge(['dm' => $dm]);
+        // Controllers get the rider from here instead of looking them up by
+        // token a second time. `token` is merged too, so a request that only
+        // sends `Authorization: Bearer` (no ?token=) works the same.
+        $request->merge(['dm' => $dm, 'token' => $token]);
         return $next($request);
     }
 }

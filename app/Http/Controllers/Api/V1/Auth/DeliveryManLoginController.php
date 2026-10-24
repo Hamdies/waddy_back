@@ -54,17 +54,7 @@ class DeliveryManLoginController extends Controller
             $delivery_man->auth_token = $token;
             $delivery_man->save();
 
-            $topic = 'restaurant_dm_'.$delivery_man?->store_id;
-            if(isset($delivery_man->zone)){
-                if($delivery_man->vehicle_id){
-
-                    $topic = 'delivery_man_'.$delivery_man->zone->id.'_'.$delivery_man->vehicle_id;
-                }else{
-                    $topic = $delivery_man->type=='zone_wise'?$delivery_man->zone->deliveryman_wise_topic:'restaurant_dm_'.$delivery_man->store_id;
-                }
-                $zone_topic =  $delivery_man->type=='zone_wise'?$delivery_man->zone->deliveryman_wise_topic.'_push':'';
-            }
-            return response()->json(['token' => $token, 'topic'=> isset($topic)?$topic:'No_topic_found', 'zone_topic' =>  $zone_topic?? ''], 200);
+            return response()->json(['token' => $token] + $delivery_man->pushTopics(), 200);
         } else {
             $errors = [];
             array_push($errors, ['code' => 'auth-001', 'message' => translate('Incorrect_credential,_please_try_again')]);
