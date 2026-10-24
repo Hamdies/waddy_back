@@ -5,6 +5,7 @@ namespace App\Services\AdminPanel\Resources;
 use App\Http\Controllers\Admin\ItemController;
 use App\Models\Item;
 use App\Services\AdminPanel\ClassicAction;
+use App\Services\AdminPanel\Images;
 use App\Services\AdminPanel\Resource;
 use App\Services\AdminPanel\Scope;
 use Illuminate\Database\Query\Builder;
@@ -75,9 +76,10 @@ class ProductsResource extends Resource
         $q = DB::table('items as i')
             ->join('stores as s', 's.id', '=', 'i.store_id')
             ->leftJoin('categories as c', 'c.id', '=', 'i.category_id')
-            ->select('i.id', 'i.name', 'i.price', 'i.stock', 'i.module_id', 'i.store_id', 'i.description', 'i.avg_rating', 'i.rating_count',
+            ->select('i.id', 'i.name', 'i.image', 'i.price', 'i.stock', 'i.module_id', 'i.store_id', 'i.description', 'i.avg_rating', 'i.rating_count',
                 's.name as store_name', 'c.name as category_name')
             ->selectRaw('(' . $this->statusSql() . ') as st');
+        Images::selectDisk($q, Item::class, 'i.id', 'image', 'image_disk');
         if ($zone = Scope::adminZone()) {
             $q->where('s.zone_id', $zone);
         }
@@ -89,6 +91,8 @@ class ProductsResource extends Resource
         return [
             'id' => $r->id,
             'name' => $r->name,
+            'img' => $img = Images::url('product', $r->image, $r->image_disk),
+            'avatars' => ['name' => $img],
             'module' => Scope::code($r->module_id),
             'merchant' => $r->store_name,
             'category' => $r->category_name,

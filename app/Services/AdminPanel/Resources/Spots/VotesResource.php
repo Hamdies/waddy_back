@@ -3,6 +3,8 @@
 namespace App\Services\AdminPanel\Resources\Spots;
 
 use App\Services\AdminPanel\ClassicAction;
+use App\Models\User;
+use App\Services\AdminPanel\Images;
 use App\Services\AdminPanel\Resource;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -60,10 +62,12 @@ class VotesResource extends Resource
 
     protected function query(string $mod): Builder
     {
-        return $this->joinPlace(DB::table('place_votes as v'), 'v.place_id')
+        $q = $this->joinPlace(DB::table('place_votes as v'), 'v.place_id')
             ->leftJoin('users as u', 'u.id', '=', 'v.user_id')
-            ->select('v.id', 'v.period', 'v.review', 'v.created_at', 'v.place_id', 'pt.title', 'pz.name as zone_name', 'u.f_name', 'u.l_name')
+            ->select('v.id', 'v.period', 'v.review', 'v.created_at', 'v.place_id', 'pt.title', 'pz.name as zone_name', 'u.f_name', 'u.l_name', 'u.image as user_image', 'p.image as place_image')
             ->selectRaw('(' . $this->statusSql() . ') as st');
+        Images::selectDisk($q, User::class, 'u.id', 'image', 'user_disk');
+        return $q;
     }
 
     protected function row(object $r): array
@@ -72,6 +76,8 @@ class VotesResource extends Resource
             'id' => $r->id,
             'ref' => 'V-' . $r->id,
             'voter' => self::name($r->f_name, $r->l_name) ?: '—',
+            'img' => $img = Images::url('profile', $r->user_image, $r->user_disk),
+            'avatars' => ['voter' => $img, 'place' => Images::url('places', $r->place_image)],
             'place' => $r->title,
             'module' => 'spots',
             'zone' => $r->zone_name,

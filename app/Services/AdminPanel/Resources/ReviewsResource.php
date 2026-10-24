@@ -3,7 +3,9 @@
 namespace App\Services\AdminPanel\Resources;
 
 use App\Http\Controllers\Admin\ItemController;
+use App\Models\Store;
 use App\Services\AdminPanel\ClassicAction;
+use App\Services\AdminPanel\Images;
 use App\Services\AdminPanel\Resource;
 use App\Services\AdminPanel\Scope;
 use Illuminate\Database\Query\Builder;
@@ -41,7 +43,7 @@ class ReviewsResource extends Resource
                 ['key' => 'merchant', 'label' => self::L('Merchant', 'المتجر'), 'readonly' => true],
                 ['key' => 'customer', 'label' => self::L('Customer', 'العميل'), 'readonly' => true],
                 ['key' => 'item', 'label' => self::L('Item', 'المنتج'), 'readonly' => true],
-                ['key' => 'order', 'label' => self::L('Order', 'الطلب'), 'readonly' => true],
+                ['key' => 'order', 'label' => self::L('Order', 'الطلب'), 'readonly' => true, 'link' => ['orders', 'order']],
                 ['key' => 'rating', 'label' => self::L('Rating', 'التقييم'), 'fmt' => 'stars', 'readonly' => true],
                 ['key' => 'status', 'label' => self::L('Status', 'الحالة'), 'readonly' => true, 'status' => true],
                 ['key' => 'comment', 'label' => self::L('Comment', 'التعليق'), 'readonly' => true, 'wide' => true],
@@ -62,8 +64,9 @@ class ReviewsResource extends Resource
             ->join('stores as s', 's.id', '=', DB::raw('coalesce(r.store_id, i.store_id)'))
             ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
             ->select('r.id', 'r.rating', 'r.comment', 'r.reply', 'r.order_id', 'r.created_at', 'r.module_id', 's.module_id as store_module',
-                's.name as store_name', 'i.name as item_name', 'u.f_name', 'u.l_name')
+                's.name as store_name', 's.id as store_id', 's.logo', 'i.name as item_name', 'u.f_name', 'u.l_name')
             ->selectRaw('(' . $this->statusSql() . ') as st');
+        Images::selectDisk($q, Store::class, 's.id', 'logo', 'logo_disk');
         if ($zone = Scope::adminZone()) {
             $q->where('s.zone_id', $zone);
         }
@@ -75,6 +78,8 @@ class ReviewsResource extends Resource
         return [
             'id' => $r->id,
             'merchant' => $r->store_name,
+            'img' => $logo = Images::url('store', $r->logo, $r->logo_disk),
+            'avatars' => ['merchant' => $logo],
             'customer' => self::name($r->f_name, $r->l_name) ?: '—',
             'item' => $r->item_name,
             'module' => Scope::code($r->module_id ?? $r->store_module),

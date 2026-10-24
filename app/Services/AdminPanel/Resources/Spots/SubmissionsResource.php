@@ -3,6 +3,7 @@
 namespace App\Services\AdminPanel\Resources\Spots;
 
 use App\Services\AdminPanel\ClassicAction;
+use App\Services\AdminPanel\Images;
 use App\Services\AdminPanel\Resource;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +28,7 @@ class SubmissionsResource extends Resource
         return [
             'label' => self::L('Hidden-gem submissions', 'اقتراحات الأماكن'), 'one' => self::L('Submission', 'اقتراح'),
             'titleKey' => 'name', 'subKey' => 'submitter', 'statusKey' => 'status',
-            'modKey' => 'module', 'dateKey' => true, 'square' => true,
+            'modKey' => 'module', 'dateKey' => true, 'square' => true, 'photo' => true,
             'editable' => true, 'deletable' => true, 'search' => ['name', 'submitter'],
             'filter' => ['key' => 'status', 'options' => ['pending', 'approved', 'rejected']],
             'xp' => $xp,
@@ -62,7 +63,7 @@ class SubmissionsResource extends Resource
         return DB::table('place_submissions as s')
             ->leftJoin('users as u', 'u.id', '=', 's.user_id')
             ->leftJoin('place_categories as pc', 'pc.id', '=', 's.category_id')
-            ->select('s.id', 's.title', 's.description', 's.address', 's.latitude', 's.longitude', 's.category_id', 's.admin_note', 's.created_at',
+            ->select('s.id', 's.title', 's.image', 's.description', 's.address', 's.latitude', 's.longitude', 's.category_id', 's.admin_note', 's.created_at',
                 'pc.name as category_name', 'u.f_name', 'u.l_name')
             ->selectRaw('(' . $this->statusSql() . ') as st');
     }
@@ -72,6 +73,8 @@ class SubmissionsResource extends Resource
         return [
             'id' => $r->id,
             'name' => $r->title,
+            'img' => $img = Images::url('place_submissions', $r->image),
+            'avatars' => ['name' => $img],
             'module' => 'spots',
             'category' => $r->category_name ?: '—',
             'category_id' => $r->category_id,

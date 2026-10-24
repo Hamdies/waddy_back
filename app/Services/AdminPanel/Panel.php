@@ -72,7 +72,8 @@ class Panel
         $count = fn ($key, $code, $m = null) => self::allowed($key) ? self::resource($key)->statusCount($m ?? $mod, $code) : 0;
 
         if ($mod !== 'spots') {
-            $c['orders'] = $count('orders', 'preparing') + $count('orders', 'onway');
+            $c['orders'] = $count('orders', 'new') + $count('orders', 'preparing') + $count('orders', 'onway');
+            $c['newOrders'] = $count('orders', 'new');
             $c['merchants'] = $count('merchants', 'pending');
             $c['products'] = $count('products', 'out');
             $c['payouts'] = $count('payouts', 'pending');
@@ -268,8 +269,8 @@ class Panel
             ->orderByDesc('w.period')->first(['w.id', 'w.period', 'w.place_id', 'pt.title', 'pz.name as zone']);
         $winners = $winner ? DB::table('place_prizes as z')->leftJoin('users as u', 'u.id', '=', 'z.user_id')
             ->where('z.place_winner_id', $winner->id)->orderBy('z.id')
-            ->get(['z.id', 'z.code', 'z.status', 'z.expires_at', 'u.f_name', 'u.l_name'])
-            ->map(fn ($z) => ['id' => $z->id, 'name' => trim($z->f_name . ' ' . $z->l_name) ?: '—', 'code' => $z->code,
+            ->get(['z.id', 'z.code', 'z.status', 'z.expires_at', 'u.f_name', 'u.l_name', 'u.image'])
+            ->map(fn ($z) => ['id' => $z->id, 'name' => trim($z->f_name . ' ' . $z->l_name) ?: '—', 'code' => $z->code, 'img' => Images::url('profile', $z->image),
                 'status' => $z->status === 'active' && $z->expires_at && Carbon::parse($z->expires_at)->isPast() ? 'expired' : $z->status])->all() : [];
 
         $prizes = DB::table('place_prizes')->selectRaw("sum(status = 'active' and (expires_at is null or expires_at >= now())) as a, sum(status = 'redeemed') as r, sum(status = 'expired' or (status = 'active' and expires_at < now())) as e")->first();
@@ -377,6 +378,7 @@ class Panel
                     'title' => (string) ($row[$config['titleKey']] ?? $row['id']),
                     'sub' => (string) ($row[$config['subKey']] ?? ''),
                     'module' => $modKey ? ($row[$modKey] ?? null) : null,
+                    'img' => $row['img'] ?? null,
                 ];
             }
         }

@@ -6,8 +6,8 @@
   var ST = ['placed', 'preparing', 'pickup', 'onway', 'delivered'];
   var SC = { placed: ['#FFF8E1', '#7A5600'], preparing: ['#E6F4F3', '#134E4A'], pickup: ['#FFEEEE', '#C23B3B'], onway: ['#E6FCF3', '#0A6B47'], delivered: ['#F5F7F6', '#6B7876'] };
   var T = {
-    en: { sub: 'Maadi operations', live: 'Live ops', overview: 'Overview', board: 'Dispatch board', onShift: 'Couriers on shift', busy: 'busy', busyCap: 'Busy', idle: 'Idle', selected: 'Selected', allZones: 'All zones', mapTitle: 'Couriers in Maadi', feedTitle: 'Live orders', active: 'active', zonesTitle: 'Zones', zone: 'Zone', ordersCol: 'Orders', etaCol: 'ETA', loadCol: 'Load', merchTitle: 'Top merchants', kOrders: 'Orders', kRev: 'Revenue', kEta: 'Avg. delivery', kOnTime: 'On time', kCouriers: 'Couriers busy', vsWeek: 'vs last week', idleN: 'idle', placed: 'New', preparing: 'Preparing', pickup: 'Ready for pickup', onway: 'On the way', delivered: 'Delivered', min: 'min', egp: 'EGP', items: 'Items', itemsN: 'items', total: 'Total', customer: 'Customer', courier: 'Courier', order: 'Order', unassigned: 'Unassigned', assign: 'Assign', reassign: 'Reassign', markAs: 'Mark as', courierIdle: 'is idle', today: 'Today', d7: '7 days', d30: '30 days', byHour: 'Orders by hour', byDay: 'Orders by day', byWeek: 'Orders by week', nowNote: 'Highlighted: current', empty: 'No orders', liveA: 'Live', activeOrders: 'active orders', agoPre: '', agoPost: ' min ago', back: '← Back to admin', noFix: 'couriers without a recent location', pt: 'pt', orders: 'orders' },
-    ar: { sub: 'عمليات المعادي', live: 'العمليات المباشرة', overview: 'نظرة عامة', board: 'لوحة التوزيع', onShift: 'المندوبين في الوردية', busy: 'مشغول', busyCap: 'مشغول', idle: 'متاح', selected: 'محدد', allZones: 'كل المناطق', mapTitle: 'المندوبين في المعادي', feedTitle: 'الطلبات المباشرة', active: 'نشط', zonesTitle: 'المناطق', zone: 'المنطقة', ordersCol: 'الطلبات', etaCol: 'الوقت المتوقع', loadCol: 'الضغط', merchTitle: 'أفضل المتاجر', kOrders: 'الطلبات', kRev: 'الإيرادات', kEta: 'متوسط التوصيل', kOnTime: 'في الموعد', kCouriers: 'مندوبين مشغولين', vsWeek: 'عن الأسبوع الماضي', idleN: 'متاح', placed: 'جديد', preparing: 'قيد التحضير', pickup: 'جاهز للاستلام', onway: 'في الطريق', delivered: 'تم التوصيل', min: 'د', egp: 'ج.م', items: 'المنتجات', itemsN: 'منتجات', total: 'الإجمالي', customer: 'العميل', courier: 'المندوب', order: 'طلب', unassigned: 'بدون مندوب', assign: 'تعيين', reassign: 'إعادة تعيين', markAs: 'تحويل إلى', courierIdle: 'متاح حاليًا', today: 'اليوم', d7: '٧ أيام', d30: '٣٠ يوم', byHour: 'الطلبات بالساعة', byDay: 'الطلبات باليوم', byWeek: 'الطلبات بالأسبوع', nowNote: 'المميز: الحالي', empty: 'لا توجد طلبات', liveA: 'مباشر', activeOrders: 'طلب نشط', agoPre: 'منذ ', agoPost: ' د', back: '→ العودة للوحة', noFix: 'مندوبين بدون موقع حديث', pt: 'نقطة', orders: 'طلب' }
+    en: { sub: 'Maadi operations', live: 'Live ops', overview: 'Overview', board: 'Dispatch board', onShift: 'Couriers on shift', busy: 'busy', busyCap: 'Busy', idle: 'Idle', selected: 'Selected', allZones: 'All zones', mapTitle: 'Couriers in Maadi', feedTitle: 'Live orders', active: 'active', zonesTitle: 'Zones', zone: 'Zone', ordersCol: 'Orders', etaCol: 'ETA', loadCol: 'Load', merchTitle: 'Top merchants', kOrders: 'Orders', kRev: 'Revenue', kEta: 'Avg. delivery', kOnTime: 'On time', kCouriers: 'Couriers busy', vsWeek: 'vs last week', idleN: 'idle', placed: 'New', preparing: 'Preparing', pickup: 'Ready for pickup', onway: 'On the way', delivered: 'Delivered', min: 'min', egp: 'EGP', items: 'Items', itemsN: 'items', total: 'Total', customer: 'Customer', courier: 'Courier', order: 'Order', unassigned: 'Unassigned', assign: 'Assign', reassign: 'Reassign', markAs: 'Mark as', courierIdle: 'is idle', today: 'Today', d7: '7 days', d30: '30 days', byHour: 'Orders by hour', byDay: 'Orders by day', byWeek: 'Orders by week', nowNote: 'Highlighted: current', empty: 'No orders', liveA: 'Live', activeOrders: 'active orders', ago: '{n} ago', back: '← Back to admin', noFix: 'couriers without a recent location', pt: 'pt', orders: 'orders', late: 'late {n}' },
+    ar: { sub: 'عمليات المعادي', live: 'العمليات المباشرة', overview: 'نظرة عامة', board: 'لوحة التوزيع', onShift: 'المندوبين في الوردية', busy: 'مشغول', busyCap: 'مشغول', idle: 'متاح', selected: 'محدد', allZones: 'كل المناطق', mapTitle: 'المندوبين في المعادي', feedTitle: 'الطلبات المباشرة', active: 'نشط', zonesTitle: 'المناطق', zone: 'المنطقة', ordersCol: 'الطلبات', etaCol: 'الوقت المتوقع', loadCol: 'الضغط', merchTitle: 'أفضل المتاجر', kOrders: 'الطلبات', kRev: 'الإيرادات', kEta: 'متوسط التوصيل', kOnTime: 'في الموعد', kCouriers: 'مندوبين مشغولين', vsWeek: 'عن الأسبوع الماضي', idleN: 'متاح', placed: 'جديد', preparing: 'قيد التحضير', pickup: 'جاهز للاستلام', onway: 'في الطريق', delivered: 'تم التوصيل', min: 'د', egp: 'ج.م', items: 'المنتجات', itemsN: 'منتجات', total: 'الإجمالي', customer: 'العميل', courier: 'المندوب', order: 'طلب', unassigned: 'بدون مندوب', assign: 'تعيين', reassign: 'إعادة تعيين', markAs: 'تحويل إلى', courierIdle: 'متاح حاليًا', today: 'اليوم', d7: '٧ أيام', d30: '٣٠ يوم', byHour: 'الطلبات بالساعة', byDay: 'الطلبات باليوم', byWeek: 'الطلبات بالأسبوع', nowNote: 'المميز: الحالي', empty: 'لا توجد طلبات', liveA: 'مباشر', activeOrders: 'طلب نشط', ago: 'منذ {n}', back: '→ العودة للوحة', noFix: 'مندوبين بدون موقع حديث', pt: 'نقطة', orders: 'طلب', late: 'متأخر {n}' }
   };
   var DAYS = { en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], ar: ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'] };
 
@@ -17,6 +17,12 @@
   function t() { return T[S.lang]; }
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function fmt(v) { return Math.round(Number(v) || 0).toLocaleString('en-US'); }
+  function fill(str, map) { return String(str).replace(/\{(\w+)\}/g, function (m, k) { return map[k] != null ? map[k] : m; }); }
+  function dur(min) {
+    var ar = S.lang === 'ar', h = Math.floor(min / 60), m = min % 60;
+    if (h >= 24) return Math.floor(h / 24) + (ar ? ' يوم' : 'd') + ' ' + (h % 24) + (ar ? 'س' : 'h');
+    return h ? h + (ar ? 'س ' : 'h ') + m + (ar ? 'د' : 'm') : m + ' ' + t().min;
+  }
   function name(c) { return c ? c.name : t().unassigned; }
 
   var CSRF = document.querySelector('meta[name="csrf-token"]').content;
@@ -41,9 +47,9 @@
   function ov(o, C) {
     var c = o.courier ? C[o.courier] : null, mins = Math.max(0, Math.round((Date.now() - new Date(o.placedAt)) / 60000)), k = o.stage;
     return {
-      o: o, k: k, c: c, ago: t().agoPre + mins + t().agoPost,
+      o: o, k: k, c: c, ago: fill(t().ago, { n: dur(mins) }),
       meta: o.customer + ' · ' + (o.zone || ''),
-      eta: o.eta != null && k !== 'delivered' ? o.eta + ' ' + t().min : '—',
+      eta: o.eta == null || k === 'delivered' ? '—' : o.eta < 0 ? fill(t().late, { n: dur(-o.eta) }) : dur(o.eta), isLate: o.eta != null && o.eta < 0 && k !== 'delivered',
       needsAssign: !c && k === 'pickup', noCourierYet: !c && (k === 'placed' || k === 'preparing')
     };
   }
@@ -159,7 +165,7 @@
         if (v.needsAssign && BOOT.canDispatch) h += '<button class="u assign" data-a="assign" data-v="' + o.id + '">' + esc(t().assign) + '</button>';
         else if (v.c) h += '<span class="who"><i>' + esc((v.c.first || v.c.name || '?')[0]) + '</i>' + esc(v.c.name) + '</span>';
         else h += '<span style="color:#9EAAA8">' + esc(t().unassigned) + '</span>';
-        h += '<span>' + esc(v.eta) + '</span></div></div>';
+        h += '<span' + (v.isLate ? ' style="color:#C23B3B;font-weight:600"' : '') + '>' + esc(v.eta) + '</span></div></div>';
       });
       h += '</div>';
     });

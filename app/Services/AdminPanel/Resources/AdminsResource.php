@@ -2,6 +2,8 @@
 
 namespace App\Services\AdminPanel\Resources;
 
+use App\Models\Admin;
+use App\Services\AdminPanel\Images;
 use App\Services\AdminPanel\Resource;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -51,12 +53,13 @@ class AdminsResource extends Resource
 
     protected function query(string $mod): Builder
     {
-        return DB::table('admins as a')
+        $q = DB::table('admins as a')
             ->leftJoin('admin_roles as r', 'r.id', '=', 'a.role_id')
             ->leftJoin('zones as z', 'z.id', '=', 'a.zone_id')
-            ->select('a.id', 'a.f_name', 'a.l_name', 'a.email', 'a.phone', 'a.role_id', 'a.zone_id', 'a.is_logged_in',
+            ->select('a.id', 'a.f_name', 'a.l_name', 'a.image', 'a.email', 'a.phone', 'a.role_id', 'a.zone_id', 'a.is_logged_in',
                 'r.name as role_name', 'r.modules', 'z.name as zone_name')
             ->selectRaw('(' . $this->statusSql() . ') as st');
+        return Images::selectDisk($q, Admin::class, 'a.id', 'image', 'image_disk');
     }
 
     protected function row(object $r): array
@@ -64,6 +67,8 @@ class AdminsResource extends Resource
         return [
             'id' => $r->id,
             'name' => self::name($r->f_name, $r->l_name),
+            'img' => $img = Images::url('admin', $r->image, $r->image_disk),
+            'avatars' => ['name' => $img],
             'email' => $r->email,
             'phone' => $r->phone,
             'role' => $r->role_id == 1 ? 'Owner' : ($r->role_name ?: '—'),

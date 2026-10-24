@@ -93,7 +93,8 @@ class LiveOps
             'raw' => $o->order_status,
             'total' => (float) $o->order_amount,
             'placedAt' => Carbon::parse($o->created_at)->toIso8601String(),
-            'eta' => $o->estimated_delivery_at && $stage !== 'delivered' ? max(0, (int) round(now()->diffInMinutes(Carbon::parse($o->estimated_delivery_at), false))) : null,
+            // Negative = minutes past the promised time.
+            'eta' => $o->estimated_delivery_at && $stage !== 'delivered' ? (int) round(now()->diffInMinutes(Carbon::parse($o->estimated_delivery_at), false)) : null,
             'courier' => $o->delivery_man_id,
             'times' => array_map(fn ($t) => $t ? Carbon::parse($t)->toIso8601String() : null, $times),
             'storeLat' => (float) $o->s_lat,
@@ -104,9 +105,11 @@ class LiveOps
     private static function couriers(?int $zone, $orders): array
     {
         $busy = $orders->whereIn('stage', ['placed', 'preparing', 'pickup', 'onway'])->pluck('courier')->filter()->flip();
+        // On-shift couriers, plus anyone holding a live order even if they went offline.
         return DB::table('delivery_men')
-            ->whereNull('store_id')->where('application_status', 'approved')->where('status', 1)
-            ->when(Scope::adminZone() ?? $zone, fn ($q, $z) => $q->where('zone_id', $z))
+            ->where(fn ($w) => $w->where(fn ($on) => $on->whereNull('store_id')->where('application_status', 'approved')->where('status', 1)
+                ->when(Scope::adminZone() ?? $zone, fn ($q, $z) => $q->where('zone_id', $z)))
+                ->orWhereIn('id', $busy->keys()->all() ?: [0]))
             ->orderBy('f_name')->get(['id', 'f_name', 'l_name', 'active', 'current_orders', 'zone_id'])
             ->map(function ($d) use ($busy) {
                 $fix = Cache::remember('rider_loc:' . $d->id, 5, fn () => DeliveryHistory::where('delivery_man_id', $d->id)

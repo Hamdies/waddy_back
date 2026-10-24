@@ -3,6 +3,8 @@
 namespace App\Services\AdminPanel\Resources\Spots;
 
 use App\Services\AdminPanel\ClassicAction;
+use App\Models\User;
+use App\Services\AdminPanel\Images;
 use App\Services\AdminPanel\Resource;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -60,11 +62,13 @@ class PrizesResource extends Resource
 
     protected function query(string $mod): Builder
     {
-        return $this->joinPlace(DB::table('place_prizes as z'), 'z.place_id')
+        $q = $this->joinPlace(DB::table('place_prizes as z'), 'z.place_id')
             ->leftJoin('users as u', 'u.id', '=', 'z.user_id')
             ->select('z.id', 'z.code', 'z.period', 'z.value_cap', 'z.created_at', 'z.expires_at', 'z.reminder_sent_at', 'z.redeemed_at',
-                'pt.title', 'u.f_name', 'u.l_name')
+                'pt.title', 'p.image as place_image', 'u.f_name', 'u.l_name', 'u.image as user_image')
             ->selectRaw('(' . $this->statusSql() . ') as st');
+        Images::selectDisk($q, User::class, 'u.id', 'image', 'user_disk');
+        return $q;
     }
 
     protected function row(object $r): array
@@ -73,6 +77,8 @@ class PrizesResource extends Resource
             'id' => $r->id,
             'code' => $r->code,
             'winner' => self::name($r->f_name, $r->l_name) ?: '—',
+            'img' => Images::url('profile', $r->user_image, $r->user_disk),
+            'avatars' => ['place' => Images::url('places', $r->place_image)],
             'masked' => self::masked($r->f_name, $r->l_name),
             'place' => $r->title,
             'module' => 'spots',

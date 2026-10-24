@@ -5,6 +5,7 @@ namespace App\Services\AdminPanel\Resources;
 use App\Http\Controllers\Admin\VendorController;
 use App\Models\Store;
 use App\Services\AdminPanel\ClassicAction;
+use App\Services\AdminPanel\Images;
 use App\Services\AdminPanel\Resource;
 use App\Services\AdminPanel\Scope;
 use Illuminate\Database\Query\Builder;
@@ -46,7 +47,7 @@ class MerchantsResource extends Resource
                 ['key' => 'module', 'label' => self::L('Module', 'القسم'), 'readonly' => true, 'mod' => true],
                 ['key' => 'zone_id', 'label' => self::L('Zone', 'المنطقة'), 'type' => 'select', 'show' => 'zone'],
                 ['key' => 'owner', 'label' => self::L('Owner', 'المالك'), 'readonly' => true],
-                ['key' => 'phone', 'label' => self::L('Phone', 'الهاتف')],
+                ['key' => 'phone', 'label' => self::L('Phone', 'الهاتف'), 'tel' => true],
                 ['key' => 'commission', 'label' => self::L('Commission % (empty = default)', 'نسبة العمولة'), 'type' => 'number', 'fmt' => 'pct'],
                 ['key' => 'prep', 'label' => self::L('Delivery time', 'وقت التوصيل')],
                 ['key' => 'minOrder', 'label' => self::L('Minimum order (EGP)', 'الحد الأدنى للطلب'), 'type' => 'number', 'fmt' => 'egp'],
@@ -74,10 +75,11 @@ class MerchantsResource extends Resource
             ->join('vendors as v', 'v.id', '=', 's.vendor_id')
             ->leftJoin('zones as z', 'z.id', '=', 's.zone_id')
             ->leftJoin('modules as m', 'm.id', '=', 's.module_id')
-            ->select('s.id', 's.name', 's.phone', 's.zone_id', 's.module_id', 's.comission', 's.delivery_time', 's.minimum_order',
+            ->select('s.id', 's.name', 's.logo', 's.phone', 's.zone_id', 's.module_id', 's.comission', 's.delivery_time', 's.minimum_order',
                 's.rating', 's.created_at', 'z.name as zone_name', 'm.module_name', 'v.f_name', 'v.l_name')
             ->selectRaw('(select count(*) from orders where orders.store_id = s.id and orders.created_at >= ?) as orders30', [$since])
             ->selectRaw('(' . $this->statusSql() . ') as st');
+        Images::selectDisk($q, Store::class, 's.id', 'logo', 'logo_disk');
         if ($zone = Scope::adminZone()) {
             $q->where('s.zone_id', $zone);
         }
@@ -89,6 +91,8 @@ class MerchantsResource extends Resource
         return [
             'id' => $r->id,
             'name' => $r->name,
+            'img' => $logo = Images::url('store', $r->logo, $r->logo_disk),
+            'avatars' => ['name' => $logo],
             'module' => Scope::code($r->module_id),
             'category' => $r->module_name,
             'zone' => $r->zone_name,

@@ -3,7 +3,9 @@
 namespace App\Services\AdminPanel\Resources;
 
 use App\Http\Controllers\Admin\DeliveryMan\DeliveryManController;
+use App\Models\DeliveryMan;
 use App\Services\AdminPanel\ClassicAction;
+use App\Services\AdminPanel\Images;
 use App\Services\AdminPanel\Resource;
 use App\Services\AdminPanel\Scope;
 use Illuminate\Database\Query\Builder;
@@ -39,7 +41,7 @@ class CouriersResource extends Resource
             ],
             'fields' => [
                 ['key' => 'name', 'label' => self::L('Full name', 'الاسم'), 'required' => true],
-                ['key' => 'phone', 'label' => self::L('Phone', 'الهاتف'), 'required' => true],
+                ['key' => 'phone', 'label' => self::L('Phone', 'الهاتف'), 'tel' => true, 'required' => true],
                 ['key' => 'nationalId', 'label' => self::L('National ID', 'الرقم القومي')],
                 ['key' => 'vehicle', 'label' => self::L('Vehicle', 'المركبة'), 'readonly' => true],
                 ['key' => 'zone_id', 'label' => self::L('Home zone', 'المنطقة'), 'type' => 'select', 'show' => 'zone'],
@@ -68,10 +70,11 @@ class CouriersResource extends Resource
             ->leftJoin('zones as z', 'z.id', '=', 'd.zone_id')
             ->leftJoin('d_m_vehicles as v', 'v.id', '=', 'd.vehicle_id')
             ->whereNull('d.store_id')
-            ->select('d.id', 'd.f_name', 'd.l_name', 'd.phone', 'd.identity_number', 'd.zone_id', 'd.order_count', 'd.current_orders',
+            ->select('d.id', 'd.f_name', 'd.l_name', 'd.image', 'd.phone', 'd.identity_number', 'd.zone_id', 'd.order_count', 'd.current_orders',
                 'd.created_at', 'z.name as zone_name', 'v.type as vehicle')
             ->selectRaw('(select avg(rating) from d_m_reviews where d_m_reviews.delivery_man_id = d.id) as rating')
             ->selectRaw('(' . $this->statusSql() . ') as st');
+        Images::selectDisk($q, DeliveryMan::class, 'd.id', 'image', 'image_disk');
         if ($zone = Scope::adminZone()) {
             $q->where('d.zone_id', $zone);
         }
@@ -83,6 +86,8 @@ class CouriersResource extends Resource
         return [
             'id' => $r->id,
             'name' => self::name($r->f_name, $r->l_name),
+            'img' => $img = Images::url('delivery-man', $r->image, $r->image_disk),
+            'avatars' => ['name' => $img],
             'phone' => $r->phone,
             'nationalId' => $r->identity_number,
             'vehicle' => $r->vehicle ?: '—',

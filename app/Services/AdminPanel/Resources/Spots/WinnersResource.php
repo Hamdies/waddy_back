@@ -2,6 +2,7 @@
 
 namespace App\Services\AdminPanel\Resources\Spots;
 
+use App\Services\AdminPanel\Images;
 use App\Services\AdminPanel\Resource;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -59,7 +60,7 @@ class WinnersResource extends Resource
     {
         return $this->joinPlace(DB::table('place_winners as w'), 'w.place_id')
             ->leftJoin('place_zones as wz', 'wz.id', '=', 'w.zone_id')
-            ->select('w.id', 'w.period', 'w.zone_id', 'w.place_id', 'w.votes_count', 'w.created_at', 'pt.title', 'pz.name as place_zone', 'wz.name as scope_zone')
+            ->select('w.id', 'w.period', 'w.zone_id', 'w.place_id', 'w.votes_count', 'w.created_at', 'pt.title', 'p.image as place_image', 'pz.name as place_zone', 'wz.name as scope_zone')
             ->selectRaw('(select max(e.total_entrants) from place_draw_entrants e where e.place_winner_id = w.id) as entrants')
             ->selectRaw('(select count(*) from place_prizes z where z.place_winner_id = w.id) as prizes')
             ->selectRaw('(' . $this->statusSql() . ') as st');
@@ -73,6 +74,8 @@ class WinnersResource extends Resource
             'scope' => $r->zone_id ? ($r->scope_zone ?: 'Zone') : 'Overall',
             'overall' => !$r->zone_id,
             'place' => $r->title,
+            'img' => $img = Images::url('places', $r->place_image),
+            'avatars' => ['place' => $img],
             'place_id' => $r->place_id,
             'zone' => $r->place_zone,
             'module' => 'spots',

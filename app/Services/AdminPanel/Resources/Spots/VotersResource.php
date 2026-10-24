@@ -2,6 +2,8 @@
 
 namespace App\Services\AdminPanel\Resources\Spots;
 
+use App\Models\User;
+use App\Services\AdminPanel\Images;
 use App\Services\AdminPanel\Resource;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -52,14 +54,15 @@ class VotersResource extends Resource
 
     protected function query(string $mod): Builder
     {
-        return DB::table('users as u')
+        $q = DB::table('users as u')
             ->whereExists(fn ($e) => $e->selectRaw(1)->from('place_votes as v')->whereColumn('v.user_id', 'u.id'))
-            ->select('u.id', 'u.f_name', 'u.l_name', 'u.phone')
+            ->select('u.id', 'u.f_name', 'u.l_name', 'u.phone', 'u.image')
             ->selectRaw('(select count(distinct v.period) from place_votes v where v.user_id = u.id) as weeks')
             ->selectRaw('(select max(v.period) from place_votes v where v.user_id = u.id) as last_vote')
             ->selectRaw('(select count(*) from place_prizes z where z.user_id = u.id) as prizes_won')
             ->selectRaw("(select coalesce(sum(x.xp_amount), 0) from xp_transactions x where x.user_id = u.id and x.is_reversed = 0 and x.xp_source like 'place%') as xp")
             ->selectRaw('(' . $this->statusSql() . ') as st');
+        return Images::selectDisk($q, User::class, 'u.id', 'image', 'image_disk');
     }
 
     protected function row(object $r): array
@@ -67,6 +70,8 @@ class VotersResource extends Resource
         return [
             'id' => $r->id,
             'name' => self::name($r->f_name, $r->l_name) ?: '—',
+            'img' => $img = Images::url('profile', $r->image, $r->image_disk),
+            'avatars' => ['name' => $img],
             'phone' => $r->phone,
             'module' => 'spots',
             'weeks' => (int) $r->weeks,

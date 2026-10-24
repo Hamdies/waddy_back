@@ -4,7 +4,10 @@ namespace App\Services\AdminPanel\Resources;
 
 use App\Http\Controllers\Admin\OrderController;
 use App\Models\BusinessSetting;
+use App\Models\Store;
+use App\Models\User;
 use App\Services\AdminPanel\ClassicAction;
+use App\Services\AdminPanel\Images;
 use App\Services\AdminPanel\Resource;
 use App\Services\AdminPanel\Scope;
 use Illuminate\Database\Query\Builder;
@@ -26,7 +29,7 @@ class OrdersResource extends Resource
     protected array $search = ['s.name', 'u.f_name', 'u.l_name', 'u.phone'];
     protected array $sorts = ['id' => 'o.id', 'customer' => 'u.f_name', 'module' => 'o.module_id', 'zone' => 'z.name', 'total' => 'o.order_amount', 'date' => 'o.created_at'];
 
-    public const ACTIVE = ['preparing', 'onway'];
+    public const ACTIVE = ['new', 'preparing', 'onway'];
 
     public function config(): array
     {
@@ -35,7 +38,7 @@ class OrdersResource extends Resource
             'titleKey' => 'id', 'subKey' => 'merchant', 'statusKey' => 'status',
             'modKey' => 'module', 'dateKey' => true, 'zoneKey' => true, 'merchantKey' => true,
             'editable' => true, 'search' => ['id', 'customer', 'merchant'],
-            'filter' => ['key' => 'status', 'options' => ['preparing', 'onway', 'delivered', 'refundreq', 'cancelled', 'refunded']],
+            'filter' => ['key' => 'status', 'options' => ['new', 'preparing', 'onway', 'delivered', 'refundreq', 'cancelled', 'refunded']],
             'columns' => [
                 ['key' => 'id', 'label' => self::L('Order', 'الطلب'), 'w' => '0.8fr', 'strong' => true, 'sort' => 'id'],
                 ['key' => 'customer', 'label' => self::L('Customer', 'العميل'), 'sub' => 'merchant', 'w' => '1.7fr', 'sort' => 'customer'],
@@ -46,9 +49,9 @@ class OrdersResource extends Resource
                 ['key' => 'date', 'label' => self::L('Date', 'التاريخ'), 'fmt' => 'date', 'w' => '0.8fr', 'sort' => 'date'],
             ],
             'fields' => [
-                ['key' => 'customer', 'label' => self::L('Customer', 'العميل'), 'readonly' => true],
-                ['key' => 'phone', 'label' => self::L('Phone', 'الهاتف'), 'readonly' => true],
-                ['key' => 'merchant', 'label' => self::L('Merchant', 'المتجر'), 'readonly' => true],
+                ['key' => 'customer', 'label' => self::L('Customer', 'العميل'), 'readonly' => true, 'link' => ['customers', 'customer_id']],
+                ['key' => 'phone', 'label' => self::L('Phone', 'الهاتف'), 'readonly' => true, 'tel' => true],
+                ['key' => 'merchant', 'label' => self::L('Merchant', 'المتجر'), 'readonly' => true, 'link' => ['merchants', 'merchant_id']],
                 ['key' => 'module', 'label' => self::L('Module', 'القسم'), 'readonly' => true, 'mod' => true],
                 ['key' => 'zone', 'label' => self::L('Zone', 'المنطقة'), 'readonly' => true],
                 ['key' => 'courier_id', 'label' => self::L('Courier', 'المندوب'), 'type' => 'select', 'show' => 'courier'],
@@ -68,6 +71,7 @@ class OrdersResource extends Resource
     protected function statusSql(): string
     {
         return self::cases([
+            'new' => "o.order_status = 'pending'",
             'onway' => "o.order_status = 'picked_up'",
             'delivered' => "o.order_status in ('delivered', 'refund_request_canceled')",
             'cancelled' => "o.order_status in ('canceled', 'failed')",
@@ -84,10 +88,12 @@ class OrdersResource extends Resource
             ->leftJoin('delivery_men as d', 'd.id', '=', 'o.delivery_man_id')
             ->leftJoin('zones as z', 'z.id', '=', 's.zone_id')
             ->select('o.id', 'o.order_status', 'o.payment_method', 'o.payment_status', 'o.order_amount', 'o.delivery_charge',
-                'o.created_at', 'o.order_note', 'o.module_id', 'o.delivery_address', 'o.delivery_man_id', 'o.store_id',
-                's.name as store_name', 's.zone_id', 'z.name as zone_name', 'u.f_name', 'u.l_name', 'u.phone as user_phone',
+                'o.created_at', 'o.estimated_delivery_at', 'o.order_note', 'o.module_id', 'o.delivery_address', 'o.delivery_man_id', 'o.store_id',
+                's.name as store_name', 's.zone_id', 's.logo', 'z.name as zone_name', 'u.f_name', 'u.l_name', 'u.phone as user_phone', 'u.image as user_image', 'o.user_id',
                 'd.f_name as dm_f', 'd.l_name as dm_l')
             ->selectRaw('(' . $this->statusSql() . ') as st');
+        Images::selectDisk($q, Store::class, 's.id', 'logo', 'logo_disk');
+        Images::selectDisk($q, User::class, 'u.id', 'image', 'user_disk');
         if ($zone = Scope::adminZone()) {
             $q->where('s.zone_id', $zone);
         }
@@ -106,6 +112,9 @@ class OrdersResource extends Resource
             'phone' => $r->user_phone ?: ($address['contact_person_number'] ?? ''),
             'merchant' => $r->store_name,
             'merchant_id' => $r->store_id,
+            'customer_id' => $r->user_id,
+            'img' => Images::url('store', $r->logo, $r->logo_disk),
+            'avatars' => ['customer' => Images::url('profile', $r->user_image, $r->user_disk)],
             'zone' => $r->zone_name,
             'courier' => $courier ?: 'Unassigned',
             'courier_id' => $r->delivery_man_id,
@@ -115,6 +124,7 @@ class OrdersResource extends Resource
             'status' => $r->st,
             'stage' => ucwords(str_replace('_', ' ', (string) $r->order_status)),
             'raw_status' => $r->order_status,
+            'late' => self::lateBy($r),
             'date' => self::date($r->created_at),
             'notes' => (string) $r->order_note,
         ];
@@ -152,9 +162,35 @@ class OrdersResource extends Resource
         return route('admin.order.details', ['id' => $row['id']]);
     }
 
+    /** Minutes past the estimated delivery time, for orders still on their way to the customer. */
+    private static function lateBy(object $r): ?int
+    {
+        if (!$r->estimated_delivery_at || !in_array($r->st, ['new', 'preparing', 'onway'], true)) {
+            return null;
+        }
+        $late = (int) floor((time() - strtotime($r->estimated_delivery_at)) / 60);
+        return $late > 0 ? $late : null;
+    }
+
+    /** The next step in the classic flow, as the action dispatch would take it. */
+    private const NEXT = [
+        'pending' => ['confirmed', 'Confirm order', 'تأكيد الطلب'],
+        'accepted' => ['handover', 'Ready for pickup', 'جاهز للاستلام'],
+        'confirmed' => ['handover', 'Ready for pickup', 'جاهز للاستلام'],
+        'processing' => ['handover', 'Ready for pickup', 'جاهز للاستلام'],
+        'handover' => ['picked_up', 'Mark picked up', 'تم الاستلام'],
+        'picked_up' => ['delivered', 'Mark delivered', 'تم التوصيل'],
+    ];
+
     protected function actions(): array
     {
-        return [
+        $advance = [];
+        foreach (self::NEXT as $from => [$to, $en, $ar]) {
+            $advance[] = ['key' => 'to_' . $from, 'label' => self::L($en, $ar), 'tone' => 'primary',
+                'when' => fn ($x) => $x['raw_status'] === $from,
+                'run' => fn ($x) => $this->setStatus($x['id'], $to)];
+        }
+        return [...$advance,
             ['key' => 'refund', 'label' => self::L('Issue refund', 'استرداد المبلغ'), 'tone' => 'danger',
                 'when' => fn ($x) => in_array($x['status'], ['delivered', 'refundreq'], true),
                 'run' => function ($x) {

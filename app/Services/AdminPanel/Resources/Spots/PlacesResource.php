@@ -3,6 +3,7 @@
 namespace App\Services\AdminPanel\Resources\Spots;
 
 use App\Services\AdminPanel\ClassicAction;
+use App\Services\AdminPanel\Images;
 use App\Services\AdminPanel\Resource;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -31,7 +32,7 @@ class PlacesResource extends Resource
         return [
             'label' => self::L('Places', 'الأماكن'), 'one' => self::L('Place', 'مكان'),
             'titleKey' => 'name', 'subKey' => 'category', 'statusKey' => 'status',
-            'modKey' => 'module', 'dateKey' => true, 'zoneKey' => true, 'square' => true,
+            'modKey' => 'module', 'dateKey' => true, 'zoneKey' => true, 'square' => true, 'photo' => true,
             'editable' => true, 'newUrl' => route('admin.places.create'), 'search' => ['name', 'category', 'zone'],
             'filter' => ['key' => 'status', 'options' => ['active', 'hidden']],
             'columns' => [
@@ -66,7 +67,7 @@ class PlacesResource extends Resource
 
     protected function query(string $mod): Builder
     {
-        return $this->placeDetails(DB::table('places as p'))->select('p.id', 'p.category_id', 'p.zone_id', 'p.prize_value_cap', 'p.redeem_token', 'p.created_at',
+        return $this->placeDetails(DB::table('places as p'))->select('p.id', 'p.image', 'p.cover_image', 'p.category_id', 'p.zone_id', 'p.prize_value_cap', 'p.redeem_token', 'p.created_at',
                 'pt.title', 'pc.name as category_name', 'pz.name as zone_name')
             ->selectRaw('(select count(*) from place_votes v where v.place_id = p.id and v.period = ? and v.is_flagged = 0) as votes_week', [RaceClock::period()])
             ->selectRaw('(select avg(rating) from place_reviews r where r.place_id = p.id and r.is_flagged = 0) as rating')
@@ -80,6 +81,8 @@ class PlacesResource extends Resource
         return [
             'id' => $r->id,
             'name' => $r->title ?: ('#' . $r->id),
+            'img' => $img = Images::url('places', $r->image ?: $r->cover_image),
+            'avatars' => ['name' => $img],
             'module' => 'spots',
             'category' => $r->category_name,
             'category_id' => $r->category_id,

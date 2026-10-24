@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\CustomerWalletController;
 use App\Models\BusinessSetting;
 use App\Models\User;
 use App\Services\AdminPanel\ClassicAction;
+use App\Services\AdminPanel\Images;
 use App\Services\AdminPanel\Resource;
 use App\Services\AdminPanel\Scope;
 use Illuminate\Database\Query\Builder;
@@ -45,7 +46,7 @@ class CustomersResource extends Resource
             ],
             'fields' => [
                 ['key' => 'name', 'label' => self::L('Full name', 'الاسم'), 'required' => true],
-                ['key' => 'phone', 'label' => self::L('Phone', 'الهاتف'), 'required' => true],
+                ['key' => 'phone', 'label' => self::L('Phone', 'الهاتف'), 'tel' => true, 'required' => true],
                 ['key' => 'email', 'label' => self::L('Email', 'البريد الإلكتروني'), 'type' => 'email'],
                 ['key' => 'zone_id', 'label' => self::L('Zone', 'المنطقة'), 'type' => 'select', 'show' => 'zone'],
                 ['key' => 'favorite', 'label' => self::L('Top module', 'القسم المفضل'), 'readonly' => true, 'mod' => true],
@@ -68,11 +69,12 @@ class CustomersResource extends Resource
     {
         $q = DB::table('users as u')
             ->leftJoin('zones as z', 'z.id', '=', 'u.zone_id')
-            ->select('u.id', 'u.f_name', 'u.l_name', 'u.phone', 'u.email', 'u.zone_id', 'u.wallet_balance', 'u.total_xp', 'u.created_at', 'z.name as zone_name')
+            ->select('u.id', 'u.f_name', 'u.l_name', 'u.image', 'u.phone', 'u.email', 'u.zone_id', 'u.wallet_balance', 'u.total_xp', 'u.created_at', 'z.name as zone_name')
             ->selectRaw('(select count(*) from orders where orders.user_id = u.id) as orders')
             ->selectRaw("(select coalesce(sum(order_amount), 0) from orders where orders.user_id = u.id and order_status = 'delivered') as spent")
             ->selectRaw('(select module_id from orders where orders.user_id = u.id group by module_id order by count(*) desc limit 1) as top_module')
             ->selectRaw('(' . $this->statusSql() . ') as st');
+        Images::selectDisk($q, User::class, 'u.id', 'image', 'image_disk');
         if ($zone = Scope::adminZone()) {
             $q->where('u.zone_id', $zone);
         }
@@ -88,6 +90,8 @@ class CustomersResource extends Resource
         return [
             'id' => $r->id,
             'name' => self::name($r->f_name, $r->l_name) ?: '—',
+            'img' => $img = Images::url('profile', $r->image, $r->image_disk),
+            'avatars' => ['name' => $img],
             'phone' => $r->phone,
             'email' => $r->email,
             'zone' => $r->zone_name,

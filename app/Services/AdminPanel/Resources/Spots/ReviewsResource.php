@@ -2,6 +2,7 @@
 
 namespace App\Services\AdminPanel\Resources\Spots;
 
+use App\Services\AdminPanel\Images;
 use App\Services\AdminPanel\Resource;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -71,7 +72,7 @@ class ReviewsResource extends Resource
     {
         return $this->joinPlace(DB::table('place_reviews as r'), 'r.place_id')
             ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
-            ->select('r.id', 'r.rating', 'r.review', 'r.image', 'r.created_at', 'pt.title', 'u.f_name', 'u.l_name')
+            ->select('r.id', 'r.rating', 'r.review', 'r.image', 'r.created_at', 'pt.title', 'p.image as place_image', 'u.f_name', 'u.l_name')
             ->selectRaw(self::REPORTS . ' as reports')
             ->selectRaw('(' . $this->statusSql() . ') as st');
     }
@@ -81,6 +82,9 @@ class ReviewsResource extends Resource
         return [
             'id' => $r->id,
             'place' => $r->title,
+            'img' => $img = Images::url('places', $r->place_image),
+            'avatars' => ['place' => $img],
+            'photoUrl' => Images::url('places', $r->image),
             'module' => 'spots',
             'user' => self::name($r->f_name, $r->l_name) ?: '—',
             'rating' => (int) $r->rating,

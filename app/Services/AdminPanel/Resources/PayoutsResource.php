@@ -3,7 +3,10 @@
 namespace App\Services\AdminPanel\Resources;
 
 use App\Http\Controllers\Admin\VendorController;
+use App\Models\DeliveryMan;
+use App\Models\Store;
 use App\Services\AdminPanel\ClassicAction;
+use App\Services\AdminPanel\Images;
 use App\Services\AdminPanel\Resource;
 use App\Services\AdminPanel\Scope;
 use Illuminate\Database\Query\Builder;
@@ -64,9 +67,11 @@ class PayoutsResource extends Resource
             ->leftJoin('withdrawal_methods as wm', 'wm.id', '=', 'w.withdrawal_method_id')
             ->leftJoin('store_wallets as sw', 'sw.vendor_id', '=', 'w.vendor_id')
             ->select('w.id', 'w.vendor_id', 'w.delivery_man_id', 'w.amount', 'w.approved', 'w.transaction_note', 'w.created_at',
-                'w.withdrawal_method_fields', 's.name as store_name', 's.module_id', 'd.f_name', 'd.l_name', 'wm.method_name',
+                'w.withdrawal_method_fields', 's.name as store_name', 's.module_id', 's.logo', 'd.f_name', 'd.l_name', 'd.image as dm_image', 'wm.method_name',
                 'sw.total_earning', 'sw.total_withdrawn')
             ->selectRaw('(' . $this->statusSql() . ') as st');
+        Images::selectDisk($q, Store::class, 's.id', 'logo', 'logo_disk');
+        Images::selectDisk($q, DeliveryMan::class, 'd.id', 'image', 'dm_disk');
         if ($zone = Scope::adminZone()) {
             $q->where('s.zone_id', $zone);
         }
@@ -81,6 +86,8 @@ class PayoutsResource extends Resource
             'payee' => $isStore ? $r->store_name : self::name($r->f_name, $r->l_name),
             'payeeType' => $isStore ? 'Merchant' : 'Courier',
             'isStore' => $isStore,
+            'img' => $img = $isStore ? Images::url('store', $r->logo, $r->logo_disk) : Images::url('delivery-man', $r->dm_image, $r->dm_disk),
+            'avatars' => ['payee' => $img],
             'module' => $isStore ? Scope::code($r->module_id) : 'all',
             'method' => $r->method_name ?: 'Bank transfer',
             'methodFields' => json_decode($r->withdrawal_method_fields ?? '', true) ?: [],

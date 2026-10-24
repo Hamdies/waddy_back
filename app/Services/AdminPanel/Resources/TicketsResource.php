@@ -3,7 +3,9 @@
 namespace App\Services\AdminPanel\Resources;
 
 use App\Http\Controllers\Admin\ConversationController;
+use App\Models\User;
 use App\Services\AdminPanel\ClassicAction;
+use App\Services\AdminPanel\Images;
 use App\Services\AdminPanel\Resource;
 use App\Services\AdminPanel\Scope;
 use Illuminate\Database\Query\Builder;
@@ -44,9 +46,9 @@ class TicketsResource extends Resource
                 ['key' => 'created', 'label' => self::L('Updated', 'آخر تحديث'), 'fmt' => 'date', 'w' => '0.7fr', 'sort' => 'created'],
             ],
             'fields' => [
-                ['key' => 'customer', 'label' => self::L('Customer', 'العميل'), 'readonly' => true],
-                ['key' => 'phone', 'label' => self::L('Phone', 'الهاتف'), 'readonly' => true],
-                ['key' => 'order', 'label' => self::L('Order', 'الطلب'), 'readonly' => true],
+                ['key' => 'customer', 'label' => self::L('Customer', 'العميل'), 'readonly' => true, 'link' => ['customers', 'customer_id']],
+                ['key' => 'phone', 'label' => self::L('Phone', 'الهاتف'), 'readonly' => true, 'tel' => true],
+                ['key' => 'order', 'label' => self::L('Order', 'الطلب'), 'readonly' => true, 'link' => ['orders', 'order']],
                 ['key' => 'merchant', 'label' => self::L('Merchant', 'المتجر'), 'readonly' => true],
                 ['key' => 'channel', 'label' => self::L('Channel', 'القناة'), 'readonly' => true],
                 ['key' => 'priority', 'label' => self::L('Priority', 'الأولوية'), 'type' => 'select', 'show' => 'priorityLabel'],
@@ -81,7 +83,9 @@ class TicketsResource extends Resource
                 'lm.message as last_message', 'a.f_name as a_f', 'a.l_name as a_l')
             ->selectRaw('(select m.message from messages m where m.conversation_id = c.id and m.sender_id = ' . self::CUSTOMER_SIDE . ' order by m.id desc limit 1) as customer_message')
             ->selectRaw('(select m.order_id from messages m where m.conversation_id = c.id and m.order_id is not null order by m.id desc limit 1) as order_id')
-            ->selectRaw('(' . $this->statusSql() . ') as st');
+            ->selectRaw('(' . $this->statusSql() . ') as st')
+            ->selectRaw('(select image from users where users.id = cu.user_id) as user_image');
+        Images::selectDisk($q, User::class, 'cu.user_id', 'image', 'image_disk');
         $ids = Scope::ids($mod);
         if ($ids !== null) {
             $q->whereExists(fn ($e) => $e->selectRaw(1)->from('messages as m2')->join('orders as o2', 'o2.id', '=', 'm2.order_id')
@@ -100,6 +104,8 @@ class TicketsResource extends Resource
             'subject' => $subject !== '' ? mb_strimwidth($subject, 0, 80, '…') : 'Attachment',
             'customer' => self::name($r->f_name, $r->l_name) ?: '—',
             'customer_id' => $r->user_id,
+            'img' => $img = Images::url('profile', $r->user_image, $r->image_disk),
+            'avatars' => ['subject' => $img],
             'phone' => $r->phone,
             'order' => $r->order_id,
             'merchant' => $order->name ?? null,
