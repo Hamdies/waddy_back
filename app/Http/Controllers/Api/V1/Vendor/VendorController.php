@@ -251,7 +251,7 @@ class VendorController extends Controller
         if ((int) $store->active !== $wanted) {
             $store->active = $wanted;
             $store->save();
-            StorePushService::storeStatusChanged($store, $request->header('fcmToken'));
+            StorePushService::storeStatusChanged($store, $request['device_fcm_token']);
         }
         return response()->json([
             'message' => $store->active?translate('messages.store_opened'):translate('messages.store_temporarily_closed'),
