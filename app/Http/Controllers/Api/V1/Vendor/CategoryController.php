@@ -88,4 +88,14 @@ class CategoryController extends Controller
 
         return response()->json($data, 200);
     }
+
+    /**
+     * What the store app (6amMart 3.2) calls for a sub-category's items; it
+     * got 404 here (SB-10).
+     */
+    public function getSubCategoryWiseProducts(Request $request, $id)
+    {
+        $request->merge(['sub_category' => 1]);
+        return $this->getCategoryWiseProducts($request, $id);
+    }
 }

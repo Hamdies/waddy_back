@@ -23,6 +23,8 @@ use App\Models\Conversation;
 use Illuminate\Http\Request;
 use App\Models\StoreSchedule;
 use App\CentralLogics\Helpers;
+use App\Services\StorePushService;
+use App\Models\VendorEmployee;
 use Illuminate\Support\Carbon;
 use App\Models\BusinessSetting;
 use App\Models\WithdrawRequest;
@@ -915,8 +917,11 @@ class VendorController extends Controller
         try
         {
             if($request->status == 0)
-            {   $vendor->auth_token = null;
-                if(isset($vendor->firebase_token) && Helpers::getNotificationStatusData('store','store_account_block','push_notification_status',$store?->id))
+            {   // This was set but never saved, so a blocked store stayed
+                // logged in. Login now reuses the token, so it must go.
+                $vendor->forceFill(['auth_token' => null])->save();
+                VendorEmployee::where('store_id', $store->id)->update(['auth_token' => null]);
+                if(Helpers::getNotificationStatusData('store','store_account_block','push_notification_status',$store?->id))
                 {
                     $data = [
                         'title' => translate('messages.suspended'),
@@ -925,7 +930,7 @@ class VendorController extends Controller
                         'image' => '',
                         'type'=> 'block'
                     ];
-                    Helpers::send_push_notif_to_device($vendor->firebase_token, $data);
+                    StorePushService::send($store, $data);
                     DB::table('user_notifications')->insert([
                         'data'=> json_encode($data),
                         'vendor_id'=>$vendor->id,
@@ -939,7 +944,7 @@ class VendorController extends Controller
                 }
             } else{
 
-                if ( Helpers::getNotificationStatusData('store','store_account_unblock','push_notification_status',$store?->id) &&  isset($vendor->firebase_token)) {
+                if ( Helpers::getNotificationStatusData('store','store_account_unblock','push_notification_status',$store?->id)) {
                     $data = [
                         'title' => translate('Account_Activation'),
                         'description' => translate('messages.your_account_has_been_activated'),
@@ -947,7 +952,7 @@ class VendorController extends Controller
                         'image' => '',
                         'type' => 'unblock'
                     ];
-                    Helpers::send_push_notif_to_device($vendor->firebase_token, $data);
+                    StorePushService::send($store, $data);
                     DB::table('user_notifications')->insert([
                         'data' => json_encode($data),
                         'vendor_id' => $vendor->id,

@@ -11,6 +11,8 @@ use App\Models\Store;
 use App\Library\Payer;
 use App\Models\Coupon;
 use App\Models\Vendor;
+use App\Models\OrderTransaction;
+use Carbon\Carbon;
 use App\Traits\Payment;
 use App\Models\Campaign;
 use App\Library\Receiver;
@@ -19,6 +21,7 @@ use App\Models\Notification;
 use App\Models\OrderPayment;
 use Illuminate\Http\Request;
 use App\CentralLogics\Helpers;
+use App\Services\StorePushService;
 use App\Models\VendorEmployee;
 use App\Models\BusinessSetting;
 use App\Models\WithdrawRequest;
@@ -47,24 +50,29 @@ class VendorController extends Controller
     public function get_profile(Request $request)
     {
         $vendor = $request['vendor'];
-        $min_amount_to_pay_store = BusinessSetting::where('key' , 'min_amount_to_pay_store')->first()->value ?? 0;
+        $min_amount_to_pay_store = Helpers::get_business_settings('min_amount_to_pay_store') ?? 0;
         $store = Helpers::store_data_formatting($vendor->stores[0], false);
         $discount=Helpers::get_store_discount($vendor->stores[0]);
         unset($store['discount']);
         $store['discount']=$discount;
         $store['schedules']=$store->schedules()->get();
         $store['module']=$store->module;
-        $vendor['order_count'] =$vendor->orders->where('order_type','!=','pos')->whereNotIn('order_status',['canceled','failed'])->count();
-        $vendor['todays_order_count'] =$vendor->todaysorders->where('order_type','!=','pos')->whereIn('order_status', ['refunded', 'delivered'])->count();
-        $vendor['this_week_order_count'] =$vendor->this_week_orders->where('order_type','!=','pos')->whereIn('order_status', ['refunded', 'delivered'])->count();
-        $vendor['this_month_order_count'] =$vendor->this_month_orders->where('order_type','!=','pos')->whereIn('order_status', ['refunded', 'delivered'])->count();
+        // One aggregate query instead of loading every order of the store four
+        // times (SB-5). NULLs are kept the way the old collection filters
+        // kept them: SQL != and NOT IN would drop them.
+        $counts = self::profileOrderCounts($vendor);
+        $vendor['order_count'] = $counts['order_count'];
+        $vendor['todays_order_count'] = $counts['todays_order_count'];
+        $vendor['this_week_order_count'] = $counts['this_week_order_count'];
+        $vendor['this_month_order_count'] = $counts['this_month_order_count'];
         $vendor['member_since_days'] =$vendor->created_at->diffInDays();
         $vendor['cash_in_hands'] =$vendor->wallet?(float)$vendor->wallet->collected_cash:0;
         $vendor['balance'] =$vendor->wallet?(float)$vendor->wallet->balance:0;
         $vendor['total_earning'] =$vendor->wallet?(float)$vendor->wallet->total_earning:0;
-        $vendor['todays_earning'] =(float)$vendor->todays_earning()->sum('store_amount');
-        $vendor['this_week_earning'] =(float)$vendor->this_week_earning()->sum('store_amount');
-        $vendor['this_month_earning'] =(float)$vendor->this_month_earning()->sum('store_amount');
+        $earnings = self::profileEarnings($vendor);
+        $vendor['todays_earning'] = $earnings['todays_earning'];
+        $vendor['this_week_earning'] = $earnings['this_week_earning'];
+        $vendor['this_month_earning'] = $earnings['this_month_earning'];
 
             if($vendor['balance']  < 0){
                 $vendor['balance']  = 0 ;
@@ -110,8 +118,8 @@ class VendorController extends Controller
 
         $Payable_Balance = $vendor?->wallet?->collected_cash  > 0 ? 1: 0;
 
-        $cash_in_hand_overflow=  BusinessSetting::where('key' ,'cash_in_hand_overflow_store')->first()?->value;
-        $cash_in_hand_overflow_store_amount =  BusinessSetting::where('key' ,'cash_in_hand_overflow_store_amount')->first()?->value;
+        $cash_in_hand_overflow=  Helpers::get_business_settings('cash_in_hand_overflow_store');
+        $cash_in_hand_overflow_store_amount =  Helpers::get_business_settings('cash_in_hand_overflow_store_amount');
         $val=  $cash_in_hand_overflow_store_amount - (($cash_in_hand_overflow_store_amount * 10)/100);
 
         $vendor['over_flow_warning'] = false;
@@ -183,12 +191,72 @@ class VendorController extends Controller
         return response()->json($vendor, 200);
     }
 
+    /**
+     * The four order counts of the profile, in one query. Same rules as the
+     * collection filters it replaced, including NULL order_type / status.
+     */
+    public static function profileOrderCounts(Vendor $vendor): array
+    {
+        $today = now()->toDateString();
+        $weekStart = Carbon::now()->startOfWeek();
+        $weekEnd = Carbon::now()->endOfWeek();
+        $done = "orders.order_status IN ('refunded', 'delivered')";
+
+        $row = $vendor->orders()
+            ->where(fn ($q) => $q->where('orders.order_type', '!=', 'pos')->orWhereNull('orders.order_type'))
+            ->toBase()
+            ->selectRaw("COUNT(CASE WHEN orders.order_status IS NULL OR orders.order_status NOT IN ('canceled', 'failed') THEN 1 END) AS order_count")
+            ->selectRaw("COUNT(CASE WHEN $done AND DATE(orders.created_at) = ? THEN 1 END) AS todays_order_count", [$today])
+            ->selectRaw("COUNT(CASE WHEN $done AND orders.created_at BETWEEN ? AND ? THEN 1 END) AS this_week_order_count", [$weekStart, $weekEnd])
+            ->selectRaw("COUNT(CASE WHEN $done AND MONTH(orders.created_at) = ? AND YEAR(orders.created_at) = ? THEN 1 END) AS this_month_order_count", [date('m'), date('Y')])
+            ->first();
+
+        return [
+            'order_count' => (int) ($row->order_count ?? 0),
+            'todays_order_count' => (int) ($row->todays_order_count ?? 0),
+            'this_week_order_count' => (int) ($row->this_week_order_count ?? 0),
+            'this_month_order_count' => (int) ($row->this_month_order_count ?? 0),
+        ];
+    }
+
+    /** Today / this week / this month store earnings, in one query. */
+    public static function profileEarnings(Vendor $vendor): array
+    {
+        $row = OrderTransaction::where('vendor_id', $vendor->id)
+            ->toBase()
+            ->selectRaw('SUM(CASE WHEN DATE(created_at) = ? THEN store_amount ELSE 0 END) AS todays_earning', [now()->toDateString()])
+            ->selectRaw('SUM(CASE WHEN created_at BETWEEN ? AND ? THEN store_amount ELSE 0 END) AS this_week_earning', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])
+            ->selectRaw('SUM(CASE WHEN MONTH(created_at) = ? AND YEAR(created_at) = ? THEN store_amount ELSE 0 END) AS this_month_earning', [date('m'), date('Y')])
+            ->first();
+
+        return [
+            'todays_earning' => (float) ($row->todays_earning ?? 0),
+            'this_week_earning' => (float) ($row->this_week_earning ?? 0),
+            'this_month_earning' => (float) ($row->this_month_earning ?? 0),
+        ];
+    }
+
+    /**
+     * Opens or closes the store. `status` 0/1 sets that state (SB-2); without
+     * it the store flips, as older app builds expect. Setting a state is
+     * idempotent: a double tap or a second phone with a stale switch can no
+     * longer reopen a store the owner just closed.
+     */
     public function active_status(Request $request)
     {
         $store = $request->vendor->stores[0];
-        $store->active = $store->active?0:1;
-        $store->save();
-        return response()->json(['message' => $store->active?translate('messages.store_opened'):translate('messages.store_temporarily_closed')], 200);
+        $wanted = $request->has('status') && in_array((string) $request->status, ['0', '1'], true)
+            ? (int) $request->status
+            : ($store->active ? 0 : 1);
+        if ((int) $store->active !== $wanted) {
+            $store->active = $wanted;
+            $store->save();
+            StorePushService::storeStatusChanged($store, $request->header('fcmToken'));
+        }
+        return response()->json([
+            'message' => $store->active?translate('messages.store_opened'):translate('messages.store_temporarily_closed'),
+            'active' => (int) $store->active,
+        ], 200);
     }
 
     public function get_earning_data(Request $request)
@@ -565,6 +633,38 @@ class VendorController extends Controller
         return response()->json(Helpers::order_data_formatting($order),200);
     }
 
+    /**
+     * One row for the order details screen's poll (SB-6), instead of the
+     * whole formatted order with items, customer and payments every 10 s.
+     * The app reloads the full order only when `updated_at` moves.
+     */
+    public function get_order_status(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'order_id' => 'required|integer',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+        $order = Order::withoutGlobalScope('storage')
+            ->select(['id', 'order_status', 'payment_status', 'delivery_man_id', 'updated_at'])
+            ->where('id', $request['order_id'])
+            ->whereIn('store_id', $request['vendor']->stores()->pluck('id'))
+            ->first();
+        if (!$order) {
+            return response()->json([
+                'errors' => [['code' => 'order', 'message' => translate('messages.not_found')]]
+            ], 404);
+        }
+        return response()->json([
+            'order_id' => $order->id,
+            'order_status' => $order->order_status,
+            'payment_status' => $order->payment_status,
+            'delivery_man_id' => $order->delivery_man_id,
+            'updated_at' => $order->updated_at,
+        ], 200);
+    }
+
     public function get_all_orders(Request $request)
     {
         $vendor = $request['vendor'];
@@ -599,15 +699,17 @@ class VendorController extends Controller
         }
         $vendor_type= $request->header('vendorType');
         $vendor = $request['vendor'];
-        if($vendor_type == 'owner'){
-            Vendor::where(['id' => $vendor['id']])->update([
-                'firebase_token' => $request['fcm_token']
-            ]);
-        }else{
-            VendorEmployee::where(['id' => $request['vendor_employee']->id])->update([
-                'firebase_token' => $request['fcm_token']
-            ]);
-
+        $login = $vendor_type == 'owner' ? $vendor : $request['vendor_employee'];
+        // '@' is a logout. New builds also send the phone's own token, so
+        // only that phone stops getting pushes (SB-4).
+        if ($request['fcm_token'] == '@') {
+            StorePushService::forget($login, $request['device_fcm_token']);
+            if ($login->firebase_token === $request['device_fcm_token'] || !$request->filled('device_fcm_token')) {
+                $login->forceFill(['firebase_token' => '@'])->save();
+            }
+        } else {
+            StorePushService::register($login, $request['fcm_token'], $request['platform']);
+            $login->forceFill(['firebase_token' => $request['fcm_token']])->save();
         }
 
         return response()->json(['message'=>'successfully updated!'], 200);

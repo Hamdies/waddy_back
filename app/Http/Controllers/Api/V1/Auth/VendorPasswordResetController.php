@@ -148,8 +148,10 @@ class VendorPasswordResetController extends Controller
         $data = DB::table('password_resets')->where(['email'=>$request['email'],'token' => $request['reset_token']])->first();
         if (isset($data)) {
             if ($request['password'] == $request['confirm_password']) {
+                // Logs out every phone: login no longer rotates the token.
                 DB::table('vendors')->where(['email' => $data->email])->update([
-                    'password' => bcrypt($request['confirm_password'])
+                    'password' => bcrypt($request['confirm_password']),
+                    'auth_token' => null,
                 ]);
                 DB::table('password_resets')->where(['token' => $request['reset_token']])->delete();
                 return response()->json(['message' => translate('Password changed successfully.')], 200);

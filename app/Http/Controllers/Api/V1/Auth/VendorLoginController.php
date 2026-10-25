@@ -45,8 +45,11 @@ class VendorLoginController extends Controller
 
         if($vendor_type == 'owner'){
             if (auth('vendor')->attempt($data)) {
-                $token = $this->genarate_token($request['email']);
                 $vendor = Vendor::where(['email' => $request['email']])->first();
+                // Reuse the token: a new one per login logged the owner out
+                // on every other phone (SB-4). Blocking the store or
+                // resetting the password clears it.
+                $token = $vendor->auth_token ?: $this->genarate_token($request['email']);
 
             $storeSubscriptionCheck=  $this->storeSubscriptionCheck($vendor?->stores[0],$vendor,$token);
 
@@ -76,8 +79,8 @@ class VendorLoginController extends Controller
         }elseif($vendor_type == 'employee'){
 
             if (auth('vendor_employee')->attempt($data)) {
-                $token = $this->genarate_token($request['email']);
                 $vendor = VendorEmployee::where(['email' => $request['email']])->first();
+                $token = $vendor->auth_token ?: $this->genarate_token($request['email']);
                 $storeSubscriptionCheck=  $this->storeSubscriptionCheck($vendor?->store,$vendor,$token);
                 if(data_get($storeSubscriptionCheck,'type') != null){
                     return response()->json(data_get($storeSubscriptionCheck,'data'), data_get($storeSubscriptionCheck,'code'));
@@ -118,10 +121,12 @@ class VendorLoginController extends Controller
     private function genarate_token($email)
     {
         $token = Str::random(120);
-        $is_available = Vendor::where('auth_token', $token)->where('email', '!=', $email)->count();
-        if($is_available)
+        // The middleware looks a token up in both tables. The retry's result
+        // used to be thrown away (SB-9).
+        $is_taken = Vendor::where('auth_token', $token)->exists() || VendorEmployee::where('auth_token', $token)->exists();
+        if($is_taken)
         {
-            $this->genarate_token($email);
+            return $this->genarate_token($email);
         }
         return $token;
     }

@@ -3,6 +3,7 @@
 namespace App\CentralLogics;
 
 use App\Models\VendorEmployee;
+use App\Services\StorePushService;
 use DateTime;
 use App\Models\Tag;
 use App\Models\Item;
@@ -1474,6 +1475,7 @@ class Helpers
                     "module_id" => (string)$module_id,
                     "sender_type" => (string)$sender_type,
                     "order_type" => (string)$order_type,
+                    "ring" => (string)($data['ring'] ?? ''),
                     "click_action" => $web_push_link?(string)$web_push_link:'',
                     "sound" => "notification.wav",
                 ],
@@ -1953,22 +1955,21 @@ class Helpers
                     'order_id' => $order->id,
                     'image' => '',
                     'type' => 'order_status',
+                    'ring' => 0,
                 ];
                 if($order->store && $order->store->vendor && $push_notification_status){
-                    self::send_push_notif_to_device($order->store->vendor->firebase_token, $data);
+                    StorePushService::send($order->store, $data);
                     DB::table('user_notifications')->insert([
                         'data' => json_encode($data),
                         'vendor_id' => $order->store->vendor_id,
                         'created_at' => now(),
                         'updated_at' => now()
                     ]);
-
-                    self::sendStoreEmployeeNotification($order, $data);
                 }
             }
 
             if ($order->order_type == 'delivery' && !$order->scheduled && $status == 'pending' && $order->payment_method == 'cash_on_delivery' && config('order_confirmation_model') == 'deliveryman') {
-                if ($order->store->sub_self_delivery && $push_notification_status) {
+                if ($push_notification_status && ($order->store->sub_self_delivery || StorePushService::newOrderAtPlacement())) {
                     $data = [
                         'title' => translate('Order_Notification'),
                         'description' => translate('messages.new_order_push_description'),
@@ -1977,9 +1978,10 @@ class Helpers
                         'order_type' => $order->order_type,
                         'image' => '',
                         'type' => 'new_order',
+                        'ring' => 1,
                     ];
-                    if($order->store && $order->store->vendor && $push_notification_status){
-                        self::send_push_notif_to_device($order->store->vendor->firebase_token, $data);
+                    if($order->store && $order->store->vendor){
+                        StorePushService::send($order->store, $data);
                         $web_push_link = url('/').'/vendor-panel/order/list/all';
                         self::send_push_notif_to_topic($data, "store_panel_{$order->store_id}_message", 'new_order', $web_push_link);
                         DB::table('user_notifications')->insert([
@@ -1990,10 +1992,10 @@ class Helpers
                             'created_at' => now(),
                             'updated_at' => now()
                         ]);
-
-                        self::sendStoreEmployeeNotification($order, $data);
                     }
-                } else {
+                }
+                // Riders: the same condition as the old else branch.
+                if (!($order->store->sub_self_delivery && $push_notification_status)) {
                     $data = [
                         'title' => translate('Order_Notification'),
                         'description' => translate('messages.new_order_push_description'),
@@ -2046,9 +2048,10 @@ class Helpers
                     'order_type' => $order->order_type,
                     'image' => '',
                     'type' => 'new_order',
+                    'ring' => 1,
                 ];
                 if($order->store && $order->store->vendor && $push_notification_status){
-                    self::send_push_notif_to_device($order->store->vendor->firebase_token, $data);
+                    StorePushService::send($order->store, $data);
                     $web_push_link = url('/').'/vendor-panel/order/list/all';
                     self::send_push_notif_to_topic($data, "store_panel_{$order->store_id}_message", 'new_order', $web_push_link);
                     // self::send_push_notif_to_topic($data, 'admin_message', 'order_request');
@@ -2058,8 +2061,6 @@ class Helpers
                         'created_at' => now(),
                         'updated_at' => now()
                     ]);
-
-                    self::sendStoreEmployeeNotification($order, $data);
                 }
             }
 
@@ -2070,9 +2071,10 @@ class Helpers
                     'order_id' => $order->id,
                     'image' => '',
                     'type' => 'new_order',
+                    'ring' => 1,
                 ];
                 if($order->store && $order->store->vendor && $push_notification_status){
-                    self::send_push_notif_to_device($order->store->vendor->firebase_token, $data);
+                    StorePushService::send($order->store, $data);
                     $web_push_link = url('/').'/vendor-panel/order/list/all';
                     self::send_push_notif_to_topic($data, "store_panel_{$order->store_id}_message", 'new_order', $web_push_link);
                     DB::table('user_notifications')->insert([
@@ -2081,8 +2083,6 @@ class Helpers
                         'created_at' => now(),
                         'updated_at' => now()
                     ]);
-
-                    self::sendStoreEmployeeNotification($order, $data);
                 }
             }
 
@@ -2099,27 +2099,29 @@ class Helpers
 
                     self::send_push_notif_to_topic($data, "restaurant_dm_" . $order->store_id, 'new_order',null);
                 } else {
+                    $alertedAtPlacement = !$order->scheduled && $order->order_type == 'delivery' && StorePushService::newOrderAtPlacement();
                     $data = [
                         'title' => translate('Order_Notification'),
-                        'description' => translate('messages.new_order_push_description'),
+                        'description' => $alertedAtPlacement ? translate('messages.rider_accepted_store_order') : translate('messages.new_order_push_description'),
                         'order_id' => $order->id,
                         'module_id' => $order->module_id,
                         'order_type' => $order->order_type,
                         'image' => '',
-                        'type' => 'new_order',
+                        'type' => $alertedAtPlacement ? 'order_status' : 'new_order',
+                        'ring' => $alertedAtPlacement ? 0 : 1,
                     ];
                     if($order->store && $order->store->vendor && $push_notification_status){
-                        self::send_push_notif_to_device($order->store->vendor->firebase_token, $data);
-                        $web_push_link = url('/').'/vendor-panel/order/list/all';
-                        self::send_push_notif_to_topic($data, "store_panel_{$order->store_id}_message", 'new_order', $web_push_link);
+                        StorePushService::send($order->store, $data);
+                        if (!$alertedAtPlacement) {
+                            $web_push_link = url('/').'/vendor-panel/order/list/all';
+                            self::send_push_notif_to_topic($data, "store_panel_{$order->store_id}_message", 'new_order', $web_push_link);
+                        }
                         DB::table('user_notifications')->insert([
                             'data' => json_encode($data),
                             'vendor_id' => $order->store->vendor_id,
                             'created_at' => now(),
                             'updated_at' => now()
                         ]);
-
-                        self::sendStoreEmployeeNotification($order, $data);
                     }
                 }
             }

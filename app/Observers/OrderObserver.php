@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\XpService;
 use App\Services\ChallengeService;
 use App\Services\ScratchCardService;
+use App\Services\StorePushService;
 use Illuminate\Support\Facades\Log;
 
 class OrderObserver
@@ -37,6 +38,15 @@ class OrderObserver
     {
         if (!$order->isDirty('order_status')) {
             return;
+        }
+
+        // The store's other phones stop ringing once someone dealt with it
+        // (SB-1). Here, not in the controllers: admin, the web panel, the
+        // app, POS and customer cancel all change status.
+        try {
+            StorePushService::orderStatusChanged($order, $order->getOriginal('order_status'));
+        } catch (\Exception $e) {
+            Log::error("Failed to send order_handled for order {$order->id}: " . $e->getMessage());
         }
 
         // Award XP when an order is delivered.

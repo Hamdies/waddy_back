@@ -8723,4 +8723,7 @@ Smartly or Earn. ',
   'vs_more_links' => 'Add website or Instagram',
   'vs_services' => 'Services',
   'vs_files_again' => 'Please add your photos again.',
+  'rider_accepted_store_order' => 'A rider accepted this order. Start preparing it.',
+  'store_new_order_at_placement' => 'Store hears about cash orders at placement',
+  'store_new_order_at_placement_hint' => 'When riders confirm orders, the store is alerted as soon as a cash order is placed, so it can start preparing while a rider is found. Off: the store hears only after a rider accepts.',
 );

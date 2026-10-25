@@ -787,6 +787,32 @@
                                     </div>
                                 </div>
 
+                                {{-- D4 / SB-7: see StorePushService::newOrderAtPlacement() --}}
+                                <div class="col-sm-6 col-lg-4">
+                                    @php($store_new_order_at_placement = \App\Services\StorePushService::newOrderAtPlacement())
+                                    <div class="form-group mb-0">
+                                        <input type="hidden" name="store_new_order_at_placement" value="0">
+                                        <label
+                                            class="toggle-switch h--45px toggle-switch-sm d-flex justify-content-between border rounded px-3 py-0 form-control">
+                                            <span class="pr-1 d-flex align-items-center switch--label">
+                                                <span class="line--limit-1">
+                                                    {{ translate('messages.store_new_order_at_placement') }}
+                                                </span>
+                                                <span class="form-label-secondary d-flex"
+                                                    data-toggle="tooltip" data-placement="right"
+                                                    data-original-title="{{ translate('messages.store_new_order_at_placement_hint') }}"><img
+                                                        src="{{ asset('/public/assets/admin/img/info-circle.svg') }}"
+                                                        alt="{{ translate('messages.store_new_order_at_placement') }}"></span>
+                                            </span>
+                                            <input type="checkbox" class="toggle-switch-input" value="1"
+                                                name="store_new_order_at_placement" id="store_new_order_at_placement" {{ $store_new_order_at_placement ? 'checked' : '' }}>
+                                            <span class="toggle-switch-label text">
+                                                <span class="toggle-switch-indicator"></span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                </div>
+
                                 <div class="col-sm-6 col-lg-4">
                                     @php($vnv = \App\Models\BusinessSetting::where('key', 'toggle_veg_non_veg')->first())
                                     @php($vnv = $vnv ? $vnv->value : 0)

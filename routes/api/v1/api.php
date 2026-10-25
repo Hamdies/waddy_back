@@ -185,6 +185,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
         Route::put('update-order-amount', 'VendorController@edit_order_amount');
         Route::get('order-details', 'VendorController@get_order_details');
         Route::get('order', 'VendorController@get_order');
+        Route::get('order-status', 'VendorController@get_order_status');
         Route::put('update-fcm-token', 'VendorController@update_fcm_token');
         Route::get('get-basic-campaigns', 'VendorController@get_basic_campaigns');
         Route::put('campaign-leave', 'VendorController@remove_store');
@@ -278,6 +279,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
             Route::get('/', 'CategoryController@get_categories');
             Route::get('childes/{category_id}', 'CategoryController@get_childes');
             Route::get('category-wise-products/{id}', 'CategoryController@getCategoryWiseProducts');
+            Route::get('sub-category-products/{id}', 'CategoryController@getSubCategoryWiseProducts');
         });
 
         Route::group(['prefix' => 'delivery-man'], function () {
