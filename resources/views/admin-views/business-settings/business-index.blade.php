@@ -787,7 +787,33 @@
                                     </div>
                                 </div>
 
-                                {{-- D4 / SB-7: see StorePushService::newOrderAtPlacement() --}}
+                                {{-- XS-5: see HandoverCodeService. Turn on only once the rider app asks for the code. --}}
+                                <div class="col-sm-6 col-lg-4">
+                                    @php($handover_code_status = \App\Services\HandoverCodeService::enabled())
+                                    <div class="form-group mb-0">
+                                        <input type="hidden" name="handover_code_status" value="0">
+                                        <label
+                                            class="toggle-switch h--45px toggle-switch-sm d-flex justify-content-between border rounded px-3 py-0 form-control">
+                                            <span class="pr-1 d-flex align-items-center switch--label">
+                                                <span class="line--limit-1">
+                                                    {{ translate('messages.handover_code_status') }}
+                                                </span>
+                                                <span class="form-label-secondary d-flex"
+                                                    data-toggle="tooltip" data-placement="right"
+                                                    data-original-title="{{ translate('messages.handover_code_status_hint') }}"><img
+                                                        src="{{ asset('/public/assets/admin/img/info-circle.svg') }}"
+                                                        alt="{{ translate('messages.handover_code_status') }}"></span>
+                                            </span>
+                                            <input type="checkbox" class="toggle-switch-input" value="1"
+                                                name="handover_code_status" id="handover_code_status" {{ $handover_code_status ? 'checked' : '' }}>
+                                            <span class="toggle-switch-label text">
+                                                <span class="toggle-switch-indicator"></span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                {{-- D4 / SB-7: see StorePushService::newOrderAtPlacement() --}}
                                 <div class="col-sm-6 col-lg-4">
                                     @php($store_new_order_at_placement = \App\Services\StorePushService::newOrderAtPlacement())
                                     <div class="form-group mb-0">

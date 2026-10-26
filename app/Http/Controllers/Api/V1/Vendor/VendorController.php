@@ -640,7 +640,12 @@ class VendorController extends Controller
         if(!$order){
             return response()->json(['errors'=>[['code'=>'order_id', 'message'=>trans('messages.order_data_not_found')]]],404);
         }
-        return response()->json(Helpers::order_data_formatting($order),200);
+        $data = Helpers::order_data_formatting($order);
+        // XS-5: the code the rider types at pickup.
+        if (\App\Services\HandoverCodeService::enabled() && \App\Services\HandoverCodeService::appliesTo($order)) {
+            $data['handover_code'] = \App\Services\HandoverCodeService::code($order->id);
+        }
+        return response()->json($data,200);
     }
 
     /**

@@ -209,6 +209,8 @@ class ConfigController extends Controller
             'prescription_order_status' => isset($settings['prescription_order_status']) ? (boolean)$settings['prescription_order_status'] : false,
             'schedule_order' => (boolean)$settings['schedule_order'],
             'order_delivery_verification' => (boolean)$settings['order_delivery_verification'],
+            // XS-5: rider app asks for the store's code at pickup.
+            'handover_code_status' => \App\Services\HandoverCodeService::enabled(),
             'cash_on_delivery' => (boolean)($cod['status'] == 1 ? true : false),
             'digital_payment' => (boolean)($digital_payment['status'] == 1 ? true : false),
             'digital_payment_info' => $digital_payment_infos,

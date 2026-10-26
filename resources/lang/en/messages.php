@@ -8727,4 +8727,8 @@ Smartly or Earn. ',
   'store_new_order_at_placement' => 'Store hears about cash orders at placement',
   'store_new_order_at_placement_hint' => 'When riders confirm orders, the store is alerted as soon as a cash order is placed, so it can start preparing while a rider is found. Off: the store hears only after a rider accepts.',
   'cod_blocked_for_account' => "Cash on delivery isn't available on your account because of earlier undelivered cash orders. Please pay online or from your wallet.",
+  'handover_code_wrong' => "That code doesn't match. Ask the store for the code on this order.",
+  'handover_code_too_many_attempts' => "Too many wrong codes. Try again in 15 minutes or call the store.",
+  'handover_code_status' => "Rider confirms pickup with store code",
+  'handover_code_status_hint' => "The store app shows a 4-digit code on each delivery order and the rider enters it to mark it picked up. Turn on only after riders have the app version that asks for it.",
 );

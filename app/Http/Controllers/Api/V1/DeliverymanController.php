@@ -514,6 +514,14 @@ class DeliverymanController extends Controller
             ], 403);
         }
 
+        // XS-5: pickup needs the store's handover code (when switched on).
+        if ($request['status'] == 'picked_up') {
+            $handoverError = \App\Services\HandoverCodeService::check($order, $request['handover_code']);
+            if ($handoverError) {
+                return response()->json(['errors' => [['code' => $handoverError[0], 'message' => $handoverError[1]]]], $handoverError[2]);
+            }
+        }
+
     /*     if(Config::get('order_delivery_verification')==1  && $order->charge_payer=='sender' && $request['status']=='picked_up' && $order->otp != $request['otp'])
         {
             return response()->json([
