@@ -24,6 +24,9 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
+        // SM-7: end-of-day summary push to each store that had orders.
+        $schedule->command('stores:daily-summary')->dailyAt('23:30')->timezone(config('placestovisit.timezone', 'Africa/Cairo'));
+
         // Busy mode (SM-4): reopen paused stores, drop expired extra minutes.
         $schedule->call(fn () => \App\Services\StoreBusyService::endExpired())->everyMinute()->name('stores:end-busy')->withoutOverlapping();
 

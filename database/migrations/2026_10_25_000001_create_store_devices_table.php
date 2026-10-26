@@ -23,6 +23,8 @@ return new class extends Migration
             $table->foreignId('vendor_employee_id')->nullable()->index();
             $table->string('fcm_token')->unique();
             $table->string('platform', 16)->nullable();
+            // The app's language (X-localization), for pushes the server writes.
+            $table->string('language', 8)->nullable();
             $table->timestamp('last_seen_at')->nullable();
             $table->timestamps();
         });

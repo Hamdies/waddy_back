@@ -38,7 +38,7 @@ class StorePushService
         'canceled', 'failed', 'refund_requested', 'refunded',
     ];
 
-    public static function register(Vendor|VendorEmployee $login, string $fcmToken, ?string $platform = null): void
+    public static function register(Vendor|VendorEmployee $login, string $fcmToken, ?string $platform = null, ?string $language = null): void
     {
         $storeId = $login instanceof VendorEmployee ? $login->store_id : $login->stores()->value('id');
         if (!$storeId || !self::isRealToken($fcmToken)) {
@@ -51,6 +51,7 @@ class StorePushService
             'vendor_id' => $login instanceof Vendor ? $login->id : null,
             'vendor_employee_id' => $login instanceof VendorEmployee ? $login->id : null,
             'platform' => $platform ? mb_substr($platform, 0, 16) : null,
+            'language' => in_array($language, ['en', 'ar'], true) ? $language : null,
             'last_seen_at' => now(),
         ]);
 
@@ -88,6 +89,23 @@ class StorePushService
             $tokens,
             fn ($token) => self::isRealToken($token) && $token !== $except
         )));
+    }
+
+    /**
+     * Tokens grouped by the phone's app language. Phones registered before
+     * the language was stored (and the legacy single-token columns) get
+     * [$fallback].
+     *
+     * @return array<string, string[]>
+     */
+    public static function tokensByLanguage(Store $store, string $fallback = 'en'): array
+    {
+        $known = StoreDevice::where('store_id', $store->id)->pluck('language', 'fcm_token')->all();
+        $groups = [];
+        foreach (self::tokens($store) as $token) {
+            $groups[$known[$token] ?? $fallback][] = $token;
+        }
+        return $groups;
     }
 
     /** A visible push (tray notification), e.g. a new order. */

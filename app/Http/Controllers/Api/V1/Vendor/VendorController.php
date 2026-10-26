@@ -776,7 +776,7 @@ class VendorController extends Controller
                 $login->forceFill(['firebase_token' => '@'])->save();
             }
         } else {
-            StorePushService::register($login, $request['fcm_token'], $request['platform']);
+            StorePushService::register($login, $request['fcm_token'], $request['platform'], $request->header('X-localization'));
             $login->forceFill(['firebase_token' => $request['fcm_token']])->save();
         }
 
