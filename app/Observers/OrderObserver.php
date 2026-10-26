@@ -9,6 +9,8 @@ use App\Services\XpService;
 use App\Services\ChallengeService;
 use App\Services\ScratchCardService;
 use App\Services\StorePushService;
+use App\Services\EstimatedDeliveryService;
+use App\Services\LateApologyService;
 use Illuminate\Support\Facades\Log;
 
 class OrderObserver
@@ -16,6 +18,25 @@ class OrderObserver
     /**
      * Handle the Order "created" event.
      */
+    /**
+     * The first ETA and the promise we hold ourselves to (XS-1, XS-6).
+     * calculateInitialEstimate existed but was never called, so an order had
+     * no ETA until its first status change.
+     */
+    public function creating(Order $order): void
+    {
+        if ($order->estimated_delivery_at || $order->order_type === 'pos') {
+            return;
+        }
+        try {
+            $eta = EstimatedDeliveryService::calculateInitialEstimate($order, $order->store);
+            $order->estimated_delivery_at = $eta;
+            $order->promised_delivery_at = $eta;
+        } catch (\Throwable $e) {
+            Log::warning('Initial ETA failed: ' . $e->getMessage());
+        }
+    }
+
     public function created(Order $order): void
     {
         $OrderReference = new OrderReference();
@@ -47,6 +68,11 @@ class OrderObserver
             StorePushService::orderStatusChanged($order, $order->getOriginal('order_status'));
         } catch (\Exception $e) {
             Log::error("Failed to send order_handled for order {$order->id}: " . $e->getMessage());
+        }
+
+        // Late against the first promise: apologise with wallet credit (XS-6).
+        if ($order->order_status === 'delivered') {
+            LateApologyService::handleDelivered($order);
         }
 
         // Award XP when an order is delivered.

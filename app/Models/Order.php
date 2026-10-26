@@ -47,6 +47,7 @@ class Order extends Model
         'ref_bonus_amount' => 'float',
         'sub_status_updated_at' => 'datetime',
         'estimated_delivery_at' => 'datetime',
+        'promised_delivery_at' => 'datetime',
         'order_timestamp' => 'integer',
     ];
 
