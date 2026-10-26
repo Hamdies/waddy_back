@@ -31,6 +31,7 @@ class OrderItemIssueService
         $detail->unavailable_status = 'waiting';
         $detail->unavailable_at = now();
         $detail->save();
+        $order->touch(); // the store app's status poll reloads on updated_at
         self::askCustomer($order, $detail);
         return null;
     }
@@ -43,6 +44,7 @@ class OrderItemIssueService
         }
         $detail->unavailable_status = $choice;
         $detail->save();
+        $order->touch(); // both apps' order polls pick the answer up
         self::tellStore($order, $detail, $choice);
         return null;
     }
