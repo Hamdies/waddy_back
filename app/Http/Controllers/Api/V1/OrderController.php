@@ -253,6 +253,32 @@ class OrderController extends Controller
         ], 404);
     }
 
+    /** XS-4: the customer's answer when an item ran out: remove or cancel. */
+    public function respond_unavailable_item(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'order_id' => 'required|integer',
+            'order_detail_id' => 'required|integer',
+            'choice' => 'required|in:remove,cancel',
+            'guest_id' => $request->user ? 'nullable' : 'required',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+        $user_id = $request->user ? $request->user->id : $request['guest_id'];
+        $order = Order::where(['user_id' => $user_id, 'id' => $request['order_id']])
+            ->when(isset($request->user), fn ($q) => $q->where('is_guest', 0))->Notpos()->first();
+        $detail = $order ? \App\Models\OrderDetail::where(['id' => $request['order_detail_id'], 'order_id' => $order->id])->first() : null;
+        if (!$order || !$detail) {
+            return response()->json(['errors' => [['code' => 'order', 'message' => translate('messages.not_found')]]], 404);
+        }
+        $error = \App\Services\OrderItemIssueService::respond($order, $detail, $request['choice']);
+        if ($error) {
+            return response()->json(['errors' => [['code' => 'order', 'message' => translate($error)]]], 403);
+        }
+        return response()->json(['message' => translate('messages.store_told_your_choice')], 200);
+    }
+
     public function cancel_order(Request $request)
     {
         $validator = Validator::make($request->all(), [

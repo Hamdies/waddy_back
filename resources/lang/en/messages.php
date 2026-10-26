@@ -8731,4 +8731,8 @@ Smartly or Earn. ',
   'handover_code_too_many_attempts' => "Too many wrong codes. Try again in 15 minutes or call the store.",
   'handover_code_status' => "Rider confirms pickup with store code",
   'handover_code_status_hint' => "The store app shows a 4-digit code on each delivery order and the rider enters it to mark it picked up. Turn on only after riders have the app version that asks for it.",
+  'order_can_not_be_changed_now' => "This order can't be changed any more.",
+  'already_answered' => "Already answered.",
+  'customer_asked_about_item' => "We asked the customer. You will see their answer on the order.",
+  'store_told_your_choice' => "Done. The store will update your order.",
 );

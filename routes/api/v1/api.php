@@ -187,6 +187,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
         Route::get('order', 'VendorController@get_order');
         Route::get('order-status', 'VendorController@get_order_status');
         Route::get('prep-time-suggestion', 'VendorController@get_prep_time_suggestion');
+        Route::post('order/item-unavailable', 'VendorController@report_unavailable_item');
         Route::post('busy-mode', 'VendorController@busy_mode');
         Route::put('update-fcm-token', 'VendorController@update_fcm_token');
         Route::get('get-basic-campaigns', 'VendorController@get_basic_campaigns');
@@ -455,6 +456,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
                 Route::post('get-Tax', 'OrderController@getTaxFromCart');
                 Route::post('prescription/place', 'OrderController@prescription_place_order');
                 Route::put('cancel', 'OrderController@cancel_order');
+                Route::post('item-unavailable/respond', 'OrderController@respond_unavailable_item');
                 Route::post('refund-request', 'OrderController@refund_request');
                 Route::get('refund-reasons', 'OrderController@refund_reasons');
                 Route::get('track', 'OrderController@track_order');

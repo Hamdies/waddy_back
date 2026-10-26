@@ -738,6 +738,29 @@ class VendorController extends Controller
         return response()->json(StoreBusyService::state($store->fresh()) + ['active' => (int) $store->fresh()->active], 200);
     }
 
+    /** XS-4: an item of this order ran out; ask the customer what to do. */
+    public function report_unavailable_item(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'order_id' => 'required|integer',
+            'order_detail_id' => 'required|integer',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+        $order = Order::withoutGlobalScope('storage')->where('id', $request['order_id'])
+            ->whereIn('store_id', $request['vendor']->stores()->pluck('id'))->first();
+        $detail = $order ? \App\Models\OrderDetail::where(['id' => $request['order_detail_id'], 'order_id' => $order->id])->first() : null;
+        if (!$order || !$detail) {
+            return response()->json(['errors' => [['code' => 'order', 'message' => translate('messages.not_found')]]], 404);
+        }
+        $error = \App\Services\OrderItemIssueService::report($order, $detail);
+        if ($error) {
+            return response()->json(['errors' => [['code' => 'order', 'message' => translate($error)]]], 403);
+        }
+        return response()->json(['message' => translate('messages.customer_asked_about_item')], 200);
+    }
+
     public function get_all_orders(Request $request)
     {
         $vendor = $request['vendor'];
