@@ -22,6 +22,7 @@ use App\Models\OrderPayment;
 use Illuminate\Http\Request;
 use App\CentralLogics\Helpers;
 use App\Services\StorePushService;
+use App\Services\StoreInsightsService;
 use App\Models\VendorEmployee;
 use App\Models\BusinessSetting;
 use App\Models\WithdrawRequest;
@@ -663,6 +664,32 @@ class VendorController extends Controller
             'delivery_man_id' => $order->delivery_man_id,
             'updated_at' => $order->updated_at,
         ], 200);
+    }
+
+    /**
+     * SM-1: how long this store usually takes for an order this size, to
+     * pre-fill the processing time when the store starts on it. 204 when
+     * there is not enough history yet.
+     */
+    public function get_prep_time_suggestion(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'order_id' => 'required|integer',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+        $order = Order::withoutGlobalScope('storage')
+            ->where('id', $request['order_id'])
+            ->whereIn('store_id', $request['vendor']->stores()->pluck('id'))
+            ->first();
+        if (!$order) {
+            return response()->json([
+                'errors' => [['code' => 'order', 'message' => translate('messages.not_found')]]
+            ], 404);
+        }
+        $suggestion = StoreInsightsService::prepTimeSuggestion($order);
+        return $suggestion ? response()->json($suggestion, 200) : response()->json(null, 204);
     }
 
     public function get_all_orders(Request $request)
