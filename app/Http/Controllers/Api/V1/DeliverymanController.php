@@ -383,6 +383,7 @@ class DeliverymanController extends Controller
             'created_at' => now(),
             'updated_at' => now()
             ]);
+        \App\Services\RiderArrivalService::check($dm, $request['latitude'], $request['longitude']);
 
         return response()->json(['message' => translate('location recorded')], 200);
     }
