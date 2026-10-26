@@ -24,6 +24,9 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
+        // XS-3: ring stores again / re-offer to riders / alert admin for stuck orders.
+        $schedule->call(fn () => \App\Services\OrderRescueService::run())->everyMinute()->name('orders:rescue')->withoutOverlapping();
+
         // SM-7: end-of-day summary push to each store that had orders.
         $schedule->command('stores:daily-summary')->dailyAt('23:30')->timezone(config('placestovisit.timezone', 'Africa/Cairo'));
 
