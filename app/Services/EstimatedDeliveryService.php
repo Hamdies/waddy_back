@@ -14,17 +14,8 @@ use Carbon\Carbon;
  */
 class EstimatedDeliveryService
 {
-    /**
-     * Average travel time in minutes per kilometer.
-     * Accounts for urban delivery conditions (traffic, stops, navigation).
-     */
-    const MINUTES_PER_KM = 3;
-
-    /**
-     * Buffer time in minutes added to account for order handoff,
-     * delivery man assignment delay, and other operational overhead.
-     */
-    const BUFFER_MINUTES = 5;
+    // Travel and pickup times come from DeliveryTimeModel (XS-1), learned
+    // per zone; its defaults are the old constants (3 min/km, 5 min buffer).
 
     /**
      * Calculate the initial estimated delivery time when an order is placed.
@@ -42,10 +33,10 @@ class EstimatedDeliveryService
         // Get processing time from store's delivery_time (e.g., "30-40 min")
         $processingMinutes = self::getProcessingMinutes($order, $store);
 
-        // Calculate travel time from distance
-        $travelMinutes = self::getTravelMinutes($order->distance);
+        // Learned ride time and pickup gap for this zone (XS-1)
+        $travelMinutes = DeliveryTimeModel::rideMinutes($order, $baseTime);
 
-        return $baseTime->copy()->addMinutes($processingMinutes + $travelMinutes + self::BUFFER_MINUTES);
+        return $baseTime->copy()->addMinutes($processingMinutes + $travelMinutes + DeliveryTimeModel::pickupGap($order->zone_id));
     }
 
     /**
@@ -74,9 +65,9 @@ class EstimatedDeliveryService
     protected static function recalculateOnConfirmed(Order $order): Carbon
     {
         $processingMinutes = self::getProcessingMinutes($order, $order->store);
-        $travelMinutes = self::getTravelMinutes($order->distance);
+        $travelMinutes = DeliveryTimeModel::rideMinutes($order);
 
-        return now()->addMinutes($processingMinutes + $travelMinutes + self::BUFFER_MINUTES);
+        return now()->addMinutes($processingMinutes + $travelMinutes + DeliveryTimeModel::pickupGap($order->zone_id));
     }
 
     /**
@@ -85,10 +76,11 @@ class EstimatedDeliveryService
      */
     protected static function recalculateOnProcessing(Order $order): Carbon
     {
-        $processingMinutes = $order->processing_time ?? self::getStoreMinDeliveryTime($order->store);
-        $travelMinutes = self::getTravelMinutes($order->distance);
+        $processingMinutes = $order->processing_time ? (int) $order->processing_time : self::getProcessingMinutes($order, $order->store);
+        $travelMinutes = DeliveryTimeModel::rideMinutes($order);
 
-        return now()->addMinutes($processingMinutes + $travelMinutes);
+        // The rider still has to collect it once it is ready.
+        return now()->addMinutes($processingMinutes + $travelMinutes + DeliveryTimeModel::pickupGap($order->zone_id));
     }
 
     /**
@@ -96,10 +88,10 @@ class EstimatedDeliveryService
      */
     protected static function recalculateOnHandover(Order $order): Carbon
     {
-        $travelMinutes = self::getTravelMinutes($order->distance);
+        $travelMinutes = DeliveryTimeModel::rideMinutes($order);
 
-        // Add a small buffer for delivery man to arrive at store and pick up
-        return now()->addMinutes($travelMinutes + self::BUFFER_MINUTES);
+        // How long riders in this zone usually take to collect a ready order
+        return now()->addMinutes($travelMinutes + DeliveryTimeModel::pickupGap($order->zone_id));
     }
 
     /**
@@ -107,9 +99,7 @@ class EstimatedDeliveryService
      */
     protected static function recalculateOnPickedUp(Order $order): Carbon
     {
-        $travelMinutes = self::getTravelMinutes($order->distance);
-
-        return now()->addMinutes($travelMinutes);
+        return now()->addMinutes(DeliveryTimeModel::rideMinutes($order));
     }
 
     /**
@@ -123,8 +113,14 @@ class EstimatedDeliveryService
             return (int) $order->processing_time;
         }
 
-        // A busy store's extra minutes (SM-4) are part of what the customer
-        // is told at checkout.
+        // The store's real kitchen time for an order this size (SM-1, busy
+        // minutes included); its typed delivery time only without history.
+        if ($order->id && $order->store_id) {
+            $suggestion = StoreInsightsService::prepTimeSuggestion($order);
+            if ($suggestion) {
+                return (int) $suggestion['minutes'];
+            }
+        }
         return self::getStoreMinDeliveryTime($store) + StoreBusyService::extraMinutes($store);
     }
 
@@ -154,20 +150,5 @@ class EstimatedDeliveryService
         }
 
         return $minTime;
-    }
-
-    /**
-     * Calculate travel time in minutes based on distance.
-     *
-     * @param float|null $distance in kilometers
-     * @return int minutes
-     */
-    protected static function getTravelMinutes(?float $distance): int
-    {
-        if (!$distance || $distance <= 0) {
-            return 10; // Default for unknown distance
-        }
-
-        return (int) ceil($distance * self::MINUTES_PER_KM);
     }
 }
