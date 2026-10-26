@@ -219,6 +219,8 @@ class CustomerController extends Controller
         $data['discount_amount'] = (float)data_get($discount_data, 'discount_amount');
         $data['discount_amount_type'] = data_get($discount_data, 'discount_amount_type');
         $data['validity'] = (string)data_get($discount_data, 'validity');
+        // XS-7: the app hides cash on delivery when this is false.
+        $data['cod_allowed'] = !\App\Services\CodRiskService::isBlocked($request->user()->id);
 
         unset($data['orders']);
         return response()->json($data, 200);

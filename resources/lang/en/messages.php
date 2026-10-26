@@ -8726,4 +8726,5 @@ Smartly or Earn. ',
   'rider_accepted_store_order' => 'A rider accepted this order. Start preparing it.',
   'store_new_order_at_placement' => 'Store hears about cash orders at placement',
   'store_new_order_at_placement_hint' => 'When riders confirm orders, the store is alerted as soon as a cash order is placed, so it can start preparing while a rider is found. Off: the store hears only after a rider accepts.',
+  'cod_blocked_for_account' => "Cash on delivery isn't available on your account because of earlier undelivered cash orders. Please pay online or from your wallet.",
 );

@@ -786,6 +786,13 @@ trait PlaceNewOrder
                 'status_code' => 403,
             ],
 
+            // XS-7: repeated bad cash orders -> pay online or from the wallet.
+            $request->payment_method === 'cash_on_delivery' && !$request->is_guest && \App\Services\CodRiskService::isBlocked($request->user?->id) => [
+                'code'    => 'cod_blocked',
+                'message' => translate('messages.cod_blocked_for_account'),
+                'status_code' => 403,
+            ],
+
             default => null,
         };
 
