@@ -151,26 +151,17 @@ class OrderRescueService
         }
     }
 
+    /** By now the dispatch waves are over: the whole zone, again. */
     private static function offerToRidersAgain(Order $order): void
     {
-        $zone = $order->zone;
-        if (!$zone) {
-            return;
-        }
-        $data = [
+        DispatchService::broadcast($order, [
             'title' => translate('Order_Notification'),
             'description' => translate('messages.new_order_push_description'),
             'order_id' => $order->id,
             'module_id' => $order->module_id,
             'order_type' => $order->order_type,
             'image' => '',
-        ];
-        if ($order->dm_vehicle_id) {
-            Helpers::send_push_notif_to_topic($data, 'delivery_man_' . $order->zone_id . '_' . $order->dm_vehicle_id, 'order_request');
-        }
-        if ($zone->deliveryman_wise_topic) {
-            Helpers::send_push_notif_to_topic($data, $zone->deliveryman_wise_topic, 'order_request');
-        }
+        ]);
     }
 
     private static function alertAdmin(Order $order, string $text): void

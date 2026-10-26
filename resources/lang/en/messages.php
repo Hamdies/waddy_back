@@ -8735,4 +8735,6 @@ Smartly or Earn. ',
   'already_answered' => "Already answered.",
   'customer_asked_about_item' => "We asked the customer. You will see their answer on the order.",
   'store_told_your_choice' => "Done. The store will update your order.",
+  'smart_dispatch_status' => "Offer orders to the nearest riders first",
+  'smart_dispatch_status_hint' => "New orders alert the 3 nearest available riders first, the next ones a minute later, then every rider in the zone. Off: every rider in the zone at once.",
 );

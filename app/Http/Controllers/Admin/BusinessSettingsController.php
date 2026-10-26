@@ -581,6 +581,11 @@ class BusinessSettingsController extends Controller
         Helpers::businessUpdateOrInsert(['key' => 'order_confirmation_model'], [
             'value' => $request['order_confirmation_model']
         ]);
+        if ($request->has('smart_dispatch_status')) {
+            Helpers::businessUpdateOrInsert(['key' => 'smart_dispatch_status'], [
+                'value' => $request['smart_dispatch_status'] ? 1 : 0
+            ]);
+        }
         if ($request->has('handover_code_status')) {
             Helpers::businessUpdateOrInsert(['key' => 'handover_code_status'], [
                 'value' => $request['handover_code_status'] ? 1 : 0

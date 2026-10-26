@@ -24,6 +24,9 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
+        // XS-2: next dispatch wave for orders still without a rider.
+        $schedule->call(fn () => \App\Services\DispatchService::tick())->everyMinute()->name('orders:dispatch-waves')->withoutOverlapping();
+
         // XS-3: ring stores again / re-offer to riders / alert admin for stuck orders.
         $schedule->call(fn () => \App\Services\OrderRescueService::run())->everyMinute()->name('orders:rescue')->withoutOverlapping();
 

@@ -2005,14 +2005,8 @@ class Helpers
                         'image' => '',
                     ];
                     if($order->zone && self::getNotificationStatusData('deliveryman','deliveryman_order_notification','push_notification_status')){
-                        if($order->dm_vehicle_id){
-
-                            $topic = 'delivery_man_'.$order->zone_id.'_'.$order->dm_vehicle_id;
-                            self::send_push_notif_to_topic($data, $topic, 'order_request');
-                        }
-                        self::send_push_notif_to_topic($data, $order->zone->deliveryman_wise_topic, 'order_request');
-
-
+                        // XS-2: nearest riders first, then the whole zone.
+                        \App\Services\DispatchService::start($order, $data);
                     }
                 }
                 // self::send_push_notif_to_topic($data, 'admin_message', 'order_request', url('/').'/admin/order/list/all');
@@ -2139,12 +2133,8 @@ class Helpers
                     self::send_push_notif_to_topic($data, "restaurant_dm_" . $order->store_id, 'order_request',null);
                 } else
                 {if($order->zone && self::getNotificationStatusData('deliveryman','deliveryman_order_notification','push_notification_status')){
-                    if($order->dm_vehicle_id){
-
-                        $topic = 'delivery_man_'.$order->zone_id.'_'.$order->dm_vehicle_id;
-                        self::send_push_notif_to_topic($data, $topic, 'order_request');
-                    }
-                    self::send_push_notif_to_topic($data, $order->zone->deliveryman_wise_topic, 'order_request');
+                    // XS-2: nearest riders first, then the whole zone.
+                    \App\Services\DispatchService::start($order, $data);
                 }
                 }
             }
