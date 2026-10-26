@@ -23,6 +23,7 @@ use Illuminate\Http\Request;
 use App\CentralLogics\Helpers;
 use App\Services\StorePushService;
 use App\Services\StoreInsightsService;
+use App\Services\StoreBusyService;
 use App\Models\VendorEmployee;
 use App\Models\BusinessSetting;
 use App\Models\WithdrawRequest;
@@ -138,6 +139,7 @@ class VendorController extends Controller
 
         $vendor["stores"] = $store;
         $st = Store::withoutGlobalScope('translate')->findOrFail($store['id']);
+        $vendor['busy'] = StoreBusyService::state($st);
         $vendor["translations"] = $st->translations;
         if ($request['vendor_employee']) {
             $vendor_employee = $request['vendor_employee'];
@@ -249,6 +251,12 @@ class VendorController extends Controller
         $wanted = $request->has('status') && in_array((string) $request->status, ['0', '1'], true)
             ? (int) $request->status
             : ($store->active ? 0 : 1);
+        // Opening or closing by hand ends a busy-mode pause (SM-4), so the
+        // scheduler never reopens a store the owner closed for the day.
+        if ($store->paused_until) {
+            $store->paused_until = null;
+            $store->save();
+        }
         if ((int) $store->active !== $wanted) {
             $store->active = $wanted;
             $store->save();
@@ -556,7 +564,8 @@ class VendorController extends Controller
 
         $order->order_status = $request['status'];
         if($order->order_status == 'processing') {
-            $order->processing_time = ($request?->processing_time) ? $request->processing_time : explode('-', $order['store']['delivery_time'])[0];
+            $order->processing_time = ($request?->processing_time) ? $request->processing_time
+                : (int) explode('-', $order['store']['delivery_time'])[0] + StoreBusyService::extraMinutes($order->store);
         }
 
         // Recalculate estimated delivery time
@@ -690,6 +699,38 @@ class VendorController extends Controller
         }
         $suggestion = StoreInsightsService::prepTimeSuggestion($order);
         return $suggestion ? response()->json($suggestion, 200) : response()->json(null, 204);
+    }
+
+    /**
+     * SM-4 busy mode. mode=extra&minutes=10|20, mode=pause&minutes=15|30|60,
+     * or mode=off. Returns the new state.
+     */
+    public function busy_mode(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'mode' => 'required|in:extra,pause,off',
+            'minutes' => 'required_unless:mode,off|integer',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+        $store = $request->vendor->stores[0];
+        $minutes = (int) $request['minutes'];
+        $phone = $request['device_fcm_token'];
+        if ($request['mode'] === 'extra') {
+            if (!in_array($minutes, StoreBusyService::EXTRA_OPTIONS, true)) {
+                return response()->json(['errors' => [['code' => 'minutes', 'message' => translate('messages.invalid_data')]]], 403);
+            }
+            StoreBusyService::setExtra($store, $minutes);
+        } elseif ($request['mode'] === 'pause') {
+            if (!in_array($minutes, StoreBusyService::PAUSE_OPTIONS, true)) {
+                return response()->json(['errors' => [['code' => 'minutes', 'message' => translate('messages.invalid_data')]]], 403);
+            }
+            StoreBusyService::pause($store, $minutes, $phone);
+        } else {
+            StoreBusyService::off($store, $phone);
+        }
+        return response()->json(StoreBusyService::state($store->fresh()) + ['active' => (int) $store->fresh()->active], 200);
     }
 
     public function get_all_orders(Request $request)

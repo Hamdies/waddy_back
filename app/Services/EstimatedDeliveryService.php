@@ -123,7 +123,9 @@ class EstimatedDeliveryService
             return (int) $order->processing_time;
         }
 
-        return self::getStoreMinDeliveryTime($store);
+        // A busy store's extra minutes (SM-4) are part of what the customer
+        // is told at checkout.
+        return self::getStoreMinDeliveryTime($store) + StoreBusyService::extraMinutes($store);
     }
 
     /**

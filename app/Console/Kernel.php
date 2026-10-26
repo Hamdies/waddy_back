@@ -24,6 +24,9 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
+        // Busy mode (SM-4): reopen paused stores, drop expired extra minutes.
+        $schedule->call(fn () => \App\Services\StoreBusyService::endExpired())->everyMinute()->name('stores:end-busy')->withoutOverlapping();
+
         // Send push notifications for prizes expiring within 24 hours
         $schedule->command('xp:prize-expiry-reminders')->dailyAt('10:00');
 

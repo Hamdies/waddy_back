@@ -187,6 +187,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
         Route::get('order', 'VendorController@get_order');
         Route::get('order-status', 'VendorController@get_order_status');
         Route::get('prep-time-suggestion', 'VendorController@get_prep_time_suggestion');
+        Route::post('busy-mode', 'VendorController@busy_mode');
         Route::put('update-fcm-token', 'VendorController@update_fcm_token');
         Route::get('get-basic-campaigns', 'VendorController@get_basic_campaigns');
         Route::put('campaign-leave', 'VendorController@remove_store');

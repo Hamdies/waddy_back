@@ -52,13 +52,15 @@ class StoreInsightsService
         $bucket = self::bucketFor(max(1, $items));
 
         $byBucket = self::kitchenMinutes($order->store_id);
+        // A busy store (SM-4) is slower right now than its history says.
+        $busy = StoreBusyService::extraMinutes($order->store);
         $sameSize = $byBucket[$bucket] ?? [];
         if (count($sameSize) >= self::MIN_SAMPLES) {
-            return ['minutes' => self::median($sameSize), 'samples' => count($sameSize), 'basis' => 'similar_size'];
+            return ['minutes' => self::median($sameSize) + $busy, 'samples' => count($sameSize), 'basis' => 'similar_size', 'busy_minutes' => $busy];
         }
         $all = array_merge(...array_values($byBucket ?: [[]]));
         if (count($all) >= self::MIN_SAMPLES) {
-            return ['minutes' => self::median($all), 'samples' => count($all), 'basis' => 'all_orders'];
+            return ['minutes' => self::median($all) + $busy, 'samples' => count($all), 'basis' => 'all_orders', 'busy_minutes' => $busy];
         }
         return null;
     }
