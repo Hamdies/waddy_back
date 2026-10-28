@@ -96,6 +96,10 @@ return [
 
     'local_timezone' => env('APP_LOCAL_TIMEZONE', 'Africa/Cairo'),
 
+    // Secret for the Server-Timing header on API answers (ServerTiming
+    // middleware). Unset = off.
+    'server_timing_key' => env('SERVER_TIMING_KEY'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration

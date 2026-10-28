@@ -43,6 +43,7 @@ class Kernel extends HttpKernel
         ],
 
         'api' => [
+            \App\Http\Middleware\ServerTiming::class,
             'throttle:api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\UpdateLastActive::class,
