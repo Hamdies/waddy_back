@@ -122,10 +122,11 @@ class OrderController extends Controller
             ? \Illuminate\Support\Facades\Cache::remember(
                 'rider_loc:' . $order->delivery_man_id,
                 5,
+                // All columns: heading/speed exist only after the B6 migration.
                 fn () => DeliveryHistory::where('delivery_man_id', $order->delivery_man_id)
                     ->latest('id')
-                    ->first(['latitude', 'longitude', 'time', 'updated_at'])
-                    ?->toArray()
+                    ->first()
+                    ?->only(['latitude', 'longitude', 'heading', 'speed', 'time', 'updated_at'])
             )
             : null;
 
@@ -137,6 +138,10 @@ class OrderController extends Controller
             'order_status' => $order->order_status,
             'lat' => $fix['latitude'] ?? null,
             'lng' => $fix['longitude'] ?? null,
+            // So the customer's marker can turn with the road; null from
+            // rider builds that do not send them.
+            'heading' => $fix['heading'] ?? null,
+            'speed' => $fix['speed'] ?? null,
             // Age is computed here so a phone with a wrong clock still sees
             // a stale fix as stale.
             'location_age_seconds' => $at ? max(0, now()->getTimestamp() - $at->getTimestamp()) : null,

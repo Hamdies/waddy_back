@@ -21,20 +21,17 @@ class DMLocationSocketHandler implements MessageComponentInterface
         $data = json_decode($msg->getPayload(), true);
 
         // Check if the message contains the necessary data for recording
+        // `location` is optional now (B6), as on the HTTP endpoint.
         if (
-            isset($data['token'], $data['longitude'], $data['latitude'], $data['location'])
+            isset($data['token'], $data['longitude'], $data['latitude'])
+            && is_numeric($data['latitude']) && is_numeric($data['longitude'])
         ) {
             $dm = DeliveryMan::where(['auth_token' => $data['token']])->first();
 
             if ($dm) {
-                DeliveryHistory::updateOrCreate(['delivery_man_id' => $dm['id']], [
-                    'longitude' => $data['longitude'],
-                    'latitude' => $data['latitude'],
-                    'time' => now(),
-                    'location' => $data['location'],
-                    'created_at' => now(),
-                    'updated_at' => now()
-                    ]);
+                DeliveryHistory::recordFix($dm['id'], $data);
+                // Same "rider arriving" push as the HTTP endpoint (SM-2).
+                \App\Services\RiderArrivalService::check($dm, $data['latitude'], $data['longitude']);
 
                 // Send a response back to the client indicating successful recording
                 $from->send(json_encode(['message' => 'location recorded']));

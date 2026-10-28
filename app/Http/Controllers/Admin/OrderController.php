@@ -736,8 +736,12 @@ class OrderController extends Controller
                             'title' => translate('Order_Notification'),
                             'description' => translate('messages.you_are_assigned_to_a_order'),
                             'order_id' => $order['id'],
+                            'order_type' => $order->order_type == 'parcel' ? 'parcel_order' : $order->order_type,
                             'image' => '',
-                            'type' => 'order_status'
+                            // Its own type so the rider app rings for an
+                            // assignment but not for status updates, which
+                            // are also sent to the rider as 'order_status'.
+                            'type' => 'assign'
                         ];
                         Helpers::send_push_notif_to_device($deliveryman->fcm_token, $data);
                         DB::table('user_notifications')->insert([

@@ -56,6 +56,27 @@ class DeliveryMan extends Authenticatable
         return $this->belongsTo(DMVehicle::class);
     }
 
+    /**
+     * FCM topics the rider app subscribes to: `topic` carries new-order
+     * requests, `zone_topic` the admin's zone-wide campaigns. Returned at
+     * login and on every profile load, so a zone or vehicle change reaches
+     * the app without a re-login.
+     */
+    public function pushTopics(): array
+    {
+        $topic = 'restaurant_dm_' . $this->store_id;
+        $zoneTopic = '';
+        if ($this->zone) {
+            if ($this->vehicle_id) {
+                $topic = 'delivery_man_' . $this->zone->id . '_' . $this->vehicle_id;
+            } else {
+                $topic = $this->type == 'zone_wise' ? $this->zone->deliveryman_wise_topic : 'restaurant_dm_' . $this->store_id;
+            }
+            $zoneTopic = $this->type == 'zone_wise' ? $this->zone->deliveryman_wise_topic . '_push' : '';
+        }
+        return ['topic' => $topic ?: 'No_topic_found', 'zone_topic' => $zoneTopic ?? ''];
+    }
+
     public function wallet()
     {
         return $this->hasOne(DeliveryManWallet::class);
