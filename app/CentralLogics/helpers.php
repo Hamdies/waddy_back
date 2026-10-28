@@ -1063,7 +1063,12 @@ class Helpers
                     $item['review_permission'] = $item['store']['review_permission'] ?? 0;
                     $item['store_business_model'] = $item['store']['store_business_model'];
 
+                    // Apps read `store` from the order (the customer app's
+                    // order model does): the old code put it back by reading
+                    // $item->store again after unset(), one query per order.
+                    $store = $item->store;
                     unset($item['store']);
+                    $item->setRelation('store', $store);
                 } else {
                     $item['store_name'] = null;
                     $item['store_address'] = null;
