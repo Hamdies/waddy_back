@@ -57,10 +57,16 @@ return new class extends Migration
             ->contains(fn ($rows) => array_slice($rows->sortBy('Seq_in_index')->pluck('Column_name')->all(), 0, count($columns)) === $columns);
     }
 
-    /** Text columns (tokens on some installs) need a prefix length. */
+    /**
+     * Text columns (tokens on some installs) need a prefix length. Read from
+     * information_schema: Schema::getColumnType goes through Doctrine, which
+     * throws on any table with an enum column (orders has several).
+     */
     private function column(string $table, string $column): string
     {
-        $type = strtolower(Schema::getColumnType($table, $column));
+        $type = strtolower((string) DB::table('information_schema.columns')
+            ->where('table_schema', DB::getDatabaseName())->where('table_name', $table)->where('column_name', $column)
+            ->value('data_type'));
         return in_array($type, ['text', 'mediumtext', 'longtext'], true) ? "`$column`(64)" : "`$column`";
     }
 };
