@@ -826,7 +826,7 @@ class BusinessSettingsController extends Controller
                 }
             }
         }
-        $data_values = Setting::whereIn('settings_type', ['payment_config'])->whereIn('key_name', ['ssl_commerz', 'paypal', 'stripe', 'razor_pay', 'senang_pay', 'paytabs', 'paystack', 'paymob_accept', 'paytm', 'flutterwave', 'liqpay', 'bkash', 'mercadopago'])->get();
+        $data_values = Setting::whereIn('settings_type', ['payment_config'])->whereIn('key_name', ['noon'])->get();
 
         return view('admin-views.business-settings.payment-index', compact('published_status', 'payment_url', 'data_values'));
     }
@@ -878,249 +878,6 @@ class BusinessSettingsController extends Controller
                     'updated_at' => now(),
                 ]);
             }
-        } elseif ($name == 'ssl_commerz_payment') {
-            $payment = BusinessSetting::where('key', 'ssl_commerz_payment')->first();
-            if (isset($payment) == false) {
-                Helpers::businessInsert([
-                    'key' => 'ssl_commerz_payment',
-                    'value' => json_encode([
-                        'status' => 1,
-                        'store_id' => '',
-                        'store_password' => '',
-                    ]),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            } else {
-                BusinessSetting::where(['key' => 'ssl_commerz_payment'])->update([
-                    'key' => 'ssl_commerz_payment',
-                    'value' => json_encode([
-                        'status' => $request['status'],
-                        'store_id' => $request['store_id'],
-                        'store_password' => $request['store_password'],
-                    ]),
-                    'updated_at' => now(),
-                ]);
-            }
-        } elseif ($name == 'razor_pay') {
-            $payment = BusinessSetting::where('key', 'razor_pay')->first();
-            if (isset($payment) == false) {
-                Helpers::businessInsert([
-                    'key' => 'razor_pay',
-                    'value' => json_encode([
-                        'status' => 1,
-                        'razor_key' => '',
-                        'razor_secret' => '',
-                    ]),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            } else {
-                BusinessSetting::where(['key' => 'razor_pay'])->update([
-                    'key' => 'razor_pay',
-                    'value' => json_encode([
-                        'status' => $request['status'],
-                        'razor_key' => $request['razor_key'],
-                        'razor_secret' => $request['razor_secret'],
-                    ]),
-                    'updated_at' => now(),
-                ]);
-            }
-        } elseif ($name == 'paypal') {
-            $payment = BusinessSetting::where('key', 'paypal')->first();
-            if (isset($payment) == false) {
-                Helpers::businessInsert([
-                    'key' => 'paypal',
-                    'value' => json_encode([
-                        'status' => 1,
-                        'mode' => '',
-                        'paypal_client_id' => '',
-                        'paypal_secret' => '',
-                    ]),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            } else {
-                BusinessSetting::where(['key' => 'paypal'])->update([
-                    'key' => 'paypal',
-                    'value' => json_encode([
-                        'status' => $request['status'],
-                        'mode' => $request['mode'],
-                        'paypal_client_id' => $request['paypal_client_id'],
-                        'paypal_secret' => $request['paypal_secret'],
-                    ]),
-                    'updated_at' => now(),
-                ]);
-            }
-        } elseif ($name == 'stripe') {
-            $payment = BusinessSetting::where('key', 'stripe')->first();
-            if (isset($payment) == false) {
-                Helpers::businessInsert([
-                    'key' => 'stripe',
-                    'value' => json_encode([
-                        'status' => 1,
-                        'api_key' => '',
-                        'published_key' => '',
-                    ]),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            } else {
-                BusinessSetting::where(['key' => 'stripe'])->update([
-                    'key' => 'stripe',
-                    'value' => json_encode([
-                        'status' => $request['status'],
-                        'api_key' => $request['api_key'],
-                        'published_key' => $request['published_key'],
-                    ]),
-                    'updated_at' => now(),
-                ]);
-            }
-        } elseif ($name == 'senang_pay') {
-            $payment = BusinessSetting::where('key', 'senang_pay')->first();
-            if (isset($payment) == false) {
-                Helpers::businessInsert([
-
-                    'key' => 'senang_pay',
-                    'value' => json_encode([
-                        'status' => 1,
-                        'secret_key' => '',
-                        'published_key' => '',
-                        'merchant_id' => '',
-                    ]),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            } else {
-                BusinessSetting::where(['key' => 'senang_pay'])->update([
-                    'key' => 'senang_pay',
-                    'value' => json_encode([
-                        'status' => $request['status'],
-                        'secret_key' => $request['secret_key'],
-                        'published_key' => $request['publish_key'],
-                        'merchant_id' => $request['merchant_id'],
-                    ]),
-                    'updated_at' => now(),
-                ]);
-            }
-        } elseif ($name == 'paystack') {
-            $payment = BusinessSetting::where('key', 'paystack')->first();
-            if (isset($payment) == false) {
-                Helpers::businessInsert([
-                    'key' => 'paystack',
-                    'value' => json_encode([
-                        'status' => 1,
-                        'publicKey' => '',
-                        'secretKey' => '',
-                        'paymentUrl' => '',
-                        'merchantEmail' => '',
-                    ]),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            } else {
-                BusinessSetting::where(['key' => 'paystack'])->update([
-                    'key' => 'paystack',
-                    'value' => json_encode([
-                        'status' => $request['status'],
-                        'publicKey' => $request['publicKey'],
-                        'secretKey' => $request['secretKey'],
-                        'paymentUrl' => $request['paymentUrl'],
-                        'merchantEmail' => $request['merchantEmail'],
-                    ]),
-                    'updated_at' => now(),
-                ]);
-            }
-        } elseif ($name == 'flutterwave') {
-            $payment = BusinessSetting::where('key', 'flutterwave')->first();
-            if (isset($payment) == false) {
-                Helpers::businessInsert([
-                    'key' => 'flutterwave',
-                    'value' => json_encode([
-                        'status' => 1,
-                        'public_key' => '',
-                        'secret_key' => '',
-                        'hash' => '',
-                    ]),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            } else {
-                BusinessSetting::where(['key' => 'flutterwave'])->update([
-                    'key' => 'flutterwave',
-                    'value' => json_encode([
-                        'status' => $request['status'],
-                        'public_key' => $request['public_key'],
-                        'secret_key' => $request['secret_key'],
-                        'hash' => $request['hash'],
-                    ]),
-                    'updated_at' => now(),
-                ]);
-            }
-        } elseif ($name == 'mercadopago') {
-            $payment = Helpers::businessUpdateOrInsert(
-                ['key' => 'mercadopago'],
-                [
-                    'value' => json_encode([
-                        'status' => $request['status'],
-                        'public_key' => $request['public_key'],
-                        'access_token' => $request['access_token'],
-                    ]),
-                    'updated_at' => now()
-                ]
-            );
-        } elseif ($name == 'paymob_accept') {
-            Helpers::businessUpdateOrInsert(['key' => 'paymob_accept'], [
-                'value' => json_encode([
-                    'status' => $request['status'],
-                    'api_key' => $request['api_key'],
-                    'iframe_id' => $request['iframe_id'],
-                    'integration_id' => $request['integration_id'],
-                    'hmac' => $request['hmac'],
-                ]),
-                'updated_at' => now()
-            ]);
-        } elseif ($name == 'liqpay') {
-            Helpers::businessUpdateOrInsert(['key' => 'liqpay'], [
-                'value' => json_encode([
-                    'status' => $request['status'],
-                    'public_key' => $request['public_key'],
-                    'private_key' => $request['private_key']
-                ]),
-                'updated_at' => now()
-            ]);
-        } elseif ($name == 'paytm') {
-            Helpers::businessUpdateOrInsert(['key' => 'paytm'], [
-                'value' => json_encode([
-                    'status' => $request['status'],
-                    'paytm_merchant_key' => $request['paytm_merchant_key'],
-                    'paytm_merchant_mid' => $request['paytm_merchant_mid'],
-                    'paytm_merchant_website' => $request['paytm_merchant_website'],
-                    'paytm_refund_url' => $request['paytm_refund_url'],
-                ]),
-                'updated_at' => now()
-            ]);
-        } elseif ($name == 'bkash') {
-            Helpers::businessUpdateOrInsert(['key' => 'bkash'], [
-                'value' => json_encode([
-                    'status' => $request['status'],
-                    'api_key' => $request['api_key'],
-                    'api_secret' => $request['api_secret'],
-                    'username' => $request['username'],
-                    'password' => $request['password'],
-                ]),
-                'updated_at' => now()
-            ]);
-        } elseif ($name == 'paytabs') {
-            Helpers::businessUpdateOrInsert(['key' => 'paytabs'], [
-                'value' => json_encode([
-                    'status' => $request['status'],
-                    'profile_id' => $request['profile_id'],
-                    'server_key' => $request['server_key'],
-                    'base_url' => $request['base_url']
-                ]),
-                'updated_at' => now()
-            ]);
         }
 
         Toastr::success(translate('messages.payment_settings_updated'));
@@ -1141,99 +898,23 @@ class BusinessSettingsController extends Controller
         $request['status'] = $request->status ?? 0;
 
         $validation = [
-            'gateway' => 'required|in:ssl_commerz,paypal,stripe,razor_pay,senang_pay,paytabs,paystack,paymob_accept,paytm,flutterwave,liqpay,bkash,mercadopago',
+            'gateway' => 'required|in:noon',
             'mode' => 'required|in:live,test'
         ];
 
         $additional_data = [];
 
-        if ($request['gateway'] == 'ssl_commerz') {
+        if ($request['gateway'] == 'noon') {
             $additional_data = [
                 'status' => 'required|in:1,0',
-                'store_id' => 'required_if:status,1',
-                'store_password' => 'required_if:status,1'
-            ];
-        } elseif ($request['gateway'] == 'paypal') {
-            $additional_data = [
-                'status' => 'required|in:1,0',
-                'client_id' => 'required_if:status,1',
-                'client_secret' => 'required_if:status,1'
-            ];
-        } elseif ($request['gateway'] == 'stripe') {
-            $additional_data = [
-                'status' => 'required|in:1,0',
-                'api_key' => 'required_if:status,1',
-                'published_key' => 'required_if:status,1',
-            ];
-        } elseif ($request['gateway'] == 'razor_pay') {
-            $additional_data = [
-                'status' => 'required|in:1,0',
-                'api_key' => 'required_if:status,1',
-                'api_secret' => 'required_if:status,1'
-            ];
-        } elseif ($request['gateway'] == 'senang_pay') {
-            $additional_data = [
-                'status' => 'required|in:1,0',
-                'callback_url' => 'required_if:status,1',
-                'secret_key' => 'required_if:status,1',
-                'merchant_id' => 'required_if:status,1'
-            ];
-        } elseif ($request['gateway'] == 'paytabs') {
-            $additional_data = [
-                'status' => 'required|in:1,0',
-                'profile_id' => 'required_if:status,1',
-                'server_key' => 'required_if:status,1',
-                'base_url' => 'required_if:status,1'
-            ];
-        } elseif ($request['gateway'] == 'paystack') {
-            $additional_data = [
-                'status' => 'required|in:1,0',
-                'public_key' => 'required_if:status,1',
-                'secret_key' => 'required_if:status,1',
-                'merchant_email' => 'required_if:status,1'
-            ];
-        } elseif ($request['gateway'] == 'paymob_accept') {
-            $additional_data = [
-                'status' => 'required|in:1,0',
-                'callback_url' => 'required_if:status,1',
-                'api_key' => 'required_if:status,1',
-                'iframe_id' => 'required_if:status,1',
-                'integration_id' => 'required_if:status,1',
-                'hmac' => 'required_if:status,1'
-            ];
-        } elseif ($request['gateway'] == 'mercadopago') {
-            $additional_data = [
-                'status' => 'required|in:1,0',
-                'access_token' => 'required_if:status,1',
-                'public_key' => 'required_if:status,1'
-            ];
-        } elseif ($request['gateway'] == 'liqpay') {
-            $additional_data = [
-                'status' => 'required|in:1,0',
-                'private_key' => 'required_if:status,1',
-                'public_key' => 'required_if:status,1'
-            ];
-        } elseif ($request['gateway'] == 'flutterwave') {
-            $additional_data = [
-                'status' => 'required|in:1,0',
-                'secret_key' => 'required_if:status,1',
-                'public_key' => 'required_if:status,1',
-                'hash' => 'required_if:status,1'
-            ];
-        } elseif ($request['gateway'] == 'paytm') {
-            $additional_data = [
-                'status' => 'required|in:1,0',
-                'merchant_key' => 'required_if:status,1',
-                'merchant_id' => 'required_if:status,1',
-                'merchant_website_link' => 'required_if:status,1'
-            ];
-        } elseif ($request['gateway'] == 'bkash') {
-            $additional_data = [
-                'status' => 'required|in:1,0',
-                'app_key' => 'required_if:status,1',
-                'app_secret' => 'required_if:status,1',
-                'username' => 'required_if:status,1',
-                'password' => 'required_if:status,1',
+                'region' => 'required|in:eg,sa,global',
+                'business_identifier' => 'required_if:status,1',
+                'application_identifier' => 'required_if:status,1',
+                'application_key' => 'required_if:status,1',
+                'order_category' => 'required_if:status,1',
+                'webhook_key_id' => 'required_if:status,1',
+                'webhook_secret' => 'required_if:status,1',
+                'card_refund_enabled' => 'required|in:0,1'
             ];
         }
 

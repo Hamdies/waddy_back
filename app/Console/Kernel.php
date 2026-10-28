@@ -36,6 +36,14 @@ class Kernel extends ConsoleKernel
         // Busy mode (SM-4): reopen paused stores, drop expired extra minutes.
         $schedule->call(fn () => \App\Services\StoreBusyService::endExpired())->everyMinute()->name('stores:end-busy')->withoutOverlapping();
 
+        // noon (NP-07/16): settle payments noon hasn't answered for, close
+        // expired wallet-or-card choices to the card, send / confirm card refunds.
+        $schedule->call(fn () => \App\Services\NoonPaymentService::reconcilePayments())->everyFiveMinutes()->name('payments:noon-reconcile')->withoutOverlapping();
+        $schedule->call(fn () => \App\Services\NoonRefundService::processDue())->everyMinute()->name('payments:noon-refunds')->withoutOverlapping();
+
+        // Menu: show items that were out of stock for a while (2 hours / rest of today).
+        $schedule->call(fn () => \App\Services\ItemAvailabilityService::reopenDue())->everyMinute()->name('items:reopen')->withoutOverlapping();
+
         // Send push notifications for prizes expiring within 24 hours
         $schedule->command('xp:prize-expiry-reminders')->dailyAt('10:00');
 

@@ -2,7 +2,7 @@
 
 //payment methods
 const GATEWAYS_PAYMENT_METHODS = [
-    ['key' => 'paymob_accept', 'value' => 'Paymob Accept'],
+    ['key' => 'noon', 'value' => 'noon payments'],
 ];
 
 //currencies

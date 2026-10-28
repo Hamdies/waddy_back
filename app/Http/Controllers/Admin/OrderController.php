@@ -32,6 +32,8 @@ use App\CentralLogics\CouponLogic;
 use Illuminate\Support\Facades\DB;
 use App\CentralLogics\ProductLogic;
 use App\CentralLogics\CustomerLogic;
+use App\Models\CardRefund;
+use App\Services\NoonRefundService;
 use App\Http\Controllers\Controller;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Support\Facades\Mail;
@@ -277,7 +279,8 @@ class OrderController extends Controller
             }
 
             $deliveryMen = Helpers::deliverymen_list_formatting($deliveryMen);
-            return view('admin-views.order.order-view', compact('order', 'deliveryMen', 'categories', 'products', 'category', 'keyword', 'editing'));
+            $cardRefunds = CardRefund::where('order_id', $order->id)->orderBy('id')->get();
+            return view('admin-views.order.order-view', compact('order', 'deliveryMen', 'categories', 'products', 'category', 'keyword', 'editing', 'cardRefunds'));
         } else {
             Toastr::info(translate('messages.no_more_orders'));
             return back();
@@ -332,7 +335,8 @@ class OrderController extends Controller
             }
 
             $deliveryMen = Helpers::deliverymen_list_formatting($deliveryMen);
-            return view('admin-views.order.order-view', compact('order', 'deliveryMen', 'categories', 'products', 'category', 'keyword', 'editing'));
+            $cardRefunds = CardRefund::where('order_id', $order->id)->orderBy('id')->get();
+            return view('admin-views.order.order-view', compact('order', 'deliveryMen', 'categories', 'products', 'category', 'keyword', 'editing', 'cardRefunds'));
         } else {
             Toastr::info(translate('messages.no_more_orders'));
             return back();
@@ -364,6 +368,30 @@ class OrderController extends Controller
         return response()->json([
             'view' => view('admin-views.order.partials._table', compact('orders', 'parcel_order'))->render()
         ]);
+    }
+
+    public function card_refund_retry($id)
+    {
+        $refund = CardRefund::findOrFail($id);
+        NoonRefundService::retry($refund)
+            ? Toastr::success(translate('messages.card_refund_retried'))
+            : Toastr::warning(translate('messages.card_refund_action_failed'));
+        return back();
+    }
+
+    public function card_refund_wallet($id)
+    {
+        $refund = CardRefund::findOrFail($id);
+        try {
+            $done = NoonRefundService::toWallet($refund, 'admin', [CardRefund::FAILED]);
+        } catch (\Throwable $e) {
+            info('card refund to wallet failed: ' . $e->getMessage());
+            $done = false;
+        }
+        $done
+            ? Toastr::success(translate('messages.card_refund_moved_to_wallet'))
+            : Toastr::warning(translate('messages.card_refund_action_failed'));
+        return back();
     }
 
     public function status(Request $request)
@@ -468,7 +496,24 @@ class OrderController extends Controller
             $refund_method = $request->refund_method  ?? 'manual';
             $wallet_status = BusinessSetting::where('key', 'wallet_status')->first()->value;
             $refund_to_wallet = BusinessSetting::where('key', 'wallet_add_refund')->first()->value;
-            if ($order->payment_status == "paid" && $wallet_status == 1 && $refund_to_wallet == 1) {
+
+            // The customer asked for their card (noon, NP-09): that part goes
+            // back through noon; anything beyond the card payment (the wallet
+            // part of a wallet + card order) still goes to the wallet.
+            $card_refund = null;
+            if ($order->payment_status == "paid" && Refund::where('order_id', $order->id)->value('refund_method') === 'card' && NoonRefundService::refundRequestEligible($order)) {
+                $refund_amount = round($order->order_amount - $order->delivery_charge - $order->dm_tips, config('round_up_to_digit'));
+                $card_refund = NoonRefundService::openForRefundRequest($order, $refund_amount);
+            }
+
+            if ($card_refund) {
+                $rest = round($refund_amount - $card_refund->amount, 2);
+                if ($rest > 0 && $wallet_status == 1 && $refund_to_wallet == 1) {
+                    CustomerLogic::create_wallet_transaction($order->user_id, $rest, 'order_refund', $order->id);
+                }
+                Toastr::info(translate('Refund is being sent to the customer\'s card'));
+                $refund_method = 'card';
+            } elseif ($order->payment_status == "paid" && $wallet_status == 1 && $refund_to_wallet == 1) {
                 $refund_amount = round($order->order_amount - $order->delivery_charge - $order->dm_tips, config('round_up_to_digit'));
                 CustomerLogic::create_wallet_transaction($order->user_id, $refund_amount, 'order_refund', $order->id);
                 Toastr::info(translate('Refunded amount added to customer wallet'));
@@ -546,10 +591,8 @@ class OrderController extends Controller
                 $dm->current_orders = $dm->current_orders > 1 ? $dm->current_orders - 1 : 0;
                 $dm->save();
             }
-            if($order->is_guest == 0){
-
-                OrderLogic::refund_before_delivered($order);
-            }
+            // Guests too: a guest's noon card payment goes back to the card (NP-15).
+            OrderLogic::refund_before_delivered($order);
         }
         $order->order_status = $request->order_status;
         if($request->order_status == 'processing') {

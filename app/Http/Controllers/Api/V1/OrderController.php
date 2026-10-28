@@ -20,6 +20,9 @@ use App\Models\AutomatedMessage;
 use App\Models\OrderCancelReason;
 use Illuminate\Support\Facades\DB;
 use App\CentralLogics\ProductLogic;
+use App\CentralLogics\OrderLogic;
+use App\Models\CardRefund;
+use App\Services\NoonRefundService;
 use App\Http\Controllers\Controller;
 use App\Models\OfflinePaymentMethod;
 use Illuminate\Support\Facades\Mail;
@@ -66,6 +69,10 @@ class OrderController extends Controller
             $order['min_delivery_time'] =  $order->store ? (int) explode('-', $order->store?->delivery_time)[0] ?? 0 : 0;
             $order['max_delivery_time'] =  $order->store ? (int) explode('-', $order->store?->delivery_time)[1] ?? 0 : 0;
             $order['offline_payment'] =  isset($order->offline_payments) ? Helpers::offline_payment_formater($order->offline_payments) : null;
+            // Refund to card (NP-17): status / pending choice, and whether the
+            // refund form may offer "my card".
+            $order['card_refund'] = NoonRefundService::present(NoonRefundService::latestFor($order));
+            $order['card_refund_eligible'] = $order->order_status === 'delivered' && NoonRefundService::refundRequestEligible($order);
 
             unset($order['offline_payments']);
             unset($order['details']);
@@ -313,6 +320,11 @@ class OrderController extends Controller
                     ProductLogic::update_stock($item, -$detail->quantity, count($variant) ? $variant[0]['type'] : null)->save();
                 }
             }
+            // A wallet + card order whose card part never went through still
+            // holds the wallet part; give it back (once).
+            if ($order->order_status != 'canceled' && $order->payment_status == 'partially_paid') {
+                OrderLogic::refund_before_delivered($order);
+            }
             $order->order_status = 'canceled';
             $order->canceled = now();
             $order->cancellation_reason = $request->reason;
@@ -361,6 +373,14 @@ class OrderController extends Controller
             ], 404);
         } else if ($order->order_status == 'delivered' && $order->payment_status == 'paid') {
 
+            if ($request->refund_method === 'card' && !NoonRefundService::refundRequestEligible($order)) {
+                return response()->json([
+                    'errors' => [
+                        ['code' => 'refund_method', 'message' => translate('messages.card_refund_not_available')]
+                    ]
+                ], 403);
+            }
+
             $id_img_names = [];
             if (!empty($request->file('image'))) {
                 foreach ($request->image as $img) {
@@ -405,6 +425,65 @@ class OrderController extends Controller
                 ['code' => 'order', 'message' => translate('Something went wrong')]
             ]
         ], 403);
+    }
+
+    /**
+     * "Where should we send your refund?" (NP-17). Accepted once, while the
+     * card refund is awaiting the customer's choice.
+     */
+    public function refund_choice(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'order_id' => 'required',
+            'method' => 'required|in:wallet,card',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+        if (!$request->user) {
+            return response()->json(['errors' => [['code' => 'auth', 'message' => translate('messages.unauthorized')]]], 401);
+        }
+
+        $refund = CardRefund::where('order_id', $request['order_id'])
+            ->where('user_id', $request->user->id)
+            ->latest('id')
+            ->first();
+        if (!$refund) {
+            return response()->json(['errors' => [['code' => 'order', 'message' => translate('messages.not_found')]]], 404);
+        }
+
+        try {
+            $done = NoonRefundService::choose($refund, $request['method']);
+        } catch (\Throwable $e) {
+            info('refund choice failed: ' . $e->getMessage());
+            $done = false;
+        }
+        if (!$done) {
+            return response()->json([
+                'errors' => [['code' => 'refund_choice', 'message' => translate('messages.refund_choice_already_made')]],
+                'card_refund' => NoonRefundService::present($refund->fresh()),
+            ], 409);
+        }
+
+        return response()->json([
+            'message' => translate($request['method'] === 'wallet' ? 'messages.refund_added_to_wallet' : 'messages.refund_on_its_way_to_card'),
+            'card_refund' => NoonRefundService::present($refund->fresh()),
+        ], 200);
+    }
+
+    /** Refunds still waiting for the customer's choice, for the sheet on app open. */
+    public function refund_choices(Request $request)
+    {
+        if (!$request->user) {
+            return response()->json([], 200);
+        }
+        $rows = CardRefund::where('user_id', $request->user->id)
+            ->where('status', CardRefund::AWAITING_CHOICE)
+            ->where('choice_deadline', '>', now())
+            ->orderBy('choice_deadline')
+            ->get();
+
+        return response()->json($rows->map(fn ($r) => ['order_id' => $r->order_id] + NoonRefundService::present($r))->values(), 200);
     }
 
     public function update_payment_method(Request $request)

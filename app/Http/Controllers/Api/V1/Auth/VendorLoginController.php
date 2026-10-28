@@ -15,6 +15,12 @@ use App\Models\VendorEmployee;
 use App\Mail\StoreRegistration;
 use App\Models\BusinessSetting;
 use App\CentralLogics\StoreLogic;
+use App\CentralLogics\SMS_module;
+use App\CentralLogics\AkedlyGateway;
+use Illuminate\Support\Carbon;
+use Carbon\CarbonInterval;
+use Illuminate\Support\Facades\DB;
+use Modules\Gateways\Traits\SmsGateway;
 use App\Http\Controllers\Controller;
 use App\Mail\VendorSelfRegistration;
 use Illuminate\Support\Facades\Mail;
@@ -43,79 +49,249 @@ class VendorLoginController extends Controller
             'password' => $request->password
         ];
 
-        if($vendor_type == 'owner'){
-            if (auth('vendor')->attempt($data)) {
-                $vendor = Vendor::where(['email' => $request['email']])->first();
-                // Reuse the token: a new one per login logged the owner out
-                // on every other phone (SB-4). Blocking the store or
-                // resetting the password clears it.
-                $token = $vendor->auth_token ?: $this->genarate_token($request['email']);
+        if($vendor_type == 'owner' && auth('vendor')->attempt($data)){
+            return $this->owner_session(Vendor::where(['email' => $request['email']])->first());
+        }
+        if($vendor_type == 'employee' && auth('vendor_employee')->attempt($data)){
+            return $this->employee_session(VendorEmployee::where(['email' => $request['email']])->first());
+        }
 
-            $storeSubscriptionCheck=  $this->storeSubscriptionCheck($vendor?->stores[0],$vendor,$token);
+        $errors = [];
+        array_push($errors, ['code' => 'auth-001', 'message' => translate('Credential_do_not_match,_please_try_again')]);
+        return response()->json([
+            'errors' => $errors
+        ], 401);
+    }
 
-                    if(data_get($storeSubscriptionCheck,'type') != null){
-                        return response()->json(data_get($storeSubscriptionCheck,'data'), data_get($storeSubscriptionCheck,'code'));
-                    }
+    /** Seconds between login OTP sends; the app runs its resend countdown from the value we return. */
+    const OTP_RESEND_INTERVAL = 30;
 
-                    if($vendor?->stores[0]?->module?->module_type == 'rental'){
-                        if(!addon_published_status('Rental')){
-                            $errors = [];
-                            array_push($errors, ['code' => 'auth-001', 'message' => translate('rental_module_is_not_available')]);
-                            return response()->json([
-                                'errors' => $errors
-                            ], 401);
-                        }
-                    }
-                $vendor->auth_token = $token;
-                $vendor->save();
-                return response()->json(['token' => $token, 'zone_wise_topic'=> $vendor->stores[0]->zone->store_wise_topic, 'module_type' => $vendor?->stores[0]?->module?->module_type], 200);
-            }  else {
-                $errors = [];
-                array_push($errors, ['code' => 'auth-001', 'message' => translate('Credential_do_not_match,_please_try_again')]);
-                return response()->json([
-                    'errors' => $errors
-                ], 401);
-            }
-        }elseif($vendor_type == 'employee'){
+    /** A resend inside this window re-sends the code on file, so a late WhatsApp and the SMS fallback match. */
+    const OTP_REUSE_WINDOW = 300;
 
-            if (auth('vendor_employee')->attempt($data)) {
-                $vendor = VendorEmployee::where(['email' => $request['email']])->first();
-                $token = $vendor->auth_token ?: $this->genarate_token($request['email']);
-                $storeSubscriptionCheck=  $this->storeSubscriptionCheck($vendor?->store,$vendor,$token);
-                if(data_get($storeSubscriptionCheck,'type') != null){
-                    return response()->json(data_get($storeSubscriptionCheck,'data'), data_get($storeSubscriptionCheck,'code'));
-                }
+    /** A login OTP older than this is refused. */
+    const OTP_EXPIRY = 600;
 
-                if($vendor?->store?->module_type == 'rental'){
-                    if(!addon_published_status('Rental')){
-                        $errors = [];
-                        array_push($errors, ['code' => 'auth-001', 'message' => translate('rental_module_is_not_available')]);
-                        return response()->json([
-                            'errors' => $errors
-                        ], 401);
-                    }
-                }
+    /**
+     * Phone sign-in, step 1: text a code to an owner or employee already on
+     * file. An unknown number gets `account_not_found` so the app can offer
+     * store registration instead; nobody is created here.
+     */
+    public function send_otp(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'phone' => 'required|max:20',
+            'vendor_type' => 'required|in:owner,employee',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
 
-                $vendor->auth_token = $token;
-                $vendor->save();
-                $role = $vendor->role ? json_decode($vendor->role->modules):[];
-                return response()->json(['token' => $token, 'zone_wise_topic'=> $vendor->store->zone->store_wise_topic, 'role'=>$role,
-                    'module_type' => $vendor?->store?->module_type], 200);
-            } else {
-                $errors = [];
-                array_push($errors, ['code' => 'auth-001', 'message' => translate('Credential_do_not_match,_please_try_again')]);
-                return response()->json([
-                    'errors' => $errors
-                ], 401);
-            }
-        } else {
-            $errors = [];
-            array_push($errors, ['code' => 'auth-001', 'message' => translate('Credential_do_not_match,_please_try_again')]);
+        $phone = AkedlyGateway::normalize_phone($request->phone);
+        if (!$this->account_by_phone($request->vendor_type, $phone)) {
+            return response()->json(['errors' => [
+                ['code' => 'account_not_found', 'message' => translate('messages.no_account_on_this_phone')]
+            ]], 404);
+        }
+
+        $blocked = $this->otp_block_response($phone);
+        if ($blocked) {
+            return $blocked;
+        }
+
+        $verification_data = DB::table('phone_verifications')->where('phone', $phone)->first();
+        if (isset($verification_data) && Carbon::parse($verification_data->updated_at)->DiffInSeconds() < self::OTP_RESEND_INTERVAL) {
+            $time = self::OTP_RESEND_INTERVAL - Carbon::parse($verification_data->updated_at)->DiffInSeconds();
+            return response()->json(['errors' => [
+                ['code' => 'otp', 'message' => translate('messages.please_try_again_after_').$time.' '.translate('messages.seconds')]
+            ]], 405);
+        }
+
+        $reuse = isset($verification_data) && !empty($verification_data->token)
+            && Carbon::parse($verification_data->created_at)->DiffInSeconds() < self::OTP_REUSE_WINDOW;
+        $otp = $reuse ? $verification_data->token : rand(100000, 999999);
+
+        $published_status = config('get_payment_publish_status')[0]['is_published'] ?? 0;
+        AkedlyGateway::request_channel($request->otp_channel);
+        $response = $published_status == 1 ? SmsGateway::send($phone, $otp) : SMS_module::send($phone, $otp);
+
+        if ($response !== 'success') {
+            return response()->json(['errors' => [
+                ['code' => 'otp', 'message' => translate('messages.failed_to_send_sms')]
+            ]], 405);
+        }
+
+        // A reused code keeps its created_at and wrong-attempt count, so
+        // resending can't reset the expiry or the attempt limit.
+        DB::table('phone_verifications')->updateOrInsert(['phone' => $phone],
+            $reuse ? ['updated_at' => now()] : [
+                'token' => $otp,
+                'otp_hit_count' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+        return response()->json(['otp_channel' => AkedlyGateway::last_channel() ?? 'sms', 'resend_in' => self::OTP_RESEND_INTERVAL], 200);
+    }
+
+    /** Phone sign-in, step 2: the same token response as login(). */
+    public function verify_otp(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'phone' => 'required|max:20',
+            'otp' => 'required',
+            'vendor_type' => 'required|in:owner,employee',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+
+        $phone = AkedlyGateway::normalize_phone($request->phone);
+
+        // A blocked number stays blocked even for the right code.
+        $blocked = $this->otp_block_response($phone);
+        if ($blocked) {
+            return $blocked;
+        }
+
+        $data = DB::table('phone_verifications')->where(['phone' => $phone, 'token' => $request->otp])->first();
+        if (!$data) {
+            return $this->record_wrong_otp($phone) ?? response()->json(['errors' => [
+                ['code' => 'otp', 'message' => translate('messages.otp_does_not_match')]
+            ]], 404);
+        }
+        if (Carbon::parse($data->created_at)->DiffInSeconds() > self::OTP_EXPIRY) {
+            return response()->json(['errors' => [
+                ['code' => 'otp_expired', 'message' => translate('messages.otp_expired_request_a_new_code')]
+            ]], 405);
+        }
+
+        $account = $this->account_by_phone($request->vendor_type, $phone);
+        if (!$account) {
+            return response()->json(['errors' => [
+                ['code' => 'account_not_found', 'message' => translate('messages.no_account_on_this_phone')]
+            ]], 404);
+        }
+
+        DB::table('phone_verifications')->where('phone', $phone)->delete();
+
+        return $request->vendor_type == 'owner' ? $this->owner_session($account) : $this->employee_session($account);
+    }
+
+    /**
+     * Phones are stored however they were typed at registration or under
+     * Staff, so an Egyptian number is looked up as +20…, 20… and 0….
+     */
+    private function account_by_phone(string $type, string $phone)
+    {
+        $digits = ltrim($phone, '+');
+        $candidates = [$phone, $digits];
+        if (str_starts_with($digits, '20')) {
+            $candidates[] = '0'.substr($digits, 2);
+        }
+
+        return ($type == 'owner' ? Vendor::query() : VendorEmployee::query())->whereIn('phone', $candidates)->first();
+    }
+
+    private function owner_session(Vendor $vendor)
+    {
+        // Reuse the token: a new one per login logged the owner out on every
+        // other phone (SB-4). Blocking the store or resetting the password clears it.
+        $token = $vendor->auth_token ?: $this->genarate_token($vendor->email);
+
+        $storeSubscriptionCheck = $this->storeSubscriptionCheck($vendor?->stores[0], $vendor, $token);
+        if(data_get($storeSubscriptionCheck,'type') != null){
+            return response()->json(data_get($storeSubscriptionCheck,'data'), data_get($storeSubscriptionCheck,'code'));
+        }
+
+        if($vendor?->stores[0]?->module?->module_type == 'rental' && !addon_published_status('Rental')){
             return response()->json([
-                'errors' => $errors
+                'errors' => [['code' => 'auth-001', 'message' => translate('rental_module_is_not_available')]]
             ], 401);
         }
 
+        $vendor->auth_token = $token;
+        $vendor->save();
+        return response()->json(['token' => $token, 'zone_wise_topic'=> $vendor->stores[0]->zone->store_wise_topic, 'module_type' => $vendor?->stores[0]?->module?->module_type], 200);
+    }
+
+    private function employee_session(VendorEmployee $vendor)
+    {
+        $token = $vendor->auth_token ?: $this->genarate_token($vendor->email);
+        $storeSubscriptionCheck = $this->storeSubscriptionCheck($vendor?->store, $vendor, $token);
+        if(data_get($storeSubscriptionCheck,'type') != null){
+            return response()->json(data_get($storeSubscriptionCheck,'data'), data_get($storeSubscriptionCheck,'code'));
+        }
+
+        if($vendor?->store?->module_type == 'rental' && !addon_published_status('Rental')){
+            return response()->json([
+                'errors' => [['code' => 'auth-001', 'message' => translate('rental_module_is_not_available')]]
+            ], 401);
+        }
+
+        $vendor->auth_token = $token;
+        $vendor->save();
+        $role = $vendor->role ? json_decode($vendor->role->modules):[];
+        return response()->json(['token' => $token, 'zone_wise_topic'=> $vendor->store->zone->store_wise_topic, 'role'=>$role,
+            'module_type' => $vendor?->store?->module_type], 200);
+    }
+
+    /** The error response while this phone sits in its 10-minute wrong-OTP block, else null. */
+    private function otp_block_response($phone)
+    {
+        $temp_block_time = 600; // seconds
+        $verification_data = DB::table('phone_verifications')->where('phone', $phone)->first();
+
+        if (isset($verification_data->temp_block_time) && Carbon::parse($verification_data->temp_block_time)->DiffInSeconds() <= $temp_block_time) {
+            $time = $temp_block_time - Carbon::parse($verification_data->temp_block_time)->DiffInSeconds();
+            return response()->json(['errors' => [
+                ['code' => 'otp_block_time', 'message' => translate('messages.please_try_again_after_') . CarbonInterval::seconds($time)->cascade()->forHumans()]
+            ]], 405);
+        }
+        return null;
+    }
+
+    /**
+     * Count a wrong OTP; after 5 inside a minute the number is blocked for 10
+     * minutes. Same rules as customer login (CustomerAuthController).
+     */
+    private function record_wrong_otp($phone)
+    {
+        $max_otp_hit = 5;
+        $max_otp_hit_time = 60; // seconds
+
+        $verification_data = DB::table('phone_verifications')->where('phone', $phone)->first();
+
+        if (isset($verification_data)) {
+            if ($verification_data->is_temp_blocked == 1 && Carbon::parse($verification_data->updated_at)->DiffInSeconds() >= $max_otp_hit_time) {
+                DB::table('phone_verifications')->updateOrInsert(['phone' => $phone], [
+                    'otp_hit_count' => 0,
+                    'is_temp_blocked' => 0,
+                    'temp_block_time' => null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            if ($verification_data->otp_hit_count >= $max_otp_hit && Carbon::parse($verification_data->updated_at)->DiffInSeconds() < $max_otp_hit_time && $verification_data->is_temp_blocked == 0) {
+                DB::table('phone_verifications')->updateOrInsert(['phone' => $phone], [
+                    'is_temp_blocked' => 1,
+                    'temp_block_time' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                return response()->json(['errors' => [
+                    ['code' => 'otp_temp_blocked', 'message' => translate('messages.Too_many_attemps')]
+                ]], 405);
+            }
+        }
+
+        DB::table('phone_verifications')->updateOrInsert(['phone' => $phone], [
+            'otp_hit_count' => DB::raw('otp_hit_count + 1'),
+            'updated_at' => now(),
+            'temp_block_time' => null,
+        ]);
+        return null;
     }
 
     private function genarate_token($email)

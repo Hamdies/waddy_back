@@ -1210,6 +1210,77 @@
                         </div>
                     @endif
                 @endif
+                @foreach ($cardRefunds ?? [] as $cardRefund)
+                    {{-- Refund to card through noon (NP-18) --}}
+                    <div class="card mb-2">
+                        <div class="card-header border-0 d-block text-center pb-0">
+                            <h4 class="m-0">{{ translate('Card refund') }}</h4>
+                            <span>{{ $cardRefund->source == 'cancellation' ? translate('Order cancelled') : translate('Refund request') }}</span>
+                        </div>
+                        <div class="card-body pt-2">
+                            <ul class="delivery--information-single">
+                                <li>
+                                    <span class="name">{{ translate('amount') }}</span>
+                                    <span class="info">{{ \App\CentralLogics\Helpers::format_currency($cardRefund->amount) }}</span>
+                                </li>
+                                <li>
+                                    <span class="name">{{ translate('Status') }}</span>
+                                    <span class="info">
+                                        @if ($cardRefund->status == 'awaiting_choice')
+                                            {{ translate('Waiting for the customer to pick wallet or card') }} ({{ translate('card on') }} {{ $cardRefund->choice_deadline?->format('d M H:i') }})
+                                        @elseif ($cardRefund->status == 'to_wallet')
+                                            {{ translate('Credited to wallet') }}
+                                        @elseif ($cardRefund->status == 'requested')
+                                            {{ translate('Sending to noon') }}
+                                        @elseif ($cardRefund->status == 'submitted')
+                                            {{ translate('Sent to noon, waiting for confirmation') }}
+                                        @elseif ($cardRefund->status == 'succeeded')
+                                            {{ translate('Refunded to card') }}
+                                        @else
+                                            <span class="text-danger">{{ translate('Failed') }}</span>
+                                        @endif
+                                    </span>
+                                </li>
+                                @if ($cardRefund->chosen_by)
+                                    <li>
+                                        <span class="name">{{ translate('Chosen by') }}</span>
+                                        <span class="info">{{ $cardRefund->chosen_by }}</span>
+                                    </li>
+                                @endif
+                                <li>
+                                    <span class="name">{{ translate('noon order') }}</span>
+                                    <span class="info">{{ $cardRefund->noon_order_id }}</span>
+                                </li>
+                                @if ($cardRefund->rrn)
+                                    <li>
+                                        <span class="name">RRN</span>
+                                        <span class="info">{{ $cardRefund->rrn }}</span>
+                                    </li>
+                                @endif
+                                @if ($cardRefund->status == 'failed' && $cardRefund->error_message)
+                                    <li>
+                                        <span class="name">{{ translate('Error') }}</span>
+                                        <span class="info text-danger">{{ $cardRefund->error_message }}</span>
+                                    </li>
+                                @endif
+                            </ul>
+                            @if ($cardRefund->status == 'failed')
+                                <div class="btn--container justify-content-center mt-2">
+                                    <form action="{{ route('admin.order.card-refund.retry', $cardRefund->id) }}" method="post">
+                                        @csrf
+                                        <button type="submit" class="btn btn--primary btn--sm">{{ translate('Retry card refund') }}</button>
+                                    </form>
+                                    @if ($cardRefund->user_id)
+                                        <form action="{{ route('admin.order.card-refund.wallet', $cardRefund->id) }}" method="post">
+                                            @csrf
+                                            <button type="submit" class="btn btn--reset btn--sm">{{ translate('Credit wallet instead') }}</button>
+                                        </form>
+                                    @endif
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
                 @if ( !in_array($order->order_status, ['refund_requested', 'refunded', 'refund_request_canceled', 'delivered','canceled']) )
                     <div class="card" style="z-index: 2; overflow: visible;">
                         <div class="card-header justify-content-center">

@@ -562,6 +562,12 @@ class VendorController extends Controller
             $order->canceled_by='store';
         }
 
+        // A store cancelling a paid order used to refund nothing. Same refund
+        // as an admin cancel; once per order.
+        if ($request->status == 'canceled' && $order->order_status != 'canceled') {
+            OrderLogic::refund_before_delivered($order);
+        }
+
         $order->order_status = $request['status'];
         if($order->order_status == 'processing') {
             $order->processing_time = ($request?->processing_time) ? $request->processing_time

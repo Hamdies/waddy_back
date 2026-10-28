@@ -38,7 +38,7 @@
       <p class="lead"><span lang="en">One flat delivery fee across Maadi, and the full total on screen before you confirm.</span><span lang="ar">رسوم توصيل ثابتة في كل المعادي، والإجمالي الكامل أمامك قبل تأكيد الطلب.</span></p>
       <ul class="ticks">
         <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span lang="en">Fees are charged once per order, not per item</span><span lang="ar">تُحتسب الرسوم مرة واحدة لكل طلب، وليس لكل صنف</span></li>
-        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span lang="en">Card payments processed securely by Paymob</span><span lang="ar">مدفوعات البطاقات تتم بأمان عبر Paymob</span></li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span lang="en">Card payments processed securely by noon payments</span><span lang="ar">مدفوعات البطاقات تتم بأمان عبر noon payments</span></li>
         <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span lang="en">The app checks your address is in our Maadi zone first</span><span lang="ar">يتحقق التطبيق أولًا من أن عنوانك داخل منطقة المعادي</span></li>
       </ul>
       <a class="more" href="{{ route('shipping-policy') }}"><span lang="en">Delivery and fees policy</span><span lang="ar">سياسة التوصيل والرسوم</span></a>

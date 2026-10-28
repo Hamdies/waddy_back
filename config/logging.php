@@ -54,6 +54,14 @@ return [
             'days' => 14,
         ],
 
+        // Card gateway results (noon). Never log Authorization headers or secrets.
+        'payments' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/payments.log'),
+            'level' => 'info',
+            'days' => 90,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

@@ -234,7 +234,7 @@ if (! function_exists('wallet_success')) {
     }
 }
 
-if (! function_exists('wallet_success')) {
+if (! function_exists('wallet_failed')) {
     function wallet_failed($data) {
         $order = WalletPayment::find($data->attribute_id);
         $order->payment_status='failed';

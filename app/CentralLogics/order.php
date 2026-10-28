@@ -370,13 +370,44 @@ class OrderLogic
         return true;
     }
 
+    /**
+     * Money back for an order cancelled before delivery. Callable for guests
+     * too: a guest's noon card payment goes back to the card (NP-15); any
+     * other guest order keeps the old behaviour (nothing).
+     */
     public static function refund_before_delivered($order){
-        $adminWallet = AdminWallet::firstOrNew(
-            ['admin_id' => Admin::where('role_id', 1)->first()->id]
-        );
         if ($order->payment_method == 'cash_on_delivery') {
             return false;
         }
+
+        // Card part paid through noon: refunded to the card or the wallet,
+        // whichever the customer picks (NoonRefundService). Only the wallet
+        // part of a wallet + card order is credited here.
+        $card_payment = ($order->payment_status == 'paid' && \App\Services\NoonPaymentService::cardRefundEnabled())
+            ? \App\Services\NoonRefundService::cardPayment($order)
+            : null;
+
+        if ($order->is_guest == 1 && !$card_payment) {
+            return false;
+        }
+
+        $adminWallet = AdminWallet::firstOrNew(
+            ['admin_id' => Admin::where('role_id', 1)->first()->id]
+        );
+
+        if ($card_payment) {
+            $adminWallet->digital_received = $adminWallet->digital_received - $order->order_amount;
+            $adminWallet->save();
+
+            $card_amount = min((float) $card_payment->payment_amount, \App\Services\NoonRefundService::cardBalance($order, $card_payment));
+            $wallet_part = round($order->order_amount - (float) $card_payment->payment_amount, 2);
+            if ($wallet_part > 0 && $order->is_guest == 0 && BusinessSetting::where('key', 'wallet_add_refund')->first()->value == 1) {
+                CustomerLogic::create_wallet_transaction($order->user_id, $wallet_part, 'order_refund', $order->id);
+            }
+            \App\Services\NoonRefundService::openForCancellation($order, $card_payment, $card_amount);
+            return true;
+        }
+
         if(($order->payment_status == "paid")){
 
             $adminWallet->digital_received = $adminWallet->digital_received - $order->order_amount;

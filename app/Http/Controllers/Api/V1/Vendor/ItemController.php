@@ -16,6 +16,7 @@ use App\Models\Translation;
 use Illuminate\Http\Request;
 use App\CentralLogics\Helpers;
 use App\Services\CatalogService;
+use App\Services\ItemAvailabilityService;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use App\Models\PharmacyItemDetails;
@@ -437,10 +438,18 @@ class ItemController extends Controller
         }
 
         $product = Item::find($request->id);
-        $product->status = $request->status;
-        $product->save();
+        // `for` (2h / today / manual) is optional, so older apps keep working.
+        if ($request->status) {
+            ItemAvailabilityService::show($product);
+        } else {
+            $for = in_array($request->for, ItemAvailabilityService::FOR_OPTIONS, true) ? $request->for : 'manual';
+            ItemAvailabilityService::hide($product, $for);
+        }
 
-        return response()->json(['message' => translate('messages.product_status_updated')], 200);
+        return response()->json([
+            'message' => translate('messages.product_status_updated'),
+            'available_again_at' => $product->available_again_at ? Carbon::parse($product->available_again_at)->toIso8601String() : null,
+        ], 200);
     }
 
     public function get_item($id)

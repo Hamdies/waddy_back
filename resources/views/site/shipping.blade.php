@@ -54,8 +54,8 @@
 <li>بعض العروض، مثل أكواد التوصيل المجاني، تُلغي رسوم التوصيل، وتظهر شروط العرض معه.</li></ul></div></section>
 
 <section id="payment"><h2><span class="n">03</span><span lang="en">Payment</span><span lang="ar">الدفع</span></h2>
-<div lang="en"><p>You can pay with the payment methods shown at checkout. Card payments are processed securely by our payment provider, Paymob, and we do not store your full card details. See our <a href="{{ route('terms-and-conditions') }}">Terms</a> for more on payments.</p></div>
-<div lang="ar"><p>يمكنك الدفع بوسائل الدفع المعروضة عند إتمام الطلب. تتم معالجة مدفوعات البطاقات بأمان عبر مزوّد الدفع لدينا Paymob، ولا نحتفظ ببيانات بطاقتك كاملة. راجع <a href="{{ route('terms-and-conditions') }}">الشروط</a> لمزيد من التفاصيل حول الدفع.</p></div></section>
+<div lang="en"><p>You can pay with the payment methods shown at checkout. Card payments are processed securely by our payment provider, noon payments, and we do not store your full card details. See our <a href="{{ route('terms-and-conditions') }}">Terms</a> for more on payments.</p></div>
+<div lang="ar"><p>يمكنك الدفع بوسائل الدفع المعروضة عند إتمام الطلب. تتم معالجة مدفوعات البطاقات بأمان عبر مزوّد الدفع لدينا noon payments، ولا نحتفظ ببيانات بطاقتك كاملة. راجع <a href="{{ route('terms-and-conditions') }}">الشروط</a> لمزيد من التفاصيل حول الدفع.</p></div></section>
 
 <section id="delivery-times"><h2><span class="n">04</span><span lang="en">Delivery times</span><span lang="ar">مواعيد التوصيل</span></h2>
 <div lang="en"><ul>

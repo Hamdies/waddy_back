@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\PaymobController;
+use App\Http\Controllers\NoonController;
 use App\Http\Controllers\FirebaseController;
 
 /*
@@ -66,13 +66,12 @@ Route::get('payment-success', 'PaymentController@success')->name('payment-succes
 Route::get('payment-fail', 'PaymentController@fail')->name('payment-fail');
 Route::get('payment-cancel', 'PaymentController@cancel')->name('payment-cancel');
 
-// Paymob is the only gateway in service (Egypt-only market). This used to sit
-// behind a check on whether a Modules/Gateways addon was published; that addon
-// does not exist, so the condition only ever evaluated one way.
+// noon is the only card gateway (Egypt-only market); Paymob was removed 10-28.
 Route::group(['prefix' => 'payment'], function () {
-    Route::group(['prefix' => 'paymob', 'as' => 'paymob.'], function () {
-        Route::any('pay', [PaymobController::class, 'credit'])->name('pay');
-        Route::any('callback', [PaymobController::class, 'callback'])->name('callback');
+    Route::group(['prefix' => 'noon', 'as' => 'noon.'], function () {
+        Route::any('pay', [NoonController::class, 'pay'])->name('pay');
+        Route::get('return', [NoonController::class, 'return'])->name('return');
+        Route::post('webhook', [NoonController::class, 'webhook'])->name('webhook');
     });
 });
 

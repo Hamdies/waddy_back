@@ -239,8 +239,37 @@
                                 </div>
 
                                 @php($skip=['gateway','mode','status'])
+                                @php($secret_keys=['application_key','webhook_secret'])
                                 @foreach($data_values->where('key_name',$payment->key_name)->first()->live_values as $key=>$value)
-                                    @if(!in_array($key,$skip))
+                                    @if($payment->key_name == 'noon' && $key == 'region')
+                                        <div class="form-floating mb-2" >
+                                            <label for="{{$payment_key}}-{{$key}}" class="form-label">{{translate('Region')}} *</label>
+                                            <select id="{{$payment_key}}-{{$key}}" class="form-control" name="region">
+                                                <option value="eg" {{$value=='eg'?'selected':''}}>Egypt</option>
+                                                <option value="sa" {{$value=='sa'?'selected':''}}>KSA</option>
+                                                <option value="global" {{$value=='global'?'selected':''}}>Global</option>
+                                            </select>
+                                        </div>
+                                    @elseif($payment->key_name == 'noon' && $key == 'card_refund_enabled')
+                                        <div class="form-floating mb-2" >
+                                            <label for="{{$payment_key}}-{{$key}}" class="form-label">{{translate('Refunds to card')}}</label>
+                                            <select id="{{$payment_key}}-{{$key}}" class="form-control" name="card_refund_enabled">
+                                                <option value="0" {{$value=='1'?'':'selected'}}>{{translate('Off: refunds go to the wallet')}}</option>
+                                                <option value="1" {{$value=='1'?'selected':''}}>{{translate('On: customer picks wallet or card')}}</option>
+                                            </select>
+                                            <small class="text-muted">{{translate('Turn on together with the app update that shows the wallet or card choice.')}}</small>
+                                        </div>
+                                    @elseif($payment->key_name == 'noon' && in_array($key,$secret_keys))
+                                        <div class="form-floating mb-2" >
+                                            <label for="{{$payment_key}}-{{$key}}"
+                                                   class="form-label">{{ucwords(str_replace('_',' ',$key))}}
+                                                *</label>
+                                            <input id="{{$payment_key}}-{{$key}}" type="password" class="form-control"
+                                                   name="{{$key}}" autocomplete="new-password"
+                                                   placeholder="{{ucwords(str_replace('_',' ',$key))}} *"
+                                                   value="{{env('APP_ENV')=='demo'?'':$value}}">
+                                        </div>
+                                    @elseif(!in_array($key,$skip))
                                         <div class="form-floating mb-2" >
                                             <label for="{{$payment_key}}-{{$key}}"
                                                    class="form-label">{{ucwords(str_replace('_',' ',$key))}}
@@ -253,14 +282,11 @@
                                     @endif
                                 @endforeach
 
-                                @if($payment['key_name'] == 'paystack' && \Illuminate\Support\Facades\Route::has('paystack.callback'))
+                                @if($payment['key_name'] == 'noon' && \Illuminate\Support\Facades\Route::has('noon.webhook'))
                                     <div class="form-floating mb-2" >
-                                        <label for="Callback_Url" class="form-label">{{translate('Callback Url')}}</label>
-                                        <input id="Callback_Url" type="text"
-                                               class="form-control"
-                                               placeholder="{{translate('Callback Url')}} *"
-                                               readonly
-                                               value="{{env('APP_ENV')=='demo'?'': route('paystack.callback')}}" {{$is_published}}>
+                                        <label for="noon_webhook_url" class="form-label">{{translate('Webhook Url')}} (noon portal → Webhook, version 2)</label>
+                                        <input id="noon_webhook_url" type="text" class="form-control" readonly
+                                               value="{{ route('noon.webhook') }}">
                                     </div>
                                 @endif
 

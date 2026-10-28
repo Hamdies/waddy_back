@@ -65,6 +65,8 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
         });
         Route::group(['prefix' => 'vendor'], function () {
             Route::post('login', 'VendorLoginController@login');
+            Route::post('send-otp', 'VendorLoginController@send_otp');
+            Route::post('verify-otp', 'VendorLoginController@verify_otp');
             Route::post('forgot-password', 'VendorPasswordResetController@reset_password_request');
             Route::post('verify-token', 'VendorPasswordResetController@verify_token');
             Route::put('reset-password', 'VendorPasswordResetController@reset_password_submit');
@@ -216,6 +218,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
 
         Route::get('get-expense', 'ReportController@expense_report');
         Route::get('get-tax-report', 'ReportController@vendorTax');
+        Route::get('sales-report', 'ReportController@sales_report');
 
         Route::get('get-disbursement-report', 'ReportController@disbursement_report');
         Route::get('subscription-transaction', 'SubscriptionController@transaction');
@@ -459,6 +462,9 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
                 Route::post('item-unavailable/respond', 'OrderController@respond_unavailable_item');
                 Route::post('refund-request', 'OrderController@refund_request');
                 Route::get('refund-reasons', 'OrderController@refund_reasons');
+                // Wallet or card for a cancelled card order (noon, NP-17).
+                Route::post('refund-choice', 'OrderController@refund_choice');
+                Route::get('refund-choices', 'OrderController@refund_choices');
                 Route::get('track', 'OrderController@track_order');
                 // Rider position only, for the live map's 10 s poll (LT-05).
                 Route::get('rider-location', 'OrderController@rider_location');

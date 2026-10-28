@@ -290,6 +290,9 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         Route::get('order/generate-invoice/{id}', 'OrderController@generate_invoice')->name('order.generate-invoice');
         Route::get('order/print-invoice/{id}', 'OrderController@print_invoice')->name('order.print-invoice');
         Route::get('order/status', 'OrderController@status')->name('order.status');
+        // Failed card refund (noon, NP-18): send again, or credit the wallet instead.
+        Route::post('order/card-refund/{id}/retry', 'OrderController@card_refund_retry')->name('order.card-refund.retry');
+        Route::post('order/card-refund/{id}/wallet', 'OrderController@card_refund_wallet')->name('order.card-refund.wallet');
         Route::get('order/offline-payment', 'OrderController@offline_payment')->name('order.offline_payment');
         Route::group(['prefix' => 'order', 'as' => 'order.', 'middleware' => ['module:order']], function () {
             Route::get('list/{status}', 'OrderController@list')->name('list');

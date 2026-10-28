@@ -10,6 +10,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Validator;
 use App\CentralLogics\Helpers;
 use App\Models\Order;
+use App\Services\StoreSalesReportService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Facades\DB;
@@ -203,5 +204,17 @@ class ReportController extends Controller
 
 
         return ['summary' => $summary, 'orders' => $orders, 'taxSummary' => $taxSummary ?? []];
+    }
+
+    /** Store app Reports screen (period: today | week | month). */
+    public function sales_report(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'period' => 'required|in:' . implode(',', array_keys(StoreSalesReportService::PERIODS)),
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+        return response()->json(StoreSalesReportService::build($request->vendor->stores[0], $request['period']), 200);
     }
 }
