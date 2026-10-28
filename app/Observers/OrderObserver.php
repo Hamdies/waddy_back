@@ -9,6 +9,7 @@ use App\Services\XpService;
 use App\Services\ChallengeService;
 use App\Services\ScratchCardService;
 use App\Services\StorePushService;
+use App\Services\StoreRealtime;
 use App\Services\EstimatedDeliveryService;
 use App\Services\LateApologyService;
 use Illuminate\Support\Facades\Log;
@@ -49,6 +50,8 @@ class OrderObserver
         } catch (\Exception $e) {
             Log::error("Failed to mark scratch card used for order {$order->id}: " . $e->getMessage());
         }
+
+        StoreRealtime::orderChanged($order);
     }
 
     /**
@@ -57,6 +60,10 @@ class OrderObserver
      */
     public function updated(Order $order): void
     {
+        // Any change the store app shows (status, rider, payment, the
+        // customer's sold-out answer bumps updated_at): live update (RT).
+        StoreRealtime::orderChanged($order);
+
         if (!$order->isDirty('order_status')) {
             return;
         }

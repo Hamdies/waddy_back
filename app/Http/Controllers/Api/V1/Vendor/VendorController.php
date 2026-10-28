@@ -24,6 +24,7 @@ use App\CentralLogics\Helpers;
 use App\Services\StorePushService;
 use App\Services\StoreInsightsService;
 use App\Services\StoreBusyService;
+use App\Services\StoreRealtime;
 use App\Models\VendorEmployee;
 use App\Models\BusinessSetting;
 use App\Models\WithdrawRequest;
@@ -352,6 +353,21 @@ class VendorController extends Controller
         ->get();
         $orders= Helpers::order_data_formatting($orders, true);
         return response()->json($orders, 200);
+    }
+
+    /**
+     * RT-2: signs a store app's subscription to its own `private-store.{id}`
+     * channel (Pusher protocol). Store tokens are not a Laravel guard, so this
+     * replaces Broadcast::routes() for them.
+     */
+    public function broadcasting_auth(Request $request)
+    {
+        $store = $request['vendor']->stores[0] ?? null;
+        $auth = $store ? StoreRealtime::authorize((int) $store->id, (string) $request['socket_id'], (string) $request['channel_name']) : null;
+        if (!$auth) {
+            return response()->json(['errors' => [['code' => 'channel', 'message' => 'Forbidden']]], 403);
+        }
+        return response()->json(['auth' => $auth], 200);
     }
 
     public function get_completed_orders(Request $request)

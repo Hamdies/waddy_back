@@ -270,6 +270,8 @@ class ConfigController extends Controller
             'websocket_url' => (isset($settings['websocket_url']) ? $settings['websocket_url'] : ''),
             'websocket_port' => (int)(isset($settings['websocket_port']) ? $settings['websocket_port'] : 6001),
             'websocket_key' => env('PUSHER_APP_KEY'),
+            // RT: live updates for the store app; null when Reverb is off.
+            'realtime' => \App\Services\StoreRealtime::clientConfig(),
             'guest_checkout_status' => (int)(isset($settings['guest_checkout_status']) ? $settings['guest_checkout_status'] : 0),
             'guest_browse_status' => (int)(isset($settings['guest_browse_status']) ? $settings['guest_browse_status'] : 0),
             'checkout_auth_sheet_status' => (int)(isset($settings['checkout_auth_sheet_status']) ? $settings['checkout_auth_sheet_status'] : 0),

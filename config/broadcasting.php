@@ -30,6 +30,31 @@ return [
 
     'connections' => [
 
+        // RT: Laravel Reverb on this server. The backend publishes to it
+        // locally (REVERB_HOST / PORT / SCHEME, e.g. 127.0.0.1:8080 http);
+        // apps connect through REVERB_PUBLIC_* (the Cloudflare address),
+        // sent to them in /config.
+        'reverb' => [
+            'driver' => 'reverb',
+            'key' => env('REVERB_APP_KEY'),
+            'secret' => env('REVERB_APP_SECRET'),
+            'app_id' => env('REVERB_APP_ID'),
+            'options' => [
+                'host' => env('REVERB_HOST', '127.0.0.1'),
+                'port' => env('REVERB_PORT', 8080),
+                'scheme' => env('REVERB_SCHEME', 'http'),
+                'useTLS' => env('REVERB_SCHEME', 'http') === 'https',
+            ],
+            'public' => [
+                'host' => env('REVERB_PUBLIC_HOST'),
+                'port' => env('REVERB_PUBLIC_PORT', 443),
+                'scheme' => env('REVERB_PUBLIC_SCHEME', 'https'),
+            ],
+            // A stopped Reverb must not hold a request (events go after the
+            // response anyway).
+            'client_options' => ['timeout' => 2, 'connect_timeout' => 1],
+        ],
+
         'pusher' => [
             'driver' => 'pusher',
             'key' => env('PUSHER_APP_KEY'),
