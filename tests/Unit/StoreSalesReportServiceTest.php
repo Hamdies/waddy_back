@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Models\Order;
 use App\Services\StoreSalesReportService;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -67,5 +68,19 @@ class StoreSalesReportServiceTest extends TestCase
             $o('refunded'),
         ]));
         $this->assertEquals(['placed' => 6, 'delivered' => 3, 'rejected' => 1, 'canceled' => 1, 'failed' => 0, 'refunded' => 1, 'late' => 1], $h);
+    }
+    public function test_split_reads_real_orders_whose_created_at_is_a_string(): void
+    {
+        // Order::getCreatedAtAttribute returns a string; Carbon calls on it were a 500.
+        $order = fn ($id, $at) => (new Order())->setRawAttributes(['id' => $id, 'created_at' => $at]);
+        [$from, , , $prevTo] = StoreSalesReportService::window('today', $this->now());
+        [$current, $previous] = StoreSalesReportService::split(collect([
+            $order(1, '2026-10-27 08:00:00'), // 11:00 Cairo today
+            $order(2, '2026-10-26 20:59:00'), // 23:59 Cairo yesterday, after this time
+            $order(3, '2026-10-26 10:00:00'), // 13:00 Cairo yesterday
+        ]), $from, $prevTo);
+        $this->assertIsString($order(9, '2026-10-27 08:00:00')->created_at);
+        $this->assertEquals([1], $current->pluck('id')->values()->all());
+        $this->assertEquals([3], $previous->pluck('id')->values()->all());
     }
 }

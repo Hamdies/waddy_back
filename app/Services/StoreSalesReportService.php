@@ -103,6 +103,24 @@ class StoreSalesReportService
         ];
     }
 
+    /**
+     * [current, previous]: placed from [from], and placed before it up to
+     * [prevTo]. Order::created_at comes back as a string (an old accessor),
+     * so it is parsed; calling Carbon methods on it was a 500 on every period.
+     *
+     * @return Collection[]
+     */
+    public static function split(Collection $orders, Carbon $from, Carbon $prevTo): array
+    {
+        $from = $from->copy()->timezone('UTC');
+        $prevTo = $prevTo->copy()->timezone('UTC');
+        $at = fn ($o) => Carbon::parse($o->created_at, 'UTC');
+        return [
+            $orders->filter(fn ($o) => $at($o)->gte($from)),
+            $orders->filter(fn ($o) => $at($o)->lt($from) && $at($o)->lte($prevTo)),
+        ];
+    }
+
     public static function build(Store $store, string $period, ?Carbon $now = null): array
     {
         [$from, $to, $prevFrom, $prevTo] = self::window($period, $now ?? now());
@@ -112,8 +130,7 @@ class StoreSalesReportService
             ->whereBetween('created_at', [$utc($prevFrom), $utc($to)])
             ->get(['id', 'order_amount', 'order_status', 'canceled_by', 'payment_method', 'created_at',
                 'processing', 'handover', 'delivered', 'promised_delivery_at']);
-        $current = $orders->filter(fn ($o) => $o->created_at->gte($utc($from)));
-        $previous = $orders->filter(fn ($o) => $o->created_at->lt($utc($from)) && $o->created_at->lte($utc($prevTo)));
+        [$current, $previous] = self::split($orders, $from, $prevTo);
 
         $buckets = self::buckets($period, $from);
         foreach ($current->where('order_status', 'delivered') as $o) {
