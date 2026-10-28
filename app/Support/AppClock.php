@@ -24,6 +24,18 @@ class AppClock
         return config('app.local_timezone', 'Africa/Cairo');
     }
 
+    /**
+     * The zone DB timestamps are written in: PHP's default, which
+     * ConfigServiceProvider sets from the admin "timezone" setting (prod:
+     * US/Central until it is switched to Cairo). Not config('app.timezone'),
+     * which stays 'UTC' but is overridden at runtime. Code that turns local
+     * moments into query bounds, or parses stored strings, uses this.
+     */
+    public static function storageTimezone(): string
+    {
+        return date_default_timezone_get();
+    }
+
     /** Current moment in app-local time. */
     public static function now(): Carbon
     {

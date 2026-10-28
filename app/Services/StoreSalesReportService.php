@@ -59,7 +59,7 @@ class StoreSalesReportService
 
     public static function bucketKey(string $period, $createdAt): string
     {
-        $local = Carbon::parse($createdAt)->timezone(AppClock::timezone());
+        $local = Carbon::parse($createdAt, AppClock::storageTimezone())->timezone(AppClock::timezone());
         return $local->format($period === 'today' ? 'Y-m-d H:00' : 'Y-m-d');
     }
 
@@ -112,9 +112,10 @@ class StoreSalesReportService
      */
     public static function split(Collection $orders, Carbon $from, Carbon $prevTo): array
     {
-        $from = $from->copy()->timezone('UTC');
-        $prevTo = $prevTo->copy()->timezone('UTC');
-        $at = fn ($o) => Carbon::parse($o->created_at, 'UTC');
+        $tz = AppClock::storageTimezone();
+        $from = $from->copy()->timezone($tz);
+        $prevTo = $prevTo->copy()->timezone($tz);
+        $at = fn ($o) => Carbon::parse($o->created_at, $tz);
         return [
             $orders->filter(fn ($o) => $at($o)->gte($from)),
             $orders->filter(fn ($o) => $at($o)->lt($from) && $at($o)->lte($prevTo)),
@@ -124,7 +125,8 @@ class StoreSalesReportService
     public static function build(Store $store, string $period, ?Carbon $now = null): array
     {
         [$from, $to, $prevFrom, $prevTo] = self::window($period, $now ?? now());
-        $utc = fn (Carbon $c) => $c->copy()->timezone('UTC');
+        // Query bounds in the zone rows are stored in (not always UTC).
+        $utc = fn (Carbon $c) => $c->copy()->timezone(AppClock::storageTimezone());
 
         $orders = Order::where('store_id', $store->id)
             ->whereBetween('created_at', [$utc($prevFrom), $utc($to)])

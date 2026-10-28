@@ -83,4 +83,25 @@ class StoreSalesReportServiceTest extends TestCase
         $this->assertEquals([1], $current->pluck('id')->values()->all());
         $this->assertEquals([3], $previous->pluck('id')->values()->all());
     }
+    public function test_rows_stored_in_the_admin_zone_land_in_the_right_cairo_hour(): void
+    {
+        // Prod 2026-10-29: admin timezone US/Central, so PHP writes Chicago wall time.
+        $saved = date_default_timezone_get();
+        date_default_timezone_set('US/Central');
+        try {
+            // Stored 21:47 Chicago (UTC-5) = 05:47 Cairo (UTC+3) the next day.
+            $this->assertEquals('2026-10-28 05:00', StoreSalesReportService::bucketKey('today', '2026-10-27 21:47:37'));
+            $order = fn ($id, $at) => (new Order())->setRawAttributes(['id' => $id, 'created_at' => $at]);
+            [$from, , , $prevTo] = StoreSalesReportService::window('today', Carbon::parse('2026-10-28 09:00:00', 'UTC'));
+            [$current, $previous] = StoreSalesReportService::split(collect([
+                $order(1, '2026-10-27 21:47:37'), // 05:47 Cairo on the 28th: today
+                $order(2, '2026-10-27 01:00:00'), // 09:00 Cairo on the 27th: yesterday before this hour
+                $order(3, '2026-10-27 15:30:00'), // 23:30 Cairo on the 27th: after this hour, left out
+            ]), $from, $prevTo);
+            $this->assertEquals([1], $current->pluck('id')->values()->all());
+            $this->assertEquals([2], $previous->pluck('id')->values()->all());
+        } finally {
+            date_default_timezone_set($saved);
+        }
+    }
 }

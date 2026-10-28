@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Support\AppClock;
+
 use App\Models\Item;
 use App\Models\Store;
 use Illuminate\Support\Carbon;
@@ -52,10 +54,10 @@ class ItemAvailabilityService
             $day = $local->copy()->addDays($i);
             if (isset($openings[$day->dayOfWeek])) {
                 [$h, $m] = array_map('intval', explode(':', $openings[$day->dayOfWeek]));
-                return $day->setTime($h, $m)->setTimezone(config('app.timezone', 'UTC'));
+                return $day->setTime($h, $m)->setTimezone(AppClock::storageTimezone());
             }
         }
-        return $local->addDay()->setTime(6, 0)->setTimezone(config('app.timezone', 'UTC'));
+        return $local->addDay()->setTime(6, 0)->setTimezone(AppClock::storageTimezone());
     }
 
     /** @return array<int, string> */
