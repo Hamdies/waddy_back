@@ -376,7 +376,8 @@ class Helpers
                 $item['category_ids'] = $categories;
                 $item['attributes'] = json_decode($item['attributes']);
                 $item['choice_options'] = json_decode($item['choice_options']);
-                $item['add_ons'] = self::addon_data_formatting(AddOn::whereIn('id', json_decode($item['add_ons'], true))->active()->get(), true, $trans, $local);
+                $addOnIds = json_decode($item['add_ons'], true);
+                $item['add_ons'] = self::addon_data_formatting(empty($addOnIds) ? collect() : AddOn::whereIn('id', $addOnIds)->active()->get(), true, $trans, $local);
                 foreach (json_decode($item['variations'], true)?? [] as $var) {
                     array_push($variations, [
                         'type' => $var['type'],
@@ -390,10 +391,12 @@ class Helpers
                 $item['store_name'] = $item->store?->name;
                 $item['is_campaign'] = $item->store?->campaigns_count>0?1:0;
                 $item['zone_id'] = $item->store?->zone_id;
-                $running_flash_sale = FlashSaleItem::Active()->whereHas('flashSale', function ($query) {
-                    $query->Active()->Running();
-                })
-                    ->where(['item_id' => $item['id']])->first();
+                // Only items in the (cached) running-sale list can have one.
+                $running_flash_sale = in_array((int) $item['id'], self::runningFlashSaleItemIds(), true)
+                    ? FlashSaleItem::Active()->whereHas('flashSale', function ($query) {
+                        $query->Active()->Running();
+                    })->where(['item_id' => $item['id']])->first()
+                    : null;
                 $item['flash_sale'] =(int) ((($running_flash_sale && ($running_flash_sale->available_stock > 0)) ? 1 :0));
                 $item['stock'] = ($running_flash_sale && ($running_flash_sale->available_stock > 0)) ? $running_flash_sale->available_stock : $item['stock'];
                 $discount_data= self::product_discount_calculate($item, $item['price'], $item->store , true);
@@ -420,14 +423,15 @@ class Helpers
 
                 $item->store['self_delivery_system'] = (int) $item->store->sub_self_delivery;
 
-                $item['nutritions_name']= $item?->nutritions ? Nutrition::whereIn('id',$item?->nutritions->pluck('id') )->pluck('nutrition') : null;
-                $item['allergies_name']= $item?->allergies ?Allergy::whereIn('id',$item?->allergies->pluck('id') )->pluck('allergy') : null;
-                $item['generic_name']= $item?->generic ? GenericName::whereIn('id',$item?->generic->pluck('id') )->pluck('generic_name'): null ;
+                // Same lists as before; no query when the item has none.
+                $names = fn ($rel, $model, $column) => $rel ? ($rel->isEmpty() ? collect() : $model::whereIn('id', $rel->pluck('id'))->pluck($column)) : null;
+                $item['nutritions_name'] = $names($item?->nutritions, Nutrition::class, 'nutrition');
+                $item['allergies_name'] = $names($item?->allergies, Allergy::class, 'allergy');
+                $item['generic_name'] = $names($item?->generic, GenericName::class, 'generic_name');
 
+                $item['tax_data'] = $item?->taxVats ? $item->taxVats->pluck('tax_id')->toArray() : [];
 
-                $item['tax_data'] = $item?->taxVats ?$item?->taxVats()->pluck('tax_id')->toArray(): [] ;
-
-                $item['tax_data']= \Modules\TaxModule\Entities\Tax::whereIn('id', $item['tax_data'])->get(['id', 'name', 'tax_rate']);
+                $item['tax_data'] = empty($item['tax_data']) ? collect() : \Modules\TaxModule\Entities\Tax::whereIn('id', $item['tax_data'])->get(['id', 'name', 'tax_rate']);
                 unset($item['taxVats']);
 
 

@@ -947,7 +947,10 @@ class VendorController extends Controller
 
         $type = $request->query('type', 'all');
         $category_id = $request->category_id??0;
-        $paginator = Item::with('tags');
+        // Everything the formatter reads per item, loaded once for the page:
+        // it lazy-loaded them item by item (218 queries for 8 items on prod).
+        $paginator = Item::with(['tags', 'module', 'unit', 'store.storeConfig', 'store.discount', 'pharmacy_item_details',
+            'ecommerce_item_details', 'nutritions', 'allergies', 'generic', 'taxVats']);
 
           if($category_id != 0)
         {
