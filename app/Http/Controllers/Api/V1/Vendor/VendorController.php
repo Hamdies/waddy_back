@@ -320,10 +320,11 @@ class VendorController extends Controller
     {
         $vendor = $request['vendor'];
 
-        $orders = Order::whereHas('store.vendor', function($query) use($vendor){
-            $query->where('id', $vendor->id);
-        })
-        ->with('customer')
+        // By store id with the store and lines loaded once: whereHas('store.vendor')
+        // scanned every order, and the formatter loaded the store twice and the
+        // lines once per order (≈ 7 queries each, the store scopes included).
+        $orders = Order::whereIn('store_id', $vendor->stores->pluck('id'))
+        ->with(['customer', 'store', 'details'])
 
         ->where(function($query)use($vendor){
             if(config('order_confirmation_model') == 'store' || $vendor->stores[0]->sub_self_delivery)
@@ -367,10 +368,8 @@ class VendorController extends Controller
 
         $vendor = $request['vendor'];
 
-        $paginator = Order::whereHas('store.vendor', function($query) use($vendor){
-            $query->where('id', $vendor->id);
-        })
-        ->with('customer')
+        $paginator = Order::whereIn('store_id', $vendor->stores->pluck('id'))
+        ->with(['customer', 'store', 'details'])
         ->when($request->status == 'all', function($query){
             return $query->whereIn('order_status', ['refunded', 'delivered']);
         })
@@ -403,10 +402,8 @@ class VendorController extends Controller
 
         $vendor = $request['vendor'];
 
-        $paginator = Order::whereHas('store.vendor', function($query) use($vendor){
-            $query->where('id', $vendor->id);
-        })
-        ->with('customer')
+        $paginator = Order::whereIn('store_id', $vendor->stores->pluck('id'))
+        ->with(['customer', 'store', 'details'])
         ->where('order_status', 'canceled')
         ->Notpos()
         ->latest()

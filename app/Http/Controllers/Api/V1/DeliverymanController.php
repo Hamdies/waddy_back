@@ -53,6 +53,10 @@ class DeliverymanController extends Controller
         $dm['todays_earning'] =(float)($dm->todays_earning()->sum('original_delivery_charge') + $dm->todays_earning()->sum('dm_tips'));
         $dm['this_week_earning'] =(float)($dm->this_week_earning()->sum('original_delivery_charge') + $dm->this_week_earning()->sum('dm_tips'));
         $dm['this_month_earning'] =(float)($dm->this_month_earning()->sum('original_delivery_charge') + $dm->this_month_earning()->sum('dm_tips'));
+        // The rider home splits today's total into fees and tips.
+        $dm['todays_tips'] =(float)$dm->todays_earning()->sum('dm_tips');
+        $dm['zone_name'] = $dm->zone?->name;
+        $dm['vehicle_type'] = $dm->vehicle?->type;
 
         $dm['cash_in_hands'] =$dm->wallet?$dm->wallet->collected_cash:0;
         $dm['balance'] = $dm->wallet?$dm->wallet->total_earning - ($dm->wallet->total_withdrawn +$dm?->wallet?->pending_withdraw) :0;
@@ -98,6 +102,9 @@ class DeliverymanController extends Controller
             $dm['over_flow_warning'] = true;
         }
 
+        // Cash at which new cash orders stop; null when the cap is off.
+        $dm['cash_in_hand_limit'] = $cash_in_hand_overflow ? (float)$cash_in_hand_overflow_delivery_man : null;
+
         $dm['over_flow_block_warning'] = false;
         if ($Payable_Balance == 1 &&  $cash_in_hand_overflow &&  $over_flow_balance < 0 &&  $cash_in_hand_overflow_delivery_man < abs($dm?->wallet?->collected_cash)){
             $dm['over_flow_block_warning'] = true;
@@ -108,6 +115,8 @@ class DeliverymanController extends Controller
         unset($dm['todaysorders']);
         unset($dm['this_week_orders']);
         unset($dm['wallet']);
+        unset($dm['zone']);
+        unset($dm['vehicle']);
         return response()->json($dm, 200);
     }
 

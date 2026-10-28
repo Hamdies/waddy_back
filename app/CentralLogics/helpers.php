@@ -1084,8 +1084,10 @@ class Helpers
 
                 $item['delivery_address'] = $item->delivery_address ? json_decode($item->delivery_address, true) : null;
                 $item['details_count'] = (int)$item->details->count();
-                $item['min_delivery_time'] =  $item->store ? (int)explode('-',$item->store?->delivery_time)[0] ?? 0:0;
-                $item['max_delivery_time'] =  $item->store ? (int)explode('-',$item->store?->delivery_time)[1] ?? 0:0;
+                // Set above while the store was still attached; reading $item->store
+                // after unset() loaded it again for every order.
+                $item['min_delivery_time'] = (int) ($item['min_delivery_time'] ?? 0);
+                $item['max_delivery_time'] = (int) ($item['max_delivery_time'] ?? 0);
 
                 // Hide customer phone if user has enabled hide_phone preference
                 if (isset($item['customer']) && $item['customer'] && $item['customer']['hide_phone']) {
