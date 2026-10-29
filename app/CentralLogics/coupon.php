@@ -49,6 +49,11 @@ class CouponLogic
             return 407;  //coupon expire
         }
 
+        if($coupon->total_limit && $coupon->total_uses >= $coupon->total_limit)
+        {
+            return 406;  //total uses reached
+        }
+
         if($coupon->coupon_type == 'store_wise' && !in_array($store_id, json_decode($coupon->data, true)))
         {  
             return 404;   
@@ -117,6 +122,11 @@ class CouponLogic
         if($start_date->format('Y-m-d') > $today->format('Y-m-d') || $expire_date->format('Y-m-d') < $today->format('Y-m-d'))
         {
             return 407;  //coupon expire
+        }
+
+        if($coupon->total_limit && $coupon->total_uses >= $coupon->total_limit)
+        {
+            return 406;  //total uses reached
         }
 
         if($coupon->coupon_type == 'store_wise' && !in_array($store_id, json_decode($coupon->data, true)))

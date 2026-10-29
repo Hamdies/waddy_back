@@ -65,6 +65,7 @@ class CouponController extends Controller
         $coupon->title = $data[0]['value'];
         $coupon->code = $request->code;
         $coupon->limit = $request->coupon_type=='first_order'?1:$request->limit;
+        $coupon->total_limit = $request->total_limit ?: null;
         $coupon->coupon_type = $request->coupon_type;
         $coupon->start_date = $request->start_date;
         $coupon->expire_date = $request->expire_date;
@@ -146,6 +147,9 @@ class CouponController extends Controller
         $coupon->title = $data[0]['value'];
         $coupon->code = $request->code;
         $coupon->limit = $request->coupon_type=='first_order'?1:$request->limit;
+        if ($request->has('total_limit')) { // older store apps don't send it
+            $coupon->total_limit = $request->total_limit ?: null;
+        }
         $coupon->coupon_type = $request->coupon_type;
         $coupon->start_date = $request->start_date;
         $coupon->expire_date = $request->expire_date;
