@@ -1285,7 +1285,7 @@ trait PlaceNewOrder
         // what the items and the % already take off, spread over the lines
         // like the store discount above.
         $store_offer_id = $discount_on_product_by == 'store_discount' ? $store->discount?->store_offer_id : null;
-        $amountOffer = $discount_type != 'flash_sale' ? StoreOfferService::amountFor($store, $product_price) : null;
+        $amountOffer = $discount_type != 'flash_sale' ? StoreOfferService::amountFor($store, $product_price + $total_addon_price) : null;
         if ($amountOffer && $amountOffer[1] > $discount) {
             [$offer, $off] = $amountOffer;
             $discount = $off;
