@@ -182,6 +182,9 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
         Route::put('update-announcment', 'VendorController@update_announcment');
         Route::get('current-orders', 'VendorController@get_current_orders');
         Route::post('broadcasting/auth', 'VendorController@broadcasting_auth');
+        Route::get('offers', 'StoreOfferController@index');
+        Route::post('offers', 'StoreOfferController@store');
+        Route::put('offers/{id}/status', 'StoreOfferController@status');
         Route::get('completed-orders', 'VendorController@get_completed_orders');
         Route::get('canceled-orders', 'VendorController@get_canceled_orders');
         Route::get('all-orders', 'VendorController@get_all_orders');

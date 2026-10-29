@@ -35,6 +35,7 @@ use App\Models\SurgePrice;
 use Carbon\Carbon;
 use App\Jobs\SendMetaPurchaseEvent;
 use App\Services\EstimatedDeliveryService;
+use App\Services\StoreOfferService;
 
 trait PlaceNewOrder
 {
@@ -183,6 +184,7 @@ trait PlaceNewOrder
             $total_addon_price = 0;
             $product_price = 0;
             $store_discount_amount = 0;
+            $store_offer_id = null;
             $flash_sale_vendor_discount_amount = 0;
             $flash_sale_admin_discount_amount = 0;
             $coupon_discount_amount = 0;
@@ -378,11 +380,17 @@ trait PlaceNewOrder
                     $flash_sale_admin_discount_amount = $order_details['flash_sale_admin_discount_amount'];
                     $flash_sale_vendor_discount_amount = $order_details['flash_sale_vendor_discount_amount'];
                     $product_data = $order_details['product_data'];
+                    $store_offer_id = $order_details['store_offer_id'] ?? null;
                     $order_details = $order_details['order_details'];
                 }
 
 
-                $order->discount_on_product_by = $order_details['discount_on_product_by'] ?? 'vendor';
+                // Store discounts are paid by the store, commission on what the
+                // customer pays (decision 2, 2026-10-28). The line this replaces
+                // read the key from the already-unwrapped lines, so it was always
+                // 'vendor'; now it says so on purpose.
+                $order->discount_on_product_by = 'vendor';
+                $order->store_offer_id = $store_offer_id;
 
                 $coupon_discount_amount = $coupon ? CouponLogic::get_discount($coupon, $product_price + $total_addon_price - $store_discount_amount - $flash_sale_admin_discount_amount - $flash_sale_vendor_discount_amount) : 0;
 
@@ -460,6 +468,17 @@ trait PlaceNewOrder
                         }
                     }
                     $coupon->increment('total_uses');
+                }
+
+                // OF-1: the store's own free delivery over X (after coupons, so a
+                // free-delivery coupon still wins; the store pays the fee).
+                if ($order->delivery_charge > 0) {
+                    $deliveryOffer = StoreOfferService::freeDeliveryFor($store, $product_price + $total_addon_price - $store_discount_amount - $flash_sale_admin_discount_amount - $flash_sale_vendor_discount_amount);
+                    if ($deliveryOffer) {
+                        $order->delivery_charge = 0;
+                        $free_delivery_by = 'vendor';
+                        $order->delivery_offer_id = $deliveryOffer->id;
+                    }
                 }
 
                 // XP Prize - Free Delivery
@@ -651,6 +670,13 @@ trait PlaceNewOrder
             }
 
             DB::commit();
+
+            // OF-1: an offer whose budget this order used up ends now.
+            try {
+                StoreOfferService::afterOrder($order);
+            } catch (\Throwable $e) {
+                info('Offer budget check failed for order ' . $order->id . ': ' . $e->getMessage());
+            }
 
             SendMetaPurchaseEvent::dispatchAfterResponse(
                 $order->id,
@@ -1254,11 +1280,30 @@ trait PlaceNewOrder
         }
 
 
+        // OF-1: which store offer gave the discount. A % offer reaches here as
+        // the mirrored store discount; an amount offer applies when it beats
+        // what the items and the % already take off, spread over the lines
+        // like the store discount above.
+        $store_offer_id = $discount_on_product_by == 'store_discount' ? $store->discount?->store_offer_id : null;
+        $amountOffer = $discount_type != 'flash_sale' ? StoreOfferService::amountFor($store, $product_price) : null;
+        if ($amountOffer && $amountOffer[1] > $discount) {
+            [$offer, $off] = $amountOffer;
+            $discount = $off;
+            $discount_on_product_by = 'store_offer';
+            $store_offer_id = $offer->id;
+            foreach ($order_details as $key => $detail_data) {
+                $order_details[$key]['discount_on_product_by'] = 'store_offer';
+                $order_details[$key]['discount_type'] = 'amount';
+                $order_details[$key]['discount_on_item'] = $product_price > 0 ? round($detail_data['price'] * $detail_data['quantity'] / $product_price * $off, 2) : 0;
+            }
+        }
+
         return [
             'order_details' => $order_details,
             'total_addon_price' => $total_addon_price,
             'product_price' => $product_price,
             'store_discount_amount' => $discount,
+            'store_offer_id' => $store_offer_id,
             'discount_on_product_by' => $discount_on_product_by == 'store_discount' ? 'admin' : 'vendor',
             'flash_sale_admin_discount_amount' => $flash_sale_admin_discount_amount,
             'flash_sale_vendor_discount_amount' => $flash_sale_vendor_discount_amount,

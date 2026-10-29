@@ -161,6 +161,8 @@ class Store extends Model
         'per_km_shipping_charge' => 'float',
         'schedule_order'=>'boolean',
         'free_delivery'=>'boolean',
+        // OF-1: the store's live offers, published by StoreOfferService.
+        'active_offers'=>'array',
         'vendor_id'=>'integer',
         'status'=>'integer',
         'delivery'=>'boolean',
