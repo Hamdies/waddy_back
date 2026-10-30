@@ -19,8 +19,19 @@ class AddonCategory extends Model
     protected $guarded = ['id'];
      protected $casts = [
         'module_id' => 'integer',
+        'store_id' => 'integer',
         'status' => 'integer',
+        'is_required' => 'boolean',
+        'min_choices' => 'integer',
+        'max_choices' => 'integer',
+        'source_category_id' => 'integer',
     ];
+
+    /** Admin categories only; a store's own groups (AO-1) have store_id set. */
+    public function scopeShared(Builder $query): Builder
+    {
+        return $query->whereNull('store_id');
+    }
 
     public function translations(): MorphMany
     {

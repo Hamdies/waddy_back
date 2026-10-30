@@ -22,7 +22,7 @@ class AddonCategoryController extends Controller
         $categoryWiseTax = $taxData['categoryWiseTax'];
         $taxVats = $taxData['taxVats'];
 
-        $categories = AddonCategory::where('module_id', Config::get('module.current_module_id'))
+        $categories = AddonCategory::shared()->where('module_id', Config::get('module.current_module_id'))
             ->when(isset($key), function ($q) use ($key) {
                 $q->where(function ($q) use ($key) {
                     foreach ($key as $value) {
@@ -134,7 +134,7 @@ class AddonCategoryController extends Controller
     {
         try {
             $key = explode(' ', $request['search']);
-            $categories = AddonCategory::where('module_id', Config::get('module.current_module_id'))
+            $categories = AddonCategory::shared()->where('module_id', Config::get('module.current_module_id'))
                 ->when(isset($key), function ($q) use ($key) {
                     $q->where(function ($q) use ($key) {
                         foreach ($key as $value) {

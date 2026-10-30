@@ -15,6 +15,7 @@ use App\Models\VendorEmployee;
 use App\Mail\StoreRegistration;
 use App\Models\BusinessSetting;
 use App\CentralLogics\StoreLogic;
+use App\Services\StoreDocumentService;
 use App\CentralLogics\SMS_module;
 use App\CentralLogics\AkedlyGateway;
 use Illuminate\Support\Carbon;
@@ -217,6 +218,12 @@ class VendorLoginController extends Controller
 
     private function employee_session(VendorEmployee $vendor)
     {
+        // ST-1: suspended from the owner's Team screen.
+        if (isset($vendor->status) && !$vendor->status) {
+            return response()->json([
+                'errors' => [['code' => 'account_suspended', 'message' => translate('messages.account_suspended')]]
+            ], 403);
+        }
         $token = $vendor->auth_token ?: $this->genarate_token($vendor->email);
         $storeSubscriptionCheck = $this->storeSubscriptionCheck($vendor?->store, $vendor, $token);
         if(data_get($storeSubscriptionCheck,'type') != null){
@@ -315,6 +322,11 @@ class VendorLoginController extends Controller
             return response()->json(['errors' => Helpers::error_processor('self-registration', translate('messages.store_self_registration_disabled'))]);
         }
 
+        // Store app signup (SU-1) sends the commercial register, tax card and
+        // owner ID instead of the TIN form and logo; older builds still send those.
+        $withDocuments = $request->hasFile('commercial_register') || $request->hasFile('tax_card') || $request->hasFile('national_id');
+        $document = 'required|file|mimes:jpg,jpeg,png,webp,heic,pdf|max:10240';
+
         $validator = Validator::make($request->all(), [
             'f_name' => 'required|max:100',
             'l_name' => 'nullable|max:100',
@@ -328,11 +340,15 @@ class VendorLoginController extends Controller
             'password' => ['required', Password::min(8)->mixedCase()->letters()->numbers()->symbols()->uncompromised()],
             'zone_id' => 'required',
             'module_id' => 'required',
-            'logo' => 'required',
-            'tin' => 'required',
-            'tin_expire_date' => 'required',
-            'tin_certificate_image' => 'required',
-        ],[
+            'logo' => $withDocuments ? 'nullable|image|max:10240' : 'required',
+            'tin' => $withDocuments ? 'nullable' : 'required',
+            'tin_expire_date' => $withDocuments ? 'nullable|date' : 'required',
+            'tin_certificate_image' => $withDocuments ? 'nullable' : 'required',
+        ] + ($withDocuments ? [
+            'commercial_register' => $document,
+            'tax_card' => $document,
+            'national_id' => $document,
+        ] : []),[
             'password.required' => translate('The password is required'),
             'password.min_length' => translate('The password must be at least :min characters long'),
             'password.mixed' => translate('The password must contain both uppercase and lowercase letters'),
@@ -389,8 +405,8 @@ class VendorLoginController extends Controller
         $store->longitude = $request->longitude;
         $store->vendor_id = $vendor->id;
         $store->zone_id = $request->zone_id;
-        $store->tin = $request->tin;
-        $store->tin_expire_date = $request->tin_expire_date;
+        $store->tin = $request->tin ?: null;
+        $store->tin_expire_date = $request->tin_expire_date ?: null;
         $extension = $request->has('tin_certificate_image') ? $request->file('tin_certificate_image')->getClientOriginalExtension() : 'png';
         $store->tin_certificate_image = Helpers::upload('store/', $extension, $request->file('tin_certificate_image'));
         $store->delivery_time = $request->minimum_delivery_time .'-'. $request->maximum_delivery_time.' '.$request->delivery_time_type;
@@ -411,6 +427,11 @@ class VendorLoginController extends Controller
         }
         Translation::insert($data);
 
+        if ($withDocuments) {
+            foreach (['commercial_register', 'tax_card', 'national_id'] as $type) {
+                StoreDocumentService::upload($store, $type, $request->file($type));
+            }
+        }
 
         try{
             $admin= Admin::where('role_id', 1)->first();

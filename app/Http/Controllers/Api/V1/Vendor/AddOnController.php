@@ -9,6 +9,7 @@ use App\CentralLogics\Helpers;
 use Illuminate\Support\Facades\Validator;
 use App\Scopes\StoreScope;
 use App\Models\Translation;
+use App\Services\StoreAddonGroupService;
 
 class AddOnController extends Controller
 {
@@ -19,6 +20,49 @@ class AddOnController extends Controller
         $addons = AddOn::withoutGlobalScope(StoreScope::class)->withoutGlobalScope('translate')->with('translations','taxVats')->where('store_id', $vendor->stores[0]->id)->latest()->get();
 
         return response()->json(Helpers::addon_data_formatting($addons, true, true, app()->getLocale()), 200);
+    }
+
+    /** AO-1: the store's add-on groups with their choices and rules. */
+    public function groups(Request $request)
+    {
+        return response()->json(['groups' => StoreAddonGroupService::library($request->vendor->stores[0])], 200);
+    }
+
+    public function saveGroup(Request $request)
+    {
+        if (!$request->vendor->stores[0]->item_section) {
+            return response()->json(['errors' => [['code' => 'unauthorized', 'message' => translate('messages.permission_denied')]]], 403);
+        }
+        $validator = Validator::make($request->all(), [
+            'id' => 'nullable|integer',
+            'loose' => 'nullable|boolean',
+            'name' => 'required|string|max:100',
+            'is_required' => 'required|boolean',
+            'min' => 'required|integer|min:0|max:' . StoreAddonGroupService::MAX_CHOICES,
+            'max' => 'required|integer|min:1|max:' . StoreAddonGroupService::MAX_CHOICES,
+            'choices' => 'required|array|min:1|max:' . StoreAddonGroupService::MAX_CHOICES,
+            'choices.*.id' => 'nullable|integer',
+            'choices.*.name' => 'nullable|string|max:100',
+            'choices.*.price' => 'nullable|numeric|min:0|max:100000',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+
+        $group = StoreAddonGroupService::save($request->vendor->stores[0], $validator->validated());
+        if (is_string($group)) {
+            return response()->json(['errors' => [['code' => 'group', 'message' => $group]]], 403);
+        }
+        return response()->json(['message' => translate('messages.addon_group_saved'), 'group' => $group], 200);
+    }
+
+    public function deleteGroup(Request $request)
+    {
+        if (!$request->vendor->stores[0]->item_section) {
+            return response()->json(['errors' => [['code' => 'unauthorized', 'message' => translate('messages.permission_denied')]]], 403);
+        }
+        StoreAddonGroupService::delete($request->vendor->stores[0], $request->filled('id') ? (int) $request->id : null);
+        return response()->json(['message' => translate('messages.addon_group_deleted')], 200);
     }
 
     public function store(Request $request)

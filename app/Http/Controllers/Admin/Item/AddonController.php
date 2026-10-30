@@ -68,7 +68,7 @@ class AddonController extends BaseController
         $store = $storeId != 'all' ? $this->storeRepo->getFirstWhere(params: ['id' => $storeId]) : null;
         $language = getWebConfig('language');
 
-        $addonCategories = AddonCategory::where(function ($query) {
+        $addonCategories = AddonCategory::shared()->where(function ($query) {
             $query->where('module_id', Config::get('module.current_module_id'))->orWhereNull('module_id');
         })->where('status', 1)->select('id', 'name')->get();
 
@@ -115,7 +115,7 @@ class AddonController extends BaseController
         $taxVatIds =  $productWiseTax ? $addon->taxVats()->pluck('tax_id')->toArray(): [];
 
 
-        $addonCategories = AddonCategory::where(function ($query) {
+        $addonCategories = AddonCategory::shared()->where(function ($query) {
             $query->where('module_id', Config::get('module.current_module_id'))->orWhereNull('module_id');
         })->where('status', 1)->select('id', 'name')->get();
         return response()->json([

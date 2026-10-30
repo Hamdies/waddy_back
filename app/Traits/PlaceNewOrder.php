@@ -1204,6 +1204,9 @@ trait PlaceNewOrder
                 }
 
                 $product = Helpers::product_data_formatting($product, false, false, app()->getLocale());
+                if ($ruleError = \App\Services\StoreAddonGroupService::ruleError($product, $c['add_on_ids'] ?? [])) {
+                    return ['status_code' => 403, 'code' => 'addon_rule', 'message' => $product->name . ': ' . $ruleError];
+                }
                 $addon_data = Helpers::calculate_addon_price(AddOn::whereIn('id', $c['add_on_ids'])->get(), $c['add_on_qtys']);
                 $product_discount = Helpers::product_discount_calculate($product, $price, $store, false);
 
@@ -1402,6 +1405,9 @@ trait PlaceNewOrder
                     }
 
                     $product = Helpers::product_data_formatting($product, false, false, app()->getLocale());
+                    if ($ruleError = \App\Services\StoreAddonGroupService::ruleError($product, $c['add_ons'] ?? [])) {
+                        return ['status_code' => 403, 'code' => 'addon_rule', 'message' => $product->name . ': ' . $ruleError];
+                    }
                     $addon_data = Helpers::calculate_addon_price(AddOn::whereIn('id', $c['add_ons'])->get(), $c['add_on_qtys']);
                     $product_discount = Helpers::product_discount_calculate($product, $price, $store, false);
 
@@ -1617,6 +1623,9 @@ trait PlaceNewOrder
                     }
 
                     $addonIds = array_unique($addonIds);
+                    if ($ruleError = \App\Services\StoreAddonGroupService::ruleError($product, $addonIds)) {
+                        return ['status_code' => 403, 'code' => 'addon_rule', 'message' => $product->name . ': ' . $ruleError];
+                    }
                     $addon_data = Helpers::calculate_addon_price(
                         AddOn::whereIn('id', $addonIds)->get(),
                         $addonQuantities

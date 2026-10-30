@@ -188,6 +188,14 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
         Route::get('account/documents', 'StoreAccountController@documents');
         Route::post('account/documents', 'StoreAccountController@upload_document');
         Route::post('account/bank', 'StoreAccountController@update_bank');
+        // ST-1: Team & roles
+        Route::get('team', 'StoreTeamController@index');
+        Route::post('team/members', 'StoreTeamController@invite');
+        Route::put('team/members/{id}', 'StoreTeamController@update_member');
+        Route::delete('team/members/{id}', 'StoreTeamController@remove_member');
+        Route::post('team/roles', 'StoreTeamController@store_role');
+        Route::put('team/roles/{id}', 'StoreTeamController@update_role');
+        Route::delete('team/roles/{id}', 'StoreTeamController@delete_role');
         Route::get('offers', 'StoreOfferController@index');
         Route::post('offers', 'StoreOfferController@store');
         Route::put('offers/{id}/status', 'StoreOfferController@status');
@@ -282,6 +290,9 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
             Route::put('update', 'AddOnController@update');
             Route::get('status', 'AddOnController@status');
             Route::delete('delete', 'AddOnController@delete');
+            Route::get('groups', 'AddOnController@groups');
+            Route::post('group', 'AddOnController@saveGroup');
+            Route::delete('group', 'AddOnController@deleteGroup');
         });
         // Banner
         Route::group(['prefix'=>'banner'], function(){

@@ -26,7 +26,7 @@ class AddOnController extends Controller
 
             ->paginate(config('default_pagination'));
 
-        $addonCategories = AddonCategory::where(function ($query) {
+        $addonCategories = AddonCategory::where(fn ($q) => $q->whereNull('store_id')->orWhere('store_id', Helpers::get_store_id()))->where(function ($query) {
             $query->where('module_id', Helpers::get_store_data()->module_id)->orWhereNull('module_id');
         })->where('status', 1)->select('id', 'name')->get();
 
@@ -98,7 +98,7 @@ class AddOnController extends Controller
         $taxVats = $taxData['taxVats'];
         $taxVatIds =  $productWiseTax ? $addon->taxVats()->pluck('tax_id')->toArray(): [];
 
-        $addonCategories = AddonCategory::where(function ($query) {
+        $addonCategories = AddonCategory::where(fn ($q) => $q->whereNull('store_id')->orWhere('store_id', Helpers::get_store_id()))->where(function ($query) {
             $query->where('module_id', Helpers::get_store_data()->module_id)->orWhereNull('module_id');
         })->where('status', 1)->select('id', 'name')->get();
 

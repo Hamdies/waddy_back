@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use App\Models\Vendor;
 use App\Models\VendorEmployee;
+use App\Services\StoreTeamService;
 
 class VendorTokenIsValid
 {
@@ -48,6 +49,7 @@ class VendorTokenIsValid
             }
             $request['vendor']=$vendor;
             Config::set('module.current_module_data', $vendor->stores[0]->module);
+            StoreTeamService::touch($vendor);
         }elseif($vendor_type == 'employee'){
             $vendor = VendorEmployee::where('auth_token', $token)->first();
             if(!isset($vendor))
@@ -58,6 +60,15 @@ class VendorTokenIsValid
                     ]
                 ], 401);
             }
+            // ST-1: suspended from the owner's Team screen.
+            if (isset($vendor->status) && !$vendor->status) {
+                return response()->json([
+                    'errors' => [
+                        ['code' => 'auth-001', 'message' => translate('messages.account_suspended')]
+                    ]
+                ], 401);
+            }
+            StoreTeamService::touch($vendor);
             $request['vendor']=$vendor->vendor;
             $request['vendor_employee']=$vendor;
             Config::set('module.current_module_data', $vendor->vendor->stores[0]->module);

@@ -800,9 +800,12 @@ class Helpers
     {
         $storage = [];
         if ($multi_data == true) {
+            // AO-1: each add-on carries its store group's pick rule (null for shared categories).
+            $rules = \App\Services\StoreAddonGroupService::rulesFor(collect($data));
             foreach ($data as $item) {
                 $item['tax_ids']= $item?->taxVats ?$item?->taxVats()->pluck('tax_id')->toArray(): [] ;
                 unset($item['taxVats']);
+                $item['addon_group'] = $rules->get($item['addon_category_id']);
                 $storage[] = $item;
             }
             $data = $storage;
@@ -1496,21 +1499,38 @@ class Helpers
                     "image" => (string)$data['image'],
                 ],
                 "android" => [
-                    "notification" => [
-                        "channelId" => 'waddy',
-                    ]
+                    // No channelId: each app shows it on its own default channel
+                    // (manifest). 'waddy' existed in none of them. HIGH lets the
+                    // store app start its new-order alarm while closed.
+                    "priority" => "HIGH",
                 ],
                 "apns" => [
                     "payload" => [
-                        "aps" => [
-                            "sound" => "notification.wav"
-                        ]
+                        "aps" => array_filter([
+                            "sound" => "notification.wav",
+                            // Same rule as the apps' shouldRing: the ring flag
+                            // wins, else new_order. Ignored by an app without
+                            // the time-sensitive entitlement.
+                            "interruption-level" => self::push_rings($data, $order_id) ? 'time-sensitive' : null,
+                        ])
                     ]
                 ]
             ]
         ];
 
         return self::sendNotificationToHttp($postData);
+    }
+
+    private static function push_rings(array $data, $order_id): bool
+    {
+        if ((string) $order_id === '') {
+            return false;
+        }
+        $ring = (string) ($data['ring'] ?? '');
+        if ($ring !== '') {
+            return $ring === '1';
+        }
+        return ($data['type'] ?? '') === 'new_order';
     }
 
     public static function send_push_notif_to_topic($data, $topic, $type,$web_push_link = null)
@@ -1561,9 +1581,10 @@ class Helpers
                         "image" => (string)$data['image'],
                     ],
                     "android" => [
-                        "notification" => [
-                            "channelId" => 'waddy',
-                        ]
+                        // No channelId: each app shows it on its own default channel
+                        // (manifest). 'waddy' existed in none of them. HIGH lets the
+                        // store app start its new-order alarm while closed.
+                        "priority" => "HIGH",
                     ],
                     "apns" => [
                         "payload" => [
@@ -1593,9 +1614,10 @@ class Helpers
                         "image" => (string)$data['image'],
                     ],
                     "android" => [
-                        "notification" => [
-                            "channelId" => 'waddy',
-                        ]
+                        // No channelId: each app shows it on its own default channel
+                        // (manifest). 'waddy' existed in none of them. HIGH lets the
+                        // store app start its new-order alarm while closed.
+                        "priority" => "HIGH",
                     ],
                     "apns" => [
                         "payload" => [

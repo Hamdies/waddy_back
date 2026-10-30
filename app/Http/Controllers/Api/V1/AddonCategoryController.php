@@ -21,7 +21,7 @@ class AddonCategoryController extends Controller
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
-        $addonCategories = AddonCategory::where(function ($query)use ($request) {
+        $addonCategories = AddonCategory::shared()->where(function ($query)use ($request) {
             $query->where('module_id', $request->module_id)->orWhereNull('module_id');
         })->where('status', 1)->select('id', 'name')->latest()->paginate($request->limit ?? 50, ['*'], 'page', $request->offset ?? 1);
         return response()->json($addonCategories->items(), 200);
