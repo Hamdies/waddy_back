@@ -9,6 +9,8 @@ use App\Models\UserInfo;
 use App\Models\Message;
 use App\Models\User;
 use App\Models\Admin;
+use App\Models\Vendor;
+use App\Services\StorePushService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -158,6 +160,88 @@ class ConversationController extends Controller
         }
 
         $convs = Message::where(['conversation_id' => $conversation->id])->get();
+        return response()->json([
+            'view' => view('admin-views.messages.partials._conversations', compact('convs', 'user', 'receiver'))->render()
+        ]);
+    }
+
+    /**
+     * MA-6: support answers a store. Same thread as the store app's
+     * "Chat with support" (the store's user_info and 0), pushed to every
+     * phone of the store.
+     */
+    public function storeVendor(Request $request, $vendor_id)
+    {
+        $validator = Validator::make($request->all(), ['reply' => 'required']);
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)]);
+        }
+
+        $admin = Admin::find(auth('admin')->id());
+        $sender = UserInfo::where('admin_id', $admin->id)->first();
+        if (!$sender) {
+            $sender = new UserInfo();
+            $sender->admin_id = $admin->id;
+            $sender->f_name = $admin->f_name;
+            $sender->l_name = $admin->l_name;
+            $sender->phone = $admin->phone;
+            $sender->email = $admin->email;
+            $sender->image = $admin->image;
+            $sender->save();
+        }
+
+        $vendor = Vendor::with('stores')->findOrFail($vendor_id);
+        $store = $vendor->stores[0] ?? null;
+        $receiver = UserInfo::where('vendor_id', $vendor->id)->first();
+        if (!$receiver) {
+            $receiver = new UserInfo();
+            $receiver->vendor_id = $vendor->id;
+            $receiver->f_name = $store?->name ?? $vendor->f_name;
+            $receiver->l_name = '';
+            $receiver->phone = $vendor->phone;
+            $receiver->email = $vendor->email;
+            $receiver->image = $store?->logo;
+            $receiver->save();
+        }
+
+        $conversation = Conversation::whereConversation($receiver->id, 0)->first();
+        if (!$conversation) {
+            $conversation = Conversation::create([
+                'sender_id' => 0, 'sender_type' => 'admin',
+                'receiver_id' => $receiver->id, 'receiver_type' => 'vendor',
+                'unread_message_count' => 0, 'last_message_time' => now(),
+            ]);
+        }
+
+        $message = new Message();
+        $message->conversation_id = $conversation->id;
+        $message->sender_id = $sender->id;
+        $message->message = $request->reply;
+        $message->save();
+
+        $conversation->unread_message_count = ($conversation->unread_message_count ?? 0) + 1;
+        $conversation->last_message_id = $message->id;
+        $conversation->last_message_time = now();
+        $conversation->save();
+
+        if ($store) {
+            try {
+                StorePushService::send($store, [
+                    'title' => translate('messages.message_from_admin'),
+                    'description' => $message->message,
+                    'order_id' => '',
+                    'image' => '',
+                    'type' => 'message',
+                    'conversation_id' => $conversation->id,
+                    'sender_type' => 'admin',
+                ]);
+            } catch (\Exception $e) {
+                info($e->getMessage());
+            }
+        }
+
+        $convs = Message::where(['conversation_id' => $conversation->id])->get();
+        $user = $receiver;
         return response()->json([
             'view' => view('admin-views.messages.partials._conversations', compact('convs', 'user', 'receiver'))->render()
         ]);

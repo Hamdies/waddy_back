@@ -22,6 +22,7 @@ class Panel
         'zones' => Resources\ZonesResource::class,
         'tickets' => Resources\TicketsResource::class,
         'merchants' => Resources\MerchantsResource::class,
+        'verification' => Resources\VerificationResource::class,
         'products' => Resources\ProductsResource::class,
         'reviews' => Resources\ReviewsResource::class,
         'promotions' => Resources\PromotionsResource::class,
@@ -77,6 +78,7 @@ class Panel
             $c['merchants'] = $count('merchants', 'pending');
             $c['products'] = $count('products', 'out');
             $c['payouts'] = $count('payouts', 'pending');
+            $c['verification'] = $count('verification', 'pending');
             $c['refunds'] = $count('orders', 'refundreq');
             $c['latestOrder'] = (int) self::orders($mod)->max('o.id');
         }

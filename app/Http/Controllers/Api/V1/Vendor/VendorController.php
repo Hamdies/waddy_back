@@ -664,6 +664,8 @@ class VendorController extends Controller
         if (\App\Services\HandoverCodeService::enabled() && \App\Services\HandoverCodeService::appliesTo($order)) {
             $data['handover_code'] = \App\Services\HandoverCodeService::code($order->id);
         }
+        // OD-2: the customer's complaint and what it cost the store.
+        $data['complaint'] = \App\Services\OrderComplaintService::present(\App\Models\Refund::where('order_id', $order->id)->latest('id')->first());
         return response()->json($data,200);
     }
 

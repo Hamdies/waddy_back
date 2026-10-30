@@ -67,6 +67,8 @@ class Settings
                 ['key' => 'cod', 'label' => $L('Cash on delivery', 'الدفع عند الاستلام'), 'type' => 'toggle'],
                 ['key' => 'scheduled', 'label' => $L('Scheduled orders', 'الطلبات المجدولة'), 'type' => 'toggle'],
                 ['key' => 'tipping', 'label' => $L('Courier tipping', 'إكرامية المندوب'), 'type' => 'toggle'],
+                ['key' => 'refundsOn', 'label' => $L('Customer complaints and refunds', 'شكاوى العملاء والاسترداد'), 'type' => 'toggle'],
+                ['key' => 'refundWindow', 'label' => $L('Complaint window after delivery (minutes)', 'مدة الشكوى بعد التوصيل (دقائق)'), 'type' => 'number'],
                 ['key' => 'maintenance', 'label' => $L('Maintenance mode', 'وضع الصيانة'), 'type' => 'toggle'],
             ]],
         ];
@@ -137,6 +139,8 @@ class Settings
             'cod' => (bool) (json_decode((string) self::get('cash_on_delivery', ''), true)['status'] ?? false),
             'scheduled' => (bool) self::get('schedule_order', 0),
             'tipping' => (bool) self::get('dm_tips_status', 0),
+            'refundsOn' => (bool) self::get('refund_active_status', 0),
+            'refundWindow' => (string) \App\Services\OrderComplaintService::windowMinutes(),
             'maintenance' => (bool) self::get('maintenance_mode', 0),
         ];
     }
@@ -150,6 +154,7 @@ class Settings
             'serviceFee' => 'nullable|numeric|min:0',
             'commission' => 'nullable|numeric|between:0,100',
             'dmCommission' => 'nullable|numeric|between:0,100',
+            'refundWindow' => 'nullable|integer|min:1|max:10080',
         ]);
         if ($v->fails()) {
             return ['ok' => false, 'message' => $v->errors()->first()];
@@ -183,6 +188,10 @@ class Settings
         self::put('cash_on_delivery', json_encode(['status' => !empty($data['cod']) ? '1' : '0']));
         self::put('schedule_order', !empty($data['scheduled']) ? 1 : 0);
         self::put('dm_tips_status', !empty($data['tipping']) ? 1 : 0);
+        self::put('refund_active_status', !empty($data['refundsOn']) ? 1 : 0);
+        if (!empty($data['refundWindow'])) {
+            self::put(\App\Services\OrderComplaintService::WINDOW_KEY, (int) $data['refundWindow']);
+        }
         self::put('maintenance_mode', !empty($data['maintenance']) ? 1 : 0);
 
         foreach (self::MODULE_TOGGLES as $key => $code) {

@@ -6072,4 +6072,9 @@
   'category_not_found' => "القسم غير موجود.",
   'shared_category_locked' => "هذا القسم من وادي. يمكنك تغيير أولويته وترتيبه وظهوره، وليس اسمه.",
   'category_has_items' => "انقل منتجاته أو احذفها قبل حذف هذا القسم.",
+  'complaint_window_closed' => "انتهى وقت الإبلاغ عن مشكلة في هذا الطلب.",
+  'nothing_to_refund' => "لا يوجد مبلغ لرده في هذا الطلب.",
+  'invalid_items' => "اختر المنتجات الخاطئة أو الناقصة.",
+  'order_already_refunded' => "تم رد مبلغ هذا الطلب بالفعل.",
+  'Refund approved. The store pays its share of these items' => "تمت الموافقة على الاسترداد. المتجر يتحمل نصيبه من هذه المنتجات.",
 );

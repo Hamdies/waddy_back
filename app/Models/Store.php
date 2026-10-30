@@ -163,6 +163,8 @@ class Store extends Model
         'free_delivery'=>'boolean',
         // OF-1: the store's live offers, published by StoreOfferService.
         'active_offers'=>'array',
+        // MA-3: the store app's push switches (StorePushService::wants).
+        'push_prefs'=>'array',
         'vendor_id'=>'integer',
         'status'=>'integer',
         'delivery'=>'boolean',
@@ -205,7 +207,8 @@ class Store extends Model
      * @var array
      */
     protected $hidden = [
-        'gst'
+        'gst',
+        'push_prefs',
     ];
 
     /**

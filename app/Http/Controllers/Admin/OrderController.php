@@ -34,6 +34,7 @@ use App\CentralLogics\ProductLogic;
 use App\CentralLogics\CustomerLogic;
 use App\Models\CardRefund;
 use App\Services\NoonRefundService;
+use App\Services\OrderComplaintService;
 use App\Http\Controllers\Controller;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Support\Facades\Mail;
@@ -486,6 +487,24 @@ class OrderController extends Controller
                 Toastr::warning(translate('messages.you_can_not_refund_a_cod_order'));
                 return back();
             }
+            // OD-2: the customer complained about some items only.
+            $complaint = Refund::where('order_id', $order->id)->first();
+            if ($complaint && $complaint->refund_status === 'approved') {
+                Toastr::warning(translate('messages.order_already_refunded'));
+                return back();
+            }
+            if (OrderComplaintService::isPartial($complaint, $order)) {
+                $result = OrderComplaintService::approvePartial($order, $complaint, $request->admin_note);
+                if (!$result['ok']) {
+                    Toastr::warning($result['message']);
+                    return back();
+                }
+                Toastr::success($result['message']);
+                if ($result['manual']) {
+                    Toastr::warning(translate('Customer Wallet Refund is not active.Plase Manage the Refund Amount Manually'));
+                }
+                return back();
+            }
             if (isset($order->delivered)) {
                 $rt = OrderLogic::refund_order($order);
                 if (!$rt) {
@@ -527,7 +546,12 @@ class OrderController extends Controller
                 'admin_note' => $request->admin_note ?? null,
                 'refund_status' => 'approved',
                 'refund_method' => $refund_method,
+                // Whole order: the store gives up all it earned on it (OD-2).
+                'store_amount' => $order->transaction?->store_amount,
             ]);
+            if ($complaint = Refund::where('order_id', $order->id)->first()) {
+                OrderComplaintService::tellStore($order, $complaint);
+            }
             $order?->store ?   Helpers::increment_order_count($order?->store) : '';
 
             if ($order->delivery_man) {
@@ -1763,6 +1787,9 @@ class OrderController extends Controller
         $order->order_status = 'refund_request_canceled';
         $order->refund_request_canceled = now();
         $order->save();
+        if ($complaint = Refund::where('order_id', $order->id)->first()) {
+            OrderComplaintService::tellStore($order, $complaint);
+        }
         try {
 
 

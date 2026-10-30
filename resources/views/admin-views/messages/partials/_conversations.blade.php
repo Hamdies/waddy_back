@@ -19,9 +19,11 @@
                 <img src="{{asset('/public/assets/admin/img/ellipsis.png')}}" alt="">
             </button>
             <ul class="dropdown-menu conv-dropdown-menu">
+                @if ($user->user_id)
                 <li>
-                    <a href="{{ route('admin.users.customer.view', [$user->user->id]) }}">{{ translate('View_Details') }}</a>
+                    <a href="{{ route('admin.users.customer.view', [$user->user_id]) }}">{{ translate('View_Details') }}</a>
                 </li>
+                @endif
             </ul>
         </div>
     </div>
@@ -307,7 +309,7 @@
                 }
             });
             $.post({
-                url: '{{ route('admin.message.store', [$user->user_id]) }}',
+                url: '{{ $user->vendor_id ? route('admin.message.store-vendor', [$user->vendor_id]) : route('admin.message.store', [$user->user_id]) }}',
                 data: $('reply-form').serialize(),
                 data: formData,
                 cache: false,

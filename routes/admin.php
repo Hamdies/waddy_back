@@ -39,6 +39,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                 Route::get('live', 'PanelController@liveData')->name('live.data');
                 Route::post('live', 'PanelController@liveAction')->name('live.action');
                 Route::post('tickets/{id}/reply', 'PanelController@reply')->name('reply')->whereNumber('id');
+                Route::get('document-file/{id}', 'PanelController@documentFile')->name('document-file')->whereNumber('id');
                 Route::get('res/{res}', 'PanelController@list')->name('list');
                 Route::get('res/{res}/export', 'PanelController@export')->name('export');
                 Route::get('res/{res}/new', 'PanelController@blank')->name('blank');
@@ -210,6 +211,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         Route::group(['prefix' => 'message', 'as' => 'message.'], function () {
             Route::get('list', 'ConversationController@list')->name('list');
             Route::post('store/{user_id}', 'ConversationController@store')->name('store');
+            Route::post('store-vendor/{vendor_id}', 'ConversationController@storeVendor')->name('store-vendor');
             Route::get('view/{conversation_id}/{user_id}', 'ConversationController@view')->name('view');
         });
 

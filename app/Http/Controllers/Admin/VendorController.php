@@ -1326,14 +1326,14 @@ class VendorController extends Controller
             $wallet->decrement('pending_withdraw', $withdraw->amount);
             $withdraw->save();
             $push_notification_status = $moduleType == 'rental' ? Helpers::getRentalNotificationStatusData('provider','provider_withdraw_approve','push_notification_status',$store->id) : Helpers::getNotificationStatusData('store','store_withdraw_approve','push_notification_status',$store->id);
-            $push_notification_status = $push_notification_status == 1 && $vendor?->firebase_token ? 1 : 0;
+            $push_notification_status = $push_notification_status == 1 && ($vendor?->firebase_token || $store) ? 1 : 0;
 
 
 
             $mail_status= $moduleType == 'rental' ? (config('mail.status') &&  Helpers::get_mail_status('rental_withdraw_approve_mail_status_provider') == '1' &&  Helpers::getRentalNotificationStatusData('provider','provider_withdraw_approve','mail_status',$store->id)):( config('mail.status') &&  Helpers::get_mail_status('withdraw_approve_mail_status_store') == '1' &&  Helpers::getNotificationStatusData('store','store_withdraw_approve','mail_status',$store->id));
 
 
-            $this->sentWithdrawRequestNotification($withdraw,$vendor->firebase_token,$vendor->email,'approved',$moduleType,$push_notification_status,$mail_status);
+            $this->sentWithdrawRequestNotification($withdraw,$vendor->firebase_token,$vendor->email,'approved',$moduleType,$push_notification_status,$mail_status,$store);
 
             Toastr::success(translate('messages.vendor_withdraw_request_approved'));
             return redirect()->route('admin.transactions.store.withdraw_list');
@@ -1343,11 +1343,11 @@ class VendorController extends Controller
 
 
             $push_notification_status = $moduleType == 'rental' ? Helpers::getRentalNotificationStatusData('provider','provider_withdraw_rejaction','push_notification_status',$store->id) : Helpers::getNotificationStatusData('store','store_withdraw_rejaction','push_notification_status',$store->id);
-            $push_notification_status = $push_notification_status == 1 && $vendor?->firebase_token ? 1 : 0;
+            $push_notification_status = $push_notification_status == 1 && ($vendor?->firebase_token || $store) ? 1 : 0;
 
             $mail_status= $moduleType == 'rental' ? (config('mail.status') &&  Helpers::get_mail_status('rental_withdraw_deny_mail_status_provider') == '1' &&  Helpers::getRentalNotificationStatusData('provider','provider_withdraw_rejaction','mail_status',$store->id)):( config('mail.status') &&  Helpers::get_mail_status('withdraw_deny_mail_status_store') == '1' &&  Helpers::getNotificationStatusData('store','store_withdraw_rejaction','mail_status',$store->id));
 
-            $this->sentWithdrawRequestNotification($withdraw,$vendor->firebase_token,$vendor->email,'denied',$moduleType,$push_notification_status,$mail_status);
+            $this->sentWithdrawRequestNotification($withdraw,$vendor->firebase_token,$vendor->email,'denied',$moduleType,$push_notification_status,$mail_status,$store);
 
             Toastr::info(translate('messages.vendor_withdraw_request_denied'));
             return redirect()->route('admin.transactions.store.withdraw_list');
@@ -1357,7 +1357,7 @@ class VendorController extends Controller
         }
     }
 
-        private function sentWithdrawRequestNotification($withdraw,$token,$email,$type='approved',$module_type='all' , $push_notification_status = '1', $mail_status = '1'){
+        private function sentWithdrawRequestNotification($withdraw,$token,$email,$type='approved',$module_type='all' , $push_notification_status = '1', $mail_status = '1', $store = null){
             try {
                 if($push_notification_status == 1){
                     $data = [
@@ -1368,7 +1368,12 @@ class VendorController extends Controller
                         'type' => 'withdraw',
                         'order_status' => '',
                     ];
-                    Helpers::send_push_notif_to_device($token, $data);
+                    // Every phone of the store, unless it turned payout pushes off (MA-3).
+                    if ($store && $module_type != 'rental') {
+                        StorePushService::send($store, $data, 'payouts');
+                    } else {
+                        Helpers::send_push_notif_to_device($token, $data);
+                    }
                     DB::table('user_notifications')->insert([
                         'data' => json_encode($data),
                         'vendor_id' => $withdraw->vendor_id,

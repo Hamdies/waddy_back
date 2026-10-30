@@ -23,11 +23,21 @@ use Illuminate\Support\Facades\Log;
  *   the other phones to stop ringing or refresh the open/closed switch.
  * - SB-3: visible order pushes carry `ring` (1 for a new order, 0 for
  *   anything else), so the app does not have to guess from the type.
+ * - MA-3: the store turns kinds of pushes off in the app (Account,
+ *   Notifications & sound). New orders always go through.
  */
 class StorePushService
 {
     /** Keep at most this many phones per login; the oldest are dropped. */
     private const MAX_DEVICES_PER_LOGIN = 10;
+
+    /**
+     * MA-3: the push switches in the store app and their defaults. "tips"
+     * is the admin's broadcasts to all stores; those go by FCM topic, so the
+     * app unsubscribes itself and the switch is stored here for its other
+     * phones.
+     */
+    public const PUSH_DEFAULTS = ['cancel' => true, 'rider' => true, 'reviews' => true, 'payouts' => true, 'tips' => true];
 
     /**
      * Statuses after which the store no longer needs to be alerted: someone
@@ -108,11 +118,50 @@ class StorePushService
         return $groups;
     }
 
-    /** A visible push (tray notification), e.g. a new order. */
-    public static function send(Store $store, array $data): void
+    /** The store's push switches, defaults filled in. */
+    public static function prefs(Store $store): array
     {
+        $saved = is_array($store->push_prefs) ? $store->push_prefs : [];
+        $out = self::PUSH_DEFAULTS;
+        foreach ($out as $key => $_) {
+            if (array_key_exists($key, $saved)) {
+                $out[$key] = (bool) $saved[$key];
+            }
+        }
+        return $out;
+    }
+
+    /** Whether the store wants pushes of [$category]; null (new orders, account notices) always goes. */
+    public static function wants(Store $store, ?string $category): bool
+    {
+        return $category === null || (self::prefs($store)[$category] ?? true);
+    }
+
+    /** A visible push (tray notification), e.g. a new order. */
+    public static function send(Store $store, array $data, ?string $category = null): void
+    {
+        if (!self::wants($store, $category)) {
+            return;
+        }
         foreach (self::tokens($store) as $token) {
             Helpers::send_push_notif_to_device($token, $data);
+        }
+    }
+
+    /**
+     * A visible push written per phone language: [$build] gets 'en' or 'ar'
+     * and returns the push data.
+     */
+    public static function sendLocalized(Store $store, callable $build, ?string $category = null): void
+    {
+        if (!self::wants($store, $category)) {
+            return;
+        }
+        foreach (self::tokensByLanguage($store) as $lang => $tokens) {
+            $data = $build($lang);
+            foreach ($tokens as $token) {
+                Helpers::send_push_notif_to_device($token, $data);
+            }
         }
     }
 
@@ -182,6 +231,56 @@ class StorePushService
             ]);
         } catch (\Throwable $e) {
             Log::warning("order_handled push failed for order {$order->id}: " . $e->getMessage());
+        }
+
+        if (self::tellsStoreOfCancel($order, $from)) {
+            $byCustomer = $order->canceled_by === 'customer';
+            try {
+                self::sendLocalized($store, fn ($lang) => [
+                    'title' => $lang === 'ar' ? "تم إلغاء الطلب #{$order->id}" : "Order #{$order->id} cancelled",
+                    'description' => $lang === 'ar'
+                        ? ($byCustomer ? 'ألغى العميل الطلب. أوقف تجهيزه.' : 'تم إلغاء الطلب. أوقف تجهيزه.')
+                        : ($byCustomer ? 'The customer cancelled it. Stop preparing it.' : 'It was cancelled. Stop preparing it.'),
+                    'order_id' => $order->id,
+                    'image' => '',
+                    'type' => 'order_status',
+                    'ring' => 0,
+                ], 'cancel');
+            } catch (\Throwable $e) {
+                Log::warning("cancel push failed for order {$order->id}: " . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * MA-3: a visible "order cancelled" push, for a cancel the store did not
+     * make itself, once the store already knew about the order. Pure, so it
+     * is tested.
+     */
+    public static function tellsStoreOfCancel(Order $order, ?string $from): bool
+    {
+        return $order->order_status === 'canceled' && $from !== null && $from !== 'canceled'
+            && $order->canceled_by !== 'store'
+            && in_array($from, ['pending', 'accepted', 'confirmed', 'processing', 'handover'], true);
+    }
+
+    /** MA-3: a customer rated items of an order; one push per order. */
+    public static function newReview(Order $order, int $rating): void
+    {
+        $store = $order->store;
+        if (!$store || !\Illuminate\Support\Facades\Cache::add("store_review_push_{$order->id}", 1, now()->addDay())) {
+            return;
+        }
+        try {
+            self::sendLocalized($store, fn ($lang) => [
+                'title' => $lang === 'ar' ? "تقييم جديد · {$rating} ★" : "New review · {$rating} ★",
+                'description' => $lang === 'ar' ? "قيّم عميل الطلب #{$order->id}." : "A customer rated order #{$order->id}.",
+                'order_id' => '',
+                'image' => '',
+                'type' => 'review',
+            ], 'reviews');
+        } catch (\Throwable $e) {
+            Log::warning("review push failed for order {$order->id}: " . $e->getMessage());
         }
     }
 

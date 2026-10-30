@@ -23,6 +23,7 @@ use App\CentralLogics\ProductLogic;
 use App\CentralLogics\OrderLogic;
 use App\Models\CardRefund;
 use App\Services\NoonRefundService;
+use App\Services\OrderComplaintService;
 use App\Http\Controllers\Controller;
 use App\Models\OfflinePaymentMethod;
 use Illuminate\Support\Facades\Mail;
@@ -73,6 +74,9 @@ class OrderController extends Controller
             // refund form may offer "my card".
             $order['card_refund'] = NoonRefundService::present(NoonRefundService::latestFor($order));
             $order['card_refund_eligible'] = $order->order_status === 'delivered' && NoonRefundService::refundRequestEligible($order);
+            // OD-2: when the "Report a problem" button goes away; null = no button.
+            $order['complaint_until'] = OrderComplaintService::deadline($order)?->toIso8601String();
+            $order['complaint'] = OrderComplaintService::present($order->refund);
 
             unset($order['offline_payments']);
             unset($order['details']);
@@ -360,6 +364,8 @@ class OrderController extends Controller
             'customer_reason' => 'required|string|max:254',
             'refund_method' => 'nullable|string|max:100',
             'customer_note' => 'nullable|string|max:65535',
+            'image' => 'nullable|array|max:3',
+            'image.*' => 'image|max:8192',
         ]);
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
@@ -377,6 +383,29 @@ class OrderController extends Controller
                 ]
             ], 404);
         } else if ($order->order_status == 'delivered' && $order->payment_status == 'paid') {
+
+            // OD-2: inside the admin-set window, once per order.
+            if (!OrderComplaintService::deadline($order)) {
+                return response()->json([
+                    'errors' => [
+                        ['code' => 'order', 'message' => translate('messages.complaint_window_closed')]
+                    ]
+                ], 403);
+            }
+
+            // New apps send the wrong or missing items; old ones refund the whole order.
+            $quote = null;
+            if ($request->filled('items')) {
+                $picked = is_array($request->items) ? $request->items : json_decode((string) $request->items, true);
+                $quote = OrderComplaintService::quote($order, is_array($picked) ? $picked : []);
+                if (is_string($quote)) {
+                    return response()->json([
+                        'errors' => [
+                            ['code' => 'items', 'message' => translate($quote)]
+                        ]
+                    ], 403);
+                }
+            }
 
             if ($request->refund_method === 'card' && !NoonRefundService::refundRequestEligible($order)) {
                 return response()->json([
@@ -396,8 +425,9 @@ class OrderController extends Controller
             } else {
                 $image = json_encode([]);
             }
-            $refund_amount = round($order->order_amount - $order->delivery_charge - $order->dm_tips, config('round_up_to_digit'));
+            $refund_amount = $quote ? $quote['amount'] : round($order->order_amount - $order->delivery_charge - $order->dm_tips, config('round_up_to_digit'));
             $refund = new Refund();
+            $refund->items = $quote ? $quote['items'] : null;
             $refund->order_id = $order->id;
             $refund->user_id = $order->user_id;
             $refund->order_status = $order->order_status;
@@ -414,6 +444,7 @@ class OrderController extends Controller
             $refund->save();
             $order->save();
             DB::commit();
+            OrderComplaintService::notifyNewComplaint($order, $refund);
             $admin = Admin::where('role_id', 1)->first();
             $mail_status = Helpers::get_mail_status('refund_request_mail_status_admin');
             try {

@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\CentralLogics\Helpers;
 use App\Models\DeliveryMan;
 use App\Models\Order;
 use Illuminate\Support\Facades\Cache;
@@ -57,20 +56,14 @@ class RiderArrivalService
     private static function notify(Order $order, float $meters): void
     {
         $minutes = self::minutesAway($meters);
-        foreach (StorePushService::tokensByLanguage($order->store) as $lang => $tokens) {
-            $ar = $lang === 'ar';
-            $data = [
-                'title' => $ar ? "المندوب في الطريق إليك · #{$order->id}" : "Rider arriving · #{$order->id}",
-                'description' => $ar ? "يصل خلال $minutes دقيقة تقريبًا. جهّز الطلب للتسليم." : "About $minutes min away. Get the order ready for handover.",
-                'order_id' => $order->id,
-                'image' => '',
-                'type' => 'order_status',
-                'ring' => 0,
-            ];
-            foreach ($tokens as $token) {
-                Helpers::send_push_notif_to_device($token, $data);
-            }
-        }
+        StorePushService::sendLocalized($order->store, fn ($lang) => [
+            'title' => $lang === 'ar' ? "المندوب في الطريق إليك · #{$order->id}" : "Rider arriving · #{$order->id}",
+            'description' => $lang === 'ar' ? "يصل خلال $minutes دقيقة تقريبًا. جهّز الطلب للتسليم." : "About $minutes min away. Get the order ready for handover.",
+            'order_id' => $order->id,
+            'image' => '',
+            'type' => 'order_status',
+            'ring' => 0,
+        ], 'rider');
     }
 
     /** Haversine distance in meters. */

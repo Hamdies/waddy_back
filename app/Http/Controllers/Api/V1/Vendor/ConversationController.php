@@ -18,6 +18,13 @@ use Illuminate\Support\Facades\Validator;
 
 class ConversationController extends Controller
 {
+    /** A chat with Waddy support: one side is 0 (what the apps write) or an admin. */
+    private static function isSupport(Conversation $conversation): bool
+    {
+        return $conversation->sender_type === 'admin' || $conversation->receiver_type === 'admin'
+            || $conversation->sender_id === 0 || $conversation->receiver_id === 0;
+    }
+
     public function messages_store(Request $request)
     {
         if ($request->has('image')) {
@@ -51,7 +58,11 @@ class ConversationController extends Controller
         if($request->conversation_id){
             $conversation = Conversation::find($request->conversation_id);
 
-            if($conversation->sender_id == $sender->id){
+            if(self::isSupport($conversation)){
+                // MA-6: store <-> Waddy support. Support reads it in the admin panel.
+                $receiver_id = 0;
+                $fcm_token = null;
+            }elseif($conversation->sender_id == $sender->id){
                 $receiver_id = $conversation->receiver_id;
                 $receiver = UserInfo::find($receiver_id);
                 if($receiver->deliveryman_id){
@@ -74,7 +85,10 @@ class ConversationController extends Controller
             }
         }else{
 
-            if($request->receiver_type == 'customer'){
+            if($request->receiver_type == 'admin'){
+                $receiver_id = 0;
+                $fcm_token = null;
+            }else if($request->receiver_type == 'customer'){
                 $receiver = UserInfo::where('user_id',$request->receiver_id)->first();
                 $user = User::find($request->receiver_id);
 
@@ -116,7 +130,7 @@ class ConversationController extends Controller
             $conversation = new Conversation;
             $conversation->sender_id = $sender->id;
             $conversation->sender_type = 'vendor';
-            $conversation->receiver_id = $receiver->id;
+            $conversation->receiver_id = $receiver_id;
             $conversation->receiver_type = $request->receiver_type;
             $conversation->unread_message_count = 0;
             $conversation->last_message_time = Carbon::now()->toDateTimeString();
@@ -148,7 +162,9 @@ class ConversationController extends Controller
                     'conversation_id'=> $conversation->id,
                     'sender_type'=> 'vendor'
                 ];
-                Helpers::send_push_notif_to_device($fcm_token, $data);
+                if ($fcm_token) {
+                    Helpers::send_push_notif_to_device($fcm_token, $data);
+                }
 
             }
 
@@ -210,7 +226,10 @@ class ConversationController extends Controller
             $sender->save();
         }
 
-        $conversations = Conversation::with(['sender', 'receiver','last_message'])->where(['sender_id' => $sender->id])->orWhere(['receiver_id' => $sender->id])->orderBy('last_message_time', 'DESC')->paginate($limit, ['*'], 'page', $offset);
+        // Support chats (MA-6) have their own screen; this list is customers and riders.
+        $conversations = Conversation::with(['sender', 'receiver','last_message'])->WhereUser($sender->id)
+            ->where('sender_type', '!=', 'admin')->where('receiver_type', '!=', 'admin')
+            ->orderBy('last_message_time', 'DESC')->paginate($limit, ['*'], 'page', $offset);
 
 
         $data =  [
@@ -253,7 +272,8 @@ class ConversationController extends Controller
             $sender->save();
         }
 
-        $conversations = Conversation::with('sender','receiver','last_message')->WhereUser($sender->id)->where(function($qu)use($key){
+        $conversations = Conversation::with('sender','receiver','last_message')->WhereUser($sender->id)
+            ->where('sender_type', '!=', 'admin')->where('receiver_type', '!=', 'admin')->where(function($qu)use($key){
                     $qu->whereHas('sender',function($query)use($key){
                     foreach ($key as $value) {
                         $query->where('f_name', 'like', "%{$value}%")->orWhere('l_name', 'like', "%{$value}%");
@@ -296,8 +316,15 @@ class ConversationController extends Controller
             $vendor->save();
         }
 
+        $conversation = null;
         if($request->conversation_id){
             $conversation = Conversation::with(['sender','receiver'])->find($request->conversation_id);
+            // Only this store's own chats.
+            if ($conversation && $conversation->sender_id !== $vendor->id && $conversation->receiver_id !== $vendor->id) {
+                $conversation = null;
+            }
+        }else if($request->boolean('admin')){
+            $conversation = Conversation::with(['sender','receiver','last_message'])->WhereConversation($vendor->id, 0)->first();
         }else if($request->delivery_man_id){
             $dm = UserInfo::where('deliveryman_id', $request->delivery_man_id)->first();
             if(!$dm){
@@ -367,7 +394,9 @@ class ConversationController extends Controller
             'offset' => intval($offset),
             'status' => ($order>0)?true:false,
             'messages' => $messages? $messages->items():[],
-            'conversation' => $conversation
+            'conversation' => $conversation,
+            // user_infos.id of this store, so the app can tell its own messages.
+            'me' => $vendor->id,
         ];
         return response()->json($data, 200);
     }

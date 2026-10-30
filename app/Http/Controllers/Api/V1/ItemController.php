@@ -760,6 +760,8 @@ class ItemController extends Controller
         $item->save();
         $item->increment('rating_count');
 
+        \App\Services\StorePushService::newReview($order, (int) $request->rating);
+
         return response()->json(['message' => translate('messages.review_submited_successfully')], 200);
     }
 

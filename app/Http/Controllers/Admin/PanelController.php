@@ -3,15 +3,18 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\StoreDocument;
 use App\Services\AdminPanel\LiveOps;
 use App\Services\AdminPanel\Panel;
 use App\Services\AdminPanel\Resource;
 use App\Services\AdminPanel\Resources\TicketsResource;
 use App\Services\AdminPanel\Scope;
 use App\Services\AdminPanel\Settings;
+use App\Services\StoreDocumentService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * The redesigned admin panel (design handoff v4): one page that talks to
@@ -120,6 +123,17 @@ class PanelController extends Controller
         $tickets = $this->resource('tickets', $request);
         $result = $tickets->reply((int) $id, $request->input('text'));
         return response()->json($result, $result['ok'] ? 200 : 422);
+    }
+
+    /** MA-4: a store document's file. Kept off the public disk (ID cards). */
+    public function documentFile(int $id)
+    {
+        abort_unless(Panel::allowed('verification'), 403);
+        $doc = StoreDocument::findOrFail($id);
+        $path = StoreDocumentService::DIR . '/' . $doc->file;
+        $disk = Storage::disk($doc->file_disk ?: StoreDocumentService::DISK);
+        abort_unless($doc->file && $disk->exists($path), 404);
+        return $disk->response($path, null, ['Cache-Control' => 'private, no-store']);
     }
 
     // ------------------------------------------------------------ settings

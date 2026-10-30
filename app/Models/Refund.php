@@ -17,6 +17,9 @@ class Refund extends Model
 
     protected $casts = [
         'refund_amount' => 'float',
+        'items' => 'array',
+        'store_amount' => 'float',
+        'admin_amount' => 'float',
         'order_id' => 'integer',
         'user_id' => 'integer',
         'created_at' => 'datetime',

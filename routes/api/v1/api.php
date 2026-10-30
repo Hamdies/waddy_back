@@ -182,6 +182,12 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
         Route::put('update-announcment', 'VendorController@update_announcment');
         Route::get('current-orders', 'VendorController@get_current_orders');
         Route::post('broadcasting/auth', 'VendorController@broadcasting_auth');
+        // MA-3, MA-4: Account hub
+        Route::get('account/push-prefs', 'StoreAccountController@push_prefs');
+        Route::put('account/push-prefs', 'StoreAccountController@update_push_prefs');
+        Route::get('account/documents', 'StoreAccountController@documents');
+        Route::post('account/documents', 'StoreAccountController@upload_document');
+        Route::post('account/bank', 'StoreAccountController@update_bank');
         Route::get('offers', 'StoreOfferController@index');
         Route::post('offers', 'StoreOfferController@store');
         Route::put('offers/{id}/status', 'StoreOfferController@status');
