@@ -8751,4 +8751,7 @@ Smartly or Earn. ',
   'offer_min_order_covers_amount' => "The minimum order must be at least the amount off.",
   'offer_started' => "Offer is live. Customers see it now.",
   'offer_updated' => "Offer updated.",
+  'category_not_found' => "Category not found.",
+  'shared_category_locked' => "This category is set by Waddy. You can change its priority, order and visibility, not its name.",
+  'category_has_items' => "Move or delete its items before deleting this category.",
 );

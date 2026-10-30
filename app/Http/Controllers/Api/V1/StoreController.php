@@ -7,6 +7,7 @@ use App\CentralLogics\StoreLogic;
 use App\CentralLogics\CategoryLogic;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Services\StoreCategoryService;
 use App\Models\Item;
 use App\Models\Store;
 use App\Models\StoreBundle;
@@ -167,11 +168,13 @@ class StoreController extends Controller
                 ->map(fn ($rows) => (int) $rows->sum('items_count'));
 
             $store = Helpers::store_data_formatting($store);
-            $store['category_ids'] = array_map('intval', $category_ids->pluck('categories')->toArray());
-            $store['category_details'] = Category::whereIn('id',$store['category_ids'])->orderByDesc('priority')->orderBy('id')->get()
-                ->each(function ($category) use ($items_count) {
-                    $category->items_count = $items_count[$category->id] ?? 0;
-                });
+            // CT-1: the store's own order, minus categories it hid or that are off-schedule now.
+            $categories = StoreCategoryService::forCustomers(
+                Category::whereIn('id', $category_ids->pluck('categories'))->get(), $store['id']);
+            $store['category_ids'] = $categories->pluck('id')->map(fn ($id) => (int) $id)->all();
+            $store['category_details'] = $categories->each(function ($category) use ($items_count) {
+                $category->items_count = $items_count[$category->id] ?? 0;
+            });
             $store['price_range']  = Item::withoutGlobalScopes()->where('store_id', $store->id)
             ->select(DB::raw('MIN(price) AS min_price, MAX(price) AS max_price'))
             ->get(['min_price','max_price'])->toArray();

@@ -6,6 +6,7 @@ use App\CentralLogics\CategoryLogic;
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Services\StoreCategoryService;
 use App\Models\Item;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -40,7 +41,8 @@ class CategoryController extends Controller
             //         ")
 
             $categories = Category:: with(['childes' => function($query)  {
-                $query->where('status',1)->select('id','name','image','slug','parent_id') ;
+                // A store's own subcategory (CT-1) can sit under a shared category; not an aisle.
+                $query->where('status',1)->whereNull('store_id')->select('id','name','image','slug','parent_id') ;
             }]);
 
 
@@ -118,6 +120,8 @@ class CategoryController extends Controller
             // With `store_id`, only the sub-categories that store actually has
             // active items in — a store page's chips must not lead to empty lists.
             $categories = Category::with('parent')->where(['parent_id' => $id,'status'=>1])
+                // Shared subcategories, plus the asking store's own (CT-1).
+                ->where(fn ($q) => $q->whereNull('store_id')->when($request->query('store_id'), fn ($q, $storeId) => $q->orWhere('store_id', $storeId)))
                 ->when($request->query('store_id'), function ($query, $storeId) {
                     $query->whereIn('id', Item::withoutGlobalScopes()
                         ->where('store_id', $storeId)
@@ -125,6 +129,10 @@ class CategoryController extends Controller
                         ->select('category_id'));
                 })
                 ->orderBy('priority','desc')->get();
+            if ($request->query('store_id')) {
+                // CT-1: that store's order, minus what it hid.
+                $categories = StoreCategoryService::forCustomers($categories, (int) $request->query('store_id'));
+            }
             return response()->json($categories, 200);
         } catch (\Exception $e) {
             return response()->json([], 200);

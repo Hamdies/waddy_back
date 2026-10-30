@@ -252,7 +252,7 @@ class ItemSearch
             ->pluck('category_id');
 
         return Category::withCount(['products', 'childes'])->with(['childes' => function ($query) {
-                $query->withCount(['products', 'childes']);
+                $query->whereNull('store_id')->withCount(['products', 'childes']);
             }])
             ->shared()
             ->where(['position' => 0, 'status' => 1])

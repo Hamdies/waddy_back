@@ -291,6 +291,12 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
             Route::get('childes/{category_id}', 'CategoryController@get_childes');
             Route::get('category-wise-products/{id}', 'CategoryController@getCategoryWiseProducts');
             Route::get('sub-category-products/{id}', 'CategoryController@getSubCategoryWiseProducts');
+            // CT-1: the store's own categories and its settings for all of them.
+            Route::get('tree', 'CategoryController@tree');
+            Route::post('/', 'CategoryController@store');
+            Route::post('order', 'CategoryController@order');
+            Route::put('{id}', 'CategoryController@update')->whereNumber('id');
+            Route::delete('{id}', 'CategoryController@destroy')->whereNumber('id');
         });
 
         Route::group(['prefix' => 'delivery-man'], function () {
