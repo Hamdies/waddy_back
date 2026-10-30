@@ -10,6 +10,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Validator;
 use App\CentralLogics\Helpers;
 use App\Models\Order;
+use App\Services\StorePerformanceInsightsService;
 use App\Services\StoreSalesReportService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -216,5 +217,16 @@ class ReportController extends Controller
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
         return response()->json(StoreSalesReportService::build($request->vendor->stores[0], $request['period']), 200);
+    }
+
+    public function insights(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'period' => 'required|in:' . implode(',', array_keys(StorePerformanceInsightsService::PERIODS)),
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+        return response()->json(StorePerformanceInsightsService::build($request->vendor->stores[0], $request['period']), 200);
     }
 }
