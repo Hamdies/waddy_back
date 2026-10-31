@@ -343,7 +343,8 @@ class VendorController extends Controller
                 })
                 ->orWhere(function($query){
                     $query->where('order_status','pending')->where('order_type', 'take_away');
-                });
+                })
+                ->orWhere(fn ($query) => StorePushService::wherePendingAlertedAtPlacement($query));
             }
         })
         ->Notpos()
@@ -1476,7 +1477,8 @@ class VendorController extends Controller
                 })
                 ->orWhere(function($query){
                     $query->where('order_status','pending')->where('order_type', 'take_away');
-                });
+                })
+                ->orWhere(fn ($query) => StorePushService::wherePendingAlertedAtPlacement($query));
             }
         })
         ->Notpos()

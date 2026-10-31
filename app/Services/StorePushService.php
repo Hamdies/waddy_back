@@ -308,6 +308,21 @@ class StorePushService
         return (string) (Helpers::get_business_settings('store_new_order_at_placement') ?? '1') === '1';
     }
 
+    /**
+     * The orders the store was alerted about at placement (helpers.php, the
+     * deliveryman branch), so the store's running orders list them while a
+     * rider is found. Matches nothing when the setting is off.
+     */
+    public static function wherePendingAlertedAtPlacement($query): void
+    {
+        if (!self::newOrderAtPlacement()) {
+            $query->whereRaw('1 = 0');
+            return;
+        }
+        $query->where('order_status', 'pending')->where('order_type', 'delivery')
+            ->where('payment_method', 'cash_on_delivery')->where('scheduled', 0);
+    }
+
     private static function isRealToken(?string $token): bool
     {
         return $token !== null && $token !== '' && $token !== '@';
