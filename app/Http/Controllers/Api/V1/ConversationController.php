@@ -19,8 +19,30 @@ use Modules\Rental\Entities\Trips;
 
 class ConversationController extends Controller
 {
+    /**
+     * Stores only chat with Waddy support: customers and riders can no
+     * longer message a store (new chat or an old one). They call instead.
+     */
+    private static function isStoreChat(Request $request): bool
+    {
+        if ($request->conversation_id) {
+            $conversation = Conversation::find($request->conversation_id);
+            return $conversation && UserInfo::whereIn('id', [$conversation->sender_id, $conversation->receiver_id])
+                ->whereNotNull('vendor_id')->exists();
+        }
+        return $request->receiver_type == 'vendor';
+    }
+
+    private static function storeChatClosed()
+    {
+        return response()->json(['errors' => [['code' => 'store_chat', 'message' => translate('messages.store_chat_closed')]]], 403);
+    }
+
     public function messages_store(Request $request)
     {
+        if (self::isStoreChat($request)) {
+            return self::storeChatClosed();
+        }
         if ($request->has('image')) {
             $image_name=[];
             foreach($request->file('image') as $key=>$img)
@@ -524,6 +546,9 @@ class ConversationController extends Controller
 
     public function dm_messages_store(Request $request)
     {
+        if (self::isStoreChat($request)) {
+            return self::storeChatClosed();
+        }
 
         if ($request->has('image')) {
             $image_name=[];

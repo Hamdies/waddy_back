@@ -27,6 +27,11 @@ class ConversationController extends Controller
 
     public function messages_store(Request $request)
     {
+        // The store app only talks to Waddy support (customer and rider chats are closed).
+        $conversation = $request->conversation_id ? Conversation::find($request->conversation_id) : null;
+        if ($request->conversation_id ? (!$conversation || !self::isSupport($conversation)) : $request->receiver_type != 'admin') {
+            return response()->json(['errors' => [['code' => 'store_chat', 'message' => translate('messages.store_chat_closed')]]], 403);
+        }
         if ($request->has('image')) {
             $image_name=[];
             foreach($request->file('image') as $key=>$img)

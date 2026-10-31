@@ -8770,4 +8770,5 @@ Smartly or Earn. ',
   'team_own_role' => "You cannot change your own role. Ask the owner.",
   'team_more_than_you' => "You can only give access that you have yourself.",
   'account_suspended' => "Your access to this store is turned off. Ask the owner.",
+  'store_chat_closed' => "Chat with stores is off. Call the store, or contact Waddy support.",
 );
