@@ -69,7 +69,9 @@ $countryCode= strtolower($country?$country->value:'auto');
                                         <label class="input-label"
                                             for="exampleFormControlInput1">{{ translate('messages.deliveryman_type') }}</label>
                                         <select name="earning" class="form-control __form-control">
+@if(config('order.dm_freelance_enabled'))
                                             <option value="1">{{ translate('messages.freelancer') }}</option>
+@endif
                                             <option value="0">{{ translate('messages.salary_based') }}</option>
                                         </select>
                                     </div>

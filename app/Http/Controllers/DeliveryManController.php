@@ -74,7 +74,7 @@ class DeliveryManController extends Controller
             'phone' => 'required|regex:/^([0-9\s\-\+\(\)]*)$/|min:10|unique:delivery_men',
             'zone_id' => 'required',
             'vehicle_id' => 'required',
-            'earning' => 'required',
+            'earning' => 'nullable',
             'password' => ['required', Password::min(8)->mixedCase()->letters()->numbers()->symbols()->uncompromised()],
         ], [
             'f_name.required' => translate('messages.first_name_is_required'),
@@ -112,7 +112,7 @@ class DeliveryManController extends Controller
         $dm->identity_image = $identity_image;
         $dm->image = $image_name;
         $dm->active = 0;
-        $dm->earning = $request->earning;
+        $dm->earning = config('order.dm_freelance_enabled') ? (int) $request->earning : 0;
         $dm->password = bcrypt($request->password);
         $dm->application_status= 'pending';
         $dm->save();

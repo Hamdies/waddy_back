@@ -41,7 +41,7 @@ class DeliveryManService
             'identity_image' => $identityImage,
             'image' => $imageName,
             'active' => 0,
-            'earning' => $request->earning,
+            'earning' => config('order.dm_freelance_enabled') ? $request->earning : 0,
             'password' => bcrypt($request->password),
         ];
     }
@@ -81,7 +81,7 @@ class DeliveryManService
             "zone_id" => $request->zone_id,
             "identity_image" => $identityImage,
             "image" => $imageName,
-            "earning" => $request->earning,
+            "earning" => config('order.dm_freelance_enabled') ? $request->earning : 0,
             "password" => strlen($request->password)>1?bcrypt($request->password):$deliveryMan['password'],
             "application_status" => in_array($deliveryMan['application_status'], ['pending','denied']) ? 'approved' : $deliveryMan['application_status'],
             "status" => in_array($deliveryMan['application_status'], ['pending','denied']) ? 1 : $deliveryMan['status'],

@@ -1490,6 +1490,7 @@ class Helpers
                     "sender_type" => (string)$sender_type,
                     "order_type" => (string)$order_type,
                     "ring" => (string)($data['ring'] ?? ''),
+                    "offer_seconds" => (string)($data['offer_seconds'] ?? ''),
                     "click_action" => $web_push_link?(string)$web_push_link:'',
                     "sound" => "notification.wav",
                 ],
@@ -2055,13 +2056,8 @@ class Helpers
                     'image' => '',
                 ];
                 if($order->zone && self::getNotificationStatusData('deliveryman','deliveryman_order_notification','push_notification_status')){
-                    if($order->dm_vehicle_id){
-
-                        $topic = 'delivery_man_'.$order->zone_id.'_'.$order->dm_vehicle_id;
-                        self::send_push_notif_to_topic($data, $topic, 'order_request');
-                    }
-                    self::send_push_notif_to_topic($data, $order->zone->deliveryman_wise_topic, 'order_request');
-
+                    // Nearest riders to the sender first, then the whole zone.
+                    \App\Services\DispatchService::start($order, $data);
                 }
                 // self::send_push_notif_to_topic($data, 'admin_message', 'order_request');
             }

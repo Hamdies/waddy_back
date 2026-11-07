@@ -56,15 +56,17 @@ class OrderRescueService
         $cod = $order->payment_method === 'cash_on_delivery';
         $storeModel = config('order_confirmation_model') === 'store';
 
-        if ($order->order_status === 'pending' && $cod && ($storeModel || $order->order_type === 'take_away')) {
+        $parcel = $order->order_type === 'parcel';
+        if (!$parcel && $order->order_status === 'pending' && $cod && ($storeModel || $order->order_type === 'take_away')) {
             $since = Carbon::parse($order->pending ?? $order->created_at);
             return ['problem' => 'store', 'minutes' => (int) $since->diffInMinutes($now)];
         }
 
-        if ($order->order_type === 'delivery' && !$order->delivery_man_id && !$selfDelivery) {
+        if (($parcel || $order->order_type === 'delivery') && !$order->delivery_man_id && !$selfDelivery) {
             // Under the deliveryman model a pending cash order is waiting for a
             // rider to accept it; otherwise riders are needed once confirmed.
-            $waitingForRider = ($order->order_status === 'pending' && $cod && !$storeModel)
+            // A parcel has no store to confirm it: riders can take it straight away.
+            $waitingForRider = ($order->order_status === 'pending' && ($parcel || ($cod && !$storeModel)))
                 || in_array($order->order_status, ['confirmed', 'processing', 'handover'], true);
             if ($waitingForRider) {
                 $since = Carbon::parse($order->confirmed ?? $order->pending ?? $order->created_at);
@@ -111,7 +113,7 @@ class OrderRescueService
                 self::tellCustomer($order, 'store');
                 $acted++;
             }
-        } else {
+        } elseif (!DispatchService::isWaitingForFood($order)) {
             if (self::due($minutes, self::RIDER_OFFER_AGAIN) && self::once($order, 'rider_offer')) {
                 self::offerToRidersAgain($order);
                 $acted++;
@@ -154,12 +156,12 @@ class OrderRescueService
     /** By now the dispatch waves are over: the whole zone, again. */
     private static function offerToRidersAgain(Order $order): void
     {
-        DispatchService::broadcast($order, [
+        DispatchService::openToZone($order, [
             'title' => translate('Order_Notification'),
             'description' => translate('messages.new_order_push_description'),
             'order_id' => $order->id,
             'module_id' => $order->module_id,
-            'order_type' => $order->order_type,
+            'order_type' => $order->order_type === 'parcel' ? 'parcel_order' : $order->order_type,
             'image' => '',
         ]);
     }

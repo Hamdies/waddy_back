@@ -4,6 +4,7 @@ namespace App\Services\AdminPanel;
 
 use App\Models\DeliveryHistory;
 use App\Services\AdminPanel\Resources\OrdersResource;
+use App\Services\OrderRescueService;
 use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\Cache;
@@ -65,6 +66,7 @@ class LiveOps
             'couriers' => $couriers,
             'zones' => self::zones($range),
             'kpis' => self::kpis($zone, $range),
+            'dispatch' => self::dispatchFunnel($zone, $range),
             'merchants' => self::merchants($zone, $range),
             'bars' => self::bars($zone, $range),
         ];
@@ -207,6 +209,83 @@ class LiveOps
         };
 
         return ['now' => $stats($since, now()), 'prev' => $stats($prevFrom, $prevTo)];
+    }
+
+    /** From alert to rider: order_dispatches and order_offers, in the range. */
+    private static function dispatchFunnel(?int $zone, string $range): array
+    {
+        $since = self::since($range);
+        $zone = Scope::adminZone() ?? $zone;
+        $rows = DB::table('order_dispatches as d')->join('orders as o', 'o.id', '=', 'd.order_id')
+            ->where('d.created_at', '>=', $since)
+            ->when($zone, fn ($q, $z) => $q->where('o.zone_id', $z))
+            ->leftJoinSub(
+                DB::table('order_offers')->groupBy('order_id')->selectRaw('order_id, min(offered_at) as first_offer'),
+                'f', 'f.order_id', '=', 'd.order_id'
+            )
+            ->get(['d.wave', 'd.opened_at', 'f.first_offer', 'o.accepted', 'o.delivery_man_id', 'o.order_status', 'o.picked_up', 'o.rider_at_store_at']);
+        $offers = DB::table('order_offers as f')->join('orders as o', 'o.id', '=', 'f.order_id')
+            ->where('f.offered_at', '>=', $since)
+            ->when($zone, fn ($q, $z) => $q->where('o.zone_id', $z))
+            ->groupBy('f.status')->selectRaw('f.status, count(*) as n')->pluck('n', 'status')->all();
+        return self::summarizeDispatch($rows->map(fn ($r) => (array) $r)->all(), $offers);
+    }
+
+    /** The numbers behind the funnel. Pure. */
+    public static function summarizeDispatch(array $rows, array $offers, ?Carbon $now = null): array
+    {
+        $now ??= now();
+        $toAccept = [];
+        $pickupWait = [];
+        $reached = ['wave1' => 0, 'wave2' => 0, 'zone' => 0];
+        $slow = 0;
+        foreach ($rows as $r) {
+            $start = $r['first_offer'] ?? $r['opened_at'] ?? null;
+            if ($r['opened_at'] ?? null) {
+                $reached['zone']++;
+            } elseif ((int) $r['wave'] >= 2) {
+                $reached['wave2']++;
+            } elseif ((int) $r['wave'] === 1) {
+                $reached['wave1']++;
+            }
+            if ($start) {
+                $waiting = !($r['delivery_man_id'] ?? null) && in_array($r['order_status'] ?? '', ['pending', 'confirmed', 'processing', 'handover'], true);
+                $accepted = $r['accepted'] ?? null;
+                if ($accepted && Carbon::parse($accepted)->gte(Carbon::parse($start))) {
+                    $seconds = Carbon::parse($start)->diffInSeconds(Carbon::parse($accepted));
+                    $toAccept[] = $seconds;
+                    $slow += $seconds >= OrderRescueService::RIDER_OFFER_AGAIN * 60 ? 1 : 0;
+                } elseif ($waiting) {
+                    $slow += Carbon::parse($start)->diffInSeconds($now) >= OrderRescueService::RIDER_OFFER_AGAIN * 60 ? 1 : 0;
+                }
+            }
+            if (($r['picked_up'] ?? null) && ($r['rider_at_store_at'] ?? null) && Carbon::parse($r['picked_up'])->gte(Carbon::parse($r['rider_at_store_at']))) {
+                $pickupWait[] = Carbon::parse($r['rider_at_store_at'])->diffInSeconds(Carbon::parse($r['picked_up']));
+            }
+        }
+        $answered = ($offers['accepted'] ?? 0) + ($offers['declined'] ?? 0) + ($offers['expired'] ?? 0);
+        return [
+            'orders' => count($rows),
+            'acceptMedian' => self::percentile($toAccept, 50),
+            'acceptP90' => self::percentile($toAccept, 90),
+            'offers' => $answered,
+            'offerRate' => $answered ? (int) round(($offers['accepted'] ?? 0) / $answered * 100) : null,
+            'declined' => (int) ($offers['declined'] ?? 0),
+            'expired' => (int) ($offers['expired'] ?? 0),
+            'reached' => $reached,
+            'slow' => $slow,
+            'pickupWaitMedian' => self::percentile($pickupWait, 50),
+        ];
+    }
+
+    /** Nearest-rank percentile, or null with no values. */
+    private static function percentile(array $values, int $p): ?int
+    {
+        if (!$values) {
+            return null;
+        }
+        sort($values);
+        return (int) $values[(int) ceil($p / 100 * count($values)) - 1];
     }
 
     private static function merchants(?int $zone, string $range): array

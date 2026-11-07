@@ -57,6 +57,8 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
         Route::group(['prefix' => 'delivery-man'], function () {
             Route::post('login', 'DeliveryManLoginController@login');
             Route::post('store', 'DeliveryManLoginController@store');
+            Route::post('send-otp', 'DeliveryManLoginController@send_otp')->middleware('throttle:otp');
+            Route::post('verify-otp', 'DeliveryManLoginController@verify_otp');
 
             Route::post('forgot-password', 'DMPasswordResetController@reset_password_request');
             Route::post('verify-token', 'DMPasswordResetController@verify_token');
@@ -134,6 +136,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
             Route::get('all-orders', 'DeliverymanController@get_all_orders');
             Route::get('order-delivery-history', 'DeliverymanController@get_order_history');
             Route::put('accept-order', 'DeliverymanController@accept_order');
+            Route::put('decline-order', 'DeliverymanController@decline_order');
             Route::put('update-order-status', 'DeliverymanController@update_order_status');
             Route::put('update-payment-status', 'DeliverymanController@order_payment_status_update');
             Route::get('order-details', 'DeliverymanController@get_order_details');
@@ -145,6 +148,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
             Route::delete('remove-account', 'DeliverymanController@remove_account');
 
             Route::get('earning-report', 'DeliverymanController@earningReport');
+            Route::get('earning-summary', 'DeliverymanController@earningSummary');
 
             Route::get('get-withdraw-method-list', 'DeliverymanController@withdraw_method_list');
             Route::get('get-disbursement-report', 'DeliverymanController@disbursement_report');
@@ -161,6 +165,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
             Route::post('make-wallet-adjustment', 'DeliverymanController@make_wallet_adjustment')->name('dm_make_wallet_adjustment');
             Route::get('wallet-payment-list', 'DeliverymanController@wallet_payment_list')->name('dm_wallet_payment_list');
             Route::get('wallet-provided-earning-list', 'DeliverymanController@wallet_provided_earning_list')->name('wallet_provided_earning_list');
+            Route::get('wallet-activity', 'DeliverymanController@wallet_activity');
 
 
             // Chatting

@@ -84,7 +84,9 @@
                                         </label>
                                         <select name="earning" data-placeholder="{{ translate('messages.Select_deliveryman_type') }}" required class="form-control js-select2-custom">
                                             <option value="" readonly="true" hidden="true" > {{ translate('messages.Select_deliveryman_type') }}</option>
+@if(config('order.dm_freelance_enabled'))
                                             <option value="1">{{ translate('messages.freelancer') }}</option>
+@endif
                                             <option value="0">{{ translate('messages.salary_based') }}</option>
                                         </select>
                                     </div>

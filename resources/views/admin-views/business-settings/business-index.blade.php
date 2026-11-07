@@ -813,6 +813,24 @@
                                     </div>
                                 </div>
 
+                                {{-- How many riders hear about an order first. The next wave is 2 more than this. --}}
+                                <div class="col-sm-6 col-lg-4">
+                                    <div class="form-group mb-0">
+                                        <label class="input-label" for="dispatch_wave_size">{{ translate('messages.dispatch_wave_size') }}</label>
+                                        <input type="number" min="1" max="10" class="form-control" id="dispatch_wave_size" name="dispatch_wave_size"
+                                            value="{{ \App\CentralLogics\Helpers::get_business_settings('dispatch_wave_size') ?? 2 }}">
+                                    </div>
+                                </div>
+
+                                {{-- Zones with timed offers on (Zones & fees): how long a rider has to answer. --}}
+                                <div class="col-sm-6 col-lg-4">
+                                    <div class="form-group mb-0">
+                                        <label class="input-label" for="dispatch_offer_seconds">{{ translate('messages.dispatch_offer_seconds') }}</label>
+                                        <input type="number" min="10" max="120" class="form-control" id="dispatch_offer_seconds" name="dispatch_offer_seconds"
+                                            value="{{ \App\CentralLogics\Helpers::get_business_settings('dispatch_offer_seconds') ?? 30 }}">
+                                    </div>
+                                </div>
+
                 {{-- XS-5: see HandoverCodeService. Turn on only once the rider app asks for the code. --}}
                                 <div class="col-sm-6 col-lg-4">
                                     @php($handover_code_status = \App\Services\HandoverCodeService::enabled())

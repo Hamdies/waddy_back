@@ -586,6 +586,16 @@ class BusinessSettingsController extends Controller
                 'value' => $request['smart_dispatch_status'] ? 1 : 0
             ]);
         }
+        if ($request->filled('dispatch_wave_size')) {
+            Helpers::businessUpdateOrInsert(['key' => 'dispatch_wave_size'], [
+                'value' => max(1, min(10, (int) $request['dispatch_wave_size']))
+            ]);
+        }
+        if ($request->filled('dispatch_offer_seconds')) {
+            Helpers::businessUpdateOrInsert(['key' => 'dispatch_offer_seconds'], [
+                'value' => max(10, min(120, (int) $request['dispatch_offer_seconds']))
+            ]);
+        }
         if ($request->has('handover_code_status')) {
             Helpers::businessUpdateOrInsert(['key' => 'handover_code_status'], [
                 'value' => $request['handover_code_status'] ? 1 : 0

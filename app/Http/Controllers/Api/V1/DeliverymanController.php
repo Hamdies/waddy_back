@@ -121,6 +121,9 @@ class DeliverymanController extends Controller
             $dm['over_flow_warning'] = true;
         }
 
+        $dm['acceptance_rate'] = \App\Services\DispatchService::acceptanceRate($dm->id);
+        $dm['busy_hint'] = $dm->type === 'zone_wise' ? \App\Services\DispatchService::busyHint((int) $dm->zone_id) : null;
+
         // Cash at which new cash orders stop; null when the cap is off.
         $dm['cash_in_hand_limit'] = $cash_in_hand_overflow ? (float)$cash_in_hand_overflow_delivery_man : null;
 
@@ -241,13 +244,15 @@ class DeliverymanController extends Controller
         // that is already taken just gets "can not accept": accept_order
         // locks the row.
         $cacheKey = 'dm_latest_orders:' . implode(':', [
-            $dm->type, $dm->zone_id, $dm->store_id, $dm->vehicle_id ?? 0,
+            \App\Services\DispatchService::latestOrdersVersion(), $dm->type, $dm->zone_id, $dm->store_id, $dm->vehicle_id ?? 0,
             config('order_confirmation_model'), $limit, $offset,
         ]);
-        return response()->json(\Illuminate\Support\Facades\Cache::remember($cacheKey, 5,
+        $payload = \Illuminate\Support\Facades\Cache::remember($cacheKey, 5,
             // Plain arrays, not models: same JSON out, and safe in any cache store.
             fn () => json_decode(json_encode($this->latest_orders_payload($dm, $limit, $offset)), true)
-        ), 200);
+        );
+        // Offers differ per rider, so they go on top of the shared list.
+        return response()->json(\App\Services\DispatchService::forRider($dm, $payload), 200);
     }
 
     private function latest_orders_payload(DeliveryMan $dm, int $limit, int $offset): array
@@ -386,13 +391,22 @@ class DeliverymanController extends Controller
                     ], 404);
                 }
 
+                // Reserved for the riders in the current wave.
+                if(!\App\Services\DispatchService::mayTake($order, $dm)) {
+                    return response()->json([
+                        'errors' => [
+                            ['code' => 'order', 'message' => translate('messages.can_not_accept')]
+                        ]
+                    ], 404);
+                }
+
                 // Cash in hand validation
-                $payments = $order->payments()->where('payment_method','cash_on_delivery')->exists();
                 $cash_in_hand = $dm?->wallet?->collected_cash ?? 0;
                 $dm_max_cash = BusinessSetting::where('key','dm_max_cash_in_hand')->first();
                 $maxCashValue = $dm_max_cash?->value ?? 0;
+                $cashCeiling = \App\Services\DispatchService::cashCeiling($order);
 
-                if(($order->payment_method == "cash_on_delivery" || $payments) && (($cash_in_hand + $order->order_amount) >= $maxCashValue)) {
+                if($cashCeiling !== null && $cash_in_hand >= $cashCeiling) {
                     return response()->json([
                         'errors'=>[
                             ['code' => 'dm_maximum_hand_in_cash', 'message'=> \App\CentralLogics\Helpers::format_currency($maxCashValue) ." ".translate('max_cash_in_hand_exceeds')]
@@ -447,6 +461,10 @@ class DeliverymanController extends Controller
                     info('Order acceptance notification failed: ' . $e->getMessage());
                 }
 
+                \App\Services\DispatchService::assigned($order, $dm->id);
+                // So the card leaves the other riders' lists now, not in 5 s.
+                \App\Services\DispatchService::refreshRiderLists();
+
                 return response()->json(['message' => 'Order accepted successfully'], 200);
             });
         } catch (\Exception $e) {
@@ -457,6 +475,19 @@ class DeliverymanController extends Controller
                 ]
             ], 500);
         }
+    }
+
+    /** Tells dispatch at once, so a declined offer does not wait out its time. */
+    public function decline_order(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'order_id' => 'required|integer',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+        \App\Services\DispatchService::decline((int) $request['order_id'], $request['dm']);
+        return response()->json(['message' => 'ok'], 200);
     }
 
     public function record_location_data(Request $request)
@@ -575,6 +606,13 @@ class DeliverymanController extends Controller
                     ['code' => 'not_found', 'message' => translate('messages.you_can_not_change_the_status_of_this_order')]
                 ]
             ], 403);
+        }
+
+        // Already there: the app is retrying after a lost response. Doing it
+        // again would count a delivery twice.
+        if($order->order_status === $request['status'])
+        {
+            return response()->json(['message' => translate('messages.status_updated')], 200);
         }
 
         if($request['status'] =="confirmed" && config('order_confirmation_model') == 'store')
@@ -1253,6 +1291,78 @@ class DeliverymanController extends Controller
         return response()->json(['message'=>translate('messages.method_deleted_successfully')], 200);
     }
 
+    /**
+     * The rider's money in one feed, newest first: cash collected on orders,
+     * deposits, and payouts. Adjustments against earnings lower the cash held,
+     * so they read as deposits; the app tells them apart by method.
+     */
+    public function wallet_activity(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'limit' => 'nullable|integer|min:1|max:50',
+            'offset' => 'nullable|integer|min:1',
+            'type' => 'nullable|in:all,cash,deposit,payout',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+
+        $limit = $request['limit'] ?? 25;
+        $offset = $request['offset'] ?? 1;
+        $type = $request['type'] ?? 'all';
+        $dmId = $request['dm']->id;
+
+        $cash = DB::table('account_transactions as t')
+            ->leftJoin('orders as o', 'o.id', '=', DB::raw('CAST(t.ref AS UNSIGNED)'))
+            ->leftJoin('stores as s', 's.id', '=', 'o.store_id')
+            ->where('t.from_type', 'deliveryman')->where('t.from_id', $dmId)->where('t.type', 'cash_in')
+            ->select('t.id', DB::raw("'cash' as type"), 's.name as store_name', 'o.id as order_id', 't.method', 't.amount', 't.created_at');
+
+        $collected = DB::table('account_transactions as t')
+            ->where('t.from_type', 'deliveryman')->where('t.from_id', $dmId)->where('t.type', 'collected')
+            ->select('t.id', DB::raw("'deposit' as type"), DB::raw('NULL as store_name'), DB::raw('NULL as order_id'), 't.method', 't.amount', 't.created_at');
+
+        $adjustments = DB::table('provide_d_m_earnings as e')
+            ->where('e.delivery_man_id', $dmId)->where('e.method', 'adjustment')
+            ->select('e.id', DB::raw("'deposit' as type"), DB::raw('NULL as store_name'), DB::raw('NULL as order_id'), 'e.method', 'e.amount', 'e.created_at');
+
+        $payouts = DB::table('provide_d_m_earnings as e')
+            ->where('e.delivery_man_id', $dmId)
+            ->where(fn ($q) => $q->whereNull('e.method')->orWhere('e.method', '!=', 'adjustment'))
+            ->select('e.id', DB::raw("'payout' as type"), DB::raw('NULL as store_name'), DB::raw('NULL as order_id'), 'e.method', 'e.amount', 'e.created_at');
+
+        $sources = [
+            'cash' => [$cash],
+            'deposit' => [$collected, $adjustments],
+            'payout' => [$payouts],
+        ];
+        $queries = $type === 'all' ? array_merge(...array_values($sources)) : $sources[$type];
+
+        $feed = array_shift($queries);
+        foreach ($queries as $query) {
+            $feed->unionAll($query);
+        }
+
+        $paginator = DB::query()->fromSub($feed, 'feed')
+            ->orderByDesc('created_at')->orderByDesc('id')
+            ->paginate($limit, ['*'], 'page', $offset);
+
+        return response()->json([
+            'total_size' => $paginator->total(),
+            'limit' => (int) $limit,
+            'offset' => (int) $offset,
+            'activity' => collect($paginator->items())->map(fn ($row) => [
+                'type' => $row->type,
+                'store_name' => $row->store_name,
+                'order_id' => $row->order_id ? (int) $row->order_id : null,
+                'method' => $row->method,
+                'amount' => (float) $row->amount,
+                'created_at' => $row->created_at,
+            ])->values(),
+        ], 200);
+    }
+
     public function disbursement_report(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -1288,6 +1398,36 @@ class DeliverymanController extends Controller
         return response()->json($data,200);
 
     }
+    /**
+     * Pay plan and delivered-order counts for the rider Earnings tab. Windows
+     * match get_profile. A week can start in the previous month, so the scan
+     * starts from whichever window opens first.
+     */
+    public function earningSummary(Request $request)
+    {
+        $today = now()->startOfDay();
+        $weekStart = now()->startOfWeek();
+        $monthStart = now()->startOfMonth();
+
+        $counts = $request['dm']->orders()->withoutGlobalScope('storage')
+            ->where('order_status', 'delivered')
+            ->where('delivered', '>=', $weekStart->lt($monthStart) ? $weekStart : $monthStart)
+            ->selectRaw(
+                'coalesce(sum(delivered >= ?), 0) as today, coalesce(sum(delivered >= ?), 0) as week, coalesce(sum(delivered >= ?), 0) as month',
+                [$today, $weekStart, $monthStart]
+            )->first();
+
+        return response()->json([
+            'fixed_monthly_pay' => (float) config('order.dm_fixed_monthly_pay'),
+            'pay_per_order' => (float) config('order.dm_pay_per_order'),
+            'bonus_orders' => (int) config('order.dm_bonus_orders'),
+            'bonus_amount' => (float) config('order.dm_bonus_amount'),
+            'today_orders' => (int) ($counts?->today ?? 0),
+            'week_orders' => (int) ($counts?->week ?? 0),
+            'month_orders' => (int) ($counts?->month ?? 0),
+        ], 200);
+    }
+
     public function earningReport(Request $request)
     {
         $validator = Validator::make($request->all(), [

@@ -12,12 +12,18 @@ use Illuminate\Support\Facades\Log;
  * every 10 s; when the assigned rider of an order the store has not handed
  * over yet comes within [RADIUS_METERS] of the store, the store's phones
  * get one push, so the food is packed when the rider walks in.
+ *
+ * It also records when the rider first reaches each stop, for the real wait at
+ * the store. That only ever sets a time: GPS is not sure enough to change an
+ * order's status.
  */
 class RiderArrivalService
 {
     public const RADIUS_METERS = 500;
+    /** The rider app's "you're here" uses the same distance. */
+    public const AT_STOP_METERS = 150;
     /** City riding speed used for the "about N min away" line. */
-    private const METERS_PER_MINUTE = 333;
+    public const METERS_PER_MINUTE = 333;
 
     public static function check(?DeliveryMan $dm, $latitude, $longitude): void
     {
@@ -27,25 +33,40 @@ class RiderArrivalService
         try {
             $orders = Order::withoutGlobalScopes()
                 ->where('delivery_man_id', $dm->id)
-                ->whereIn('order_status', ['accepted', 'confirmed', 'processing', 'handover'])
-                ->where('order_type', 'delivery')
+                ->whereIn('order_status', ['accepted', 'confirmed', 'processing', 'handover', 'picked_up'])
+                ->whereIn('order_type', ['delivery', 'parcel'])
                 ->with('store')
                 ->get();
             foreach ($orders as $order) {
-                $store = $order->store;
-                if (!$store || !is_numeric($store->latitude) || !is_numeric($store->longitude)) {
+                $pickedUp = $order->order_status === 'picked_up';
+                $stop = $pickedUp ? self::dropOffPoint($order) : DispatchService::pickupPoint($order);
+                if (!$stop) {
                     continue;
                 }
-                $meters = self::distanceMeters((float) $latitude, (float) $longitude, (float) $store->latitude, (float) $store->longitude);
+                $meters = self::distanceMeters((float) $latitude, (float) $longitude, $stop[0], $stop[1]);
+                $arrival = $pickedUp ? 'rider_at_customer_at' : 'rider_at_store_at';
+                if ($meters <= self::AT_STOP_METERS && !$order->{$arrival}) {
+                    Order::withoutGlobalScopes()->where('id', $order->id)->whereNull($arrival)->update([$arrival => now()]);
+                }
                 // Cache::add is atomic: one push per order even with two
                 // location pings in flight.
-                if ($meters <= self::RADIUS_METERS && Cache::add("rider_arriving_{$order->id}", 1, now()->addHours(6))) {
+                if (!$pickedUp && $order->store && $meters <= self::RADIUS_METERS && Cache::add("rider_arriving_{$order->id}", 1, now()->addHours(6))) {
                     self::notify($order, $meters);
                 }
             }
         } catch (\Throwable $e) {
             Log::warning('Rider arrival check failed: ' . $e->getMessage());
         }
+    }
+
+    /** Where the order is dropped: a parcel's receiver, or the customer. [lat, lng] or null. */
+    public static function dropOffPoint(Order $order): ?array
+    {
+        $to = $order->order_type === 'parcel' ? $order->receiver_details : $order->delivery_address;
+        $to = is_string($to) ? json_decode($to, true) : $to;
+        $lat = $to['latitude'] ?? null;
+        $lng = $to['longitude'] ?? null;
+        return is_numeric($lat) && is_numeric($lng) ? [(float) $lat, (float) $lng] : null;
     }
 
     public static function minutesAway(float $meters): int

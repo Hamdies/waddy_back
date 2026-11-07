@@ -75,7 +75,9 @@
                             </span>
                                 </label>
                                         <select name="earning" class="form-control  js-select2-custom" required>
+@if(config('order.dm_freelance_enabled'))
                                             <option value="1" {{$deliveryMan->earning?'selected':''}}>{{translate('messages.freelancer')}}</option>
+@endif
                                             <option value="0" {{$deliveryMan->earning?'':'selected'}}>{{translate('messages.salary_based')}}</option>
                                         </select>
                                     </div>

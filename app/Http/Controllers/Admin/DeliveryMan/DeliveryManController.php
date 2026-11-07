@@ -244,7 +244,7 @@ class DeliveryManController extends BaseController
     }
     public function updateEarning(Request $request): RedirectResponse
     {
-        $this->deliveryManRepo->update(id: $request['id'] ,data: ['earning'=>$request['status']]);
+        $this->deliveryManRepo->update(id: $request['id'] ,data: ['earning'=>config('order.dm_freelance_enabled') ? $request['status'] : 0]);
         Toastr::success(translate('messages.deliveryman_type_updated'));
         return back();
     }

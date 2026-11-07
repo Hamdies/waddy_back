@@ -23,6 +23,18 @@ return [
     // Cash in hand overflow check flag
     'cash_in_hand_overflow_deliveryman' => env('CASH_IN_HAND_OVERFLOW_DM', true),
 
+    // New riders can only be salaried while this is off. Existing freelancers
+    // keep their type until it is changed on their record.
+    'dm_freelance_enabled' => env('DM_FREELANCE_ENABLED', false),
+
+    // Rider pay plan shown on the Earnings tab: fixed monthly pay, an amount per
+    // delivered order, and a bonus each time the month's orders reach another
+    // multiple of dm_bonus_orders.
+    'dm_fixed_monthly_pay' => env('DM_FIXED_MONTHLY_PAY', 5500),
+    'dm_pay_per_order' => env('DM_PAY_PER_ORDER', 15),
+    'dm_bonus_orders' => env('DM_BONUS_ORDERS', 100),
+    'dm_bonus_amount' => env('DM_BONUS_AMOUNT', 1000),
+
     /*
     |--------------------------------------------------------------------------
     | Order Scheduling

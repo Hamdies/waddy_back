@@ -676,12 +676,13 @@ class OrderController extends Controller
                     return response()->json(['message'=> translate('messages.dm_maximum_order_exceed_warning')], 400);
                 }
 
-                $payments = $order->payments()->where('payment_method','cash_on_delivery')->exists();
                 $cash_in_hand = $deliveryman?->wallet?->collected_cash ?? 0;
                 $dm_max_cash = BusinessSetting::where('key','dm_max_cash_in_hand')->first();
                 $maxCashValue = $dm_max_cash?->value ?? 0;
 
-                if(($order->payment_method == "cash_on_delivery" || $payments) && (($cash_in_hand + $order->order_amount) >= $maxCashValue)) {
+                $cashCeiling = \App\Services\DispatchService::cashCeiling($order);
+
+                if($cashCeiling !== null && $cash_in_hand >= $cashCeiling) {
                     return response()->json(['message'=> \App\CentralLogics\Helpers::format_currency($maxCashValue) ." ".translate('max_cash_in_hand_exceeds')], 400);
                 }
 
@@ -716,6 +717,7 @@ class OrderController extends Controller
                 
                 // Update order with new delivery man
                 $order->delivery_man_id = $delivery_man_id;
+                \App\Services\DispatchService::assigned($order, (int) $delivery_man_id);
                 $order->order_status = in_array($order->order_status, ['pending', 'confirmed']) ? 'accepted' : $order->order_status;
                 $order->accepted = now();
                 $order->save();

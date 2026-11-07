@@ -46,6 +46,7 @@ class ZonesResource extends Resource
                 ['key' => 'surge', 'label' => self::L('Surge pricing', 'تسعير الذروة'), 'type' => 'toggle', 'fmt' => 'bool'],
                 ['key' => 'surgePct', 'label' => self::L('Surge (% added to fee)', 'نسبة الذروة'), 'type' => 'number', 'fmt' => 'pct'],
                 ['key' => 'surgeNote', 'label' => self::L('Surge message in app', 'رسالة الذروة'), 'wide' => true],
+                ['key' => 'timedOffers', 'label' => self::L('Timed rider offers', 'عروض المندوبين المؤقتة'), 'type' => 'toggle', 'fmt' => 'bool'],
                 ['key' => 'cod', 'label' => self::L('Cash on delivery', 'الدفع عند الاستلام'), 'readonly' => true, 'fmt' => 'bool'],
                 ['key' => 'couriers', 'label' => self::L('Couriers', 'المندوبين'), 'fmt' => 'int', 'readonly' => true],
                 ['key' => 'orders30', 'label' => self::L('Orders (30d)', 'طلبات ٣٠ يوم'), 'fmt' => 'int', 'readonly' => true],
@@ -69,7 +70,7 @@ class ZonesResource extends Resource
         $q = DB::table('zones as z')
             ->leftJoinSub($fees, 'f', 'f.zone_id', '=', 'z.id')
             ->select('z.id', 'z.name', 'z.display_name', 'z.status', 'z.cash_on_delivery', 'z.increased_delivery_fee', 'z.increased_delivery_fee_status',
-                'z.increase_delivery_charge_message', 'f.base_fee as baseFee', 'f.per_km as perKm', 'f.max_fee as maxFee')
+                'z.increase_delivery_charge_message', 'z.dispatch_mode', 'f.base_fee as baseFee', 'f.per_km as perKm', 'f.max_fee as maxFee')
             ->selectRaw('(select count(*) from orders where orders.zone_id = z.id and orders.created_at >= ?) as orders30', [now()->subDays(30)])
             ->selectRaw('(select count(*) from delivery_men where delivery_men.zone_id = z.id and delivery_men.status = 1) as couriers')
             ->selectRaw('(' . $this->statusSql() . ') as st');
@@ -93,6 +94,7 @@ class ZonesResource extends Resource
             'surge' => (bool) $r->increased_delivery_fee_status,
             'surgePct' => (float) $r->increased_delivery_fee,
             'surgeNote' => (string) $r->increase_delivery_charge_message,
+            'timedOffers' => $r->dispatch_mode === 'offers',
             'cod' => (bool) $r->cash_on_delivery,
             'couriers' => (int) $r->couriers,
             'orders30' => (int) $r->orders30,
@@ -140,6 +142,7 @@ class ZonesResource extends Resource
             'increased_delivery_fee_status' => !empty($data['surge']) ? 1 : 0,
             'increased_delivery_fee' => $data['surgePct'] ?? 0,
             'increase_delivery_charge_message' => $data['surgeNote'] ?? null,
+            'dispatch_mode' => !empty($data['timedOffers']) ? 'offers' : 'waves',
             'updated_at' => now(),
         ]);
         $ids = Scope::ids($this->mod);

@@ -273,10 +273,12 @@
                                     ({{ $deliveryMan->earning ? translate('messages.freelancer') : translate('messages.salary_based') }})
                                 </button>
                                 <div class="dropdown-menu text-capitalize" aria-labelledby="dropdownMenuButton">
+@if(config('order.dm_freelance_enabled'))
                                     <a class="dropdown-item {{ $deliveryMan->earning ? 'active' : '' }} request-alert"
                                         data-url="{{ route('admin.users.delivery-man.earning', [$deliveryMan['id'], 1]) }}"
                                         data-message="{{ translate('messages.want_to_enable_earnings') }}"
                                         href="javascript:">{{ translate('messages.freelancer') }}</a>
+@endif
                                     <a class="dropdown-item {{ $deliveryMan->earning ? '' : 'active' }} request-alert"
                                         data-url="{{ route('admin.users.delivery-man.earning', [$deliveryMan['id'], 0]) }}"
                                         data-message="{{ translate('messages.want_to_disable_earnings') }}"
