@@ -1,8 +1,6 @@
 <?php
 
-use App\WebSockets\Handler\DMLocationSocketHandler;
 use Illuminate\Support\Facades\Route;
-use BeyondCode\LaravelWebSockets\Facades\WebSocketsRouter;
 
 /*
 |--------------------------------------------------------------------------
@@ -630,4 +628,3 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
     Route::get('get-vehicles', 'ConfigController@get_vehicles');
 });
 
-WebSocketsRouter::webSocket('/delivery-man/live-location', DMLocationSocketHandler::class);
