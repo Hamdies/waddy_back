@@ -47,6 +47,7 @@ class ZonesResource extends Resource
                 ['key' => 'surgePct', 'label' => self::L('Surge (% added to fee)', 'نسبة الذروة'), 'type' => 'number', 'fmt' => 'pct'],
                 ['key' => 'surgeNote', 'label' => self::L('Surge message in app', 'رسالة الذروة'), 'wide' => true],
                 ['key' => 'timedOffers', 'label' => self::L('Timed rider offers', 'عروض المندوبين المؤقتة'), 'type' => 'toggle', 'fmt' => 'bool'],
+                ['key' => 'autoAssign', 'label' => self::L('Auto-assign riders (best rider gets it, can hand back)', 'إسناد تلقائي للمندوبين (الأنسب يستلم ويمكنه الإرجاع)'), 'type' => 'toggle', 'fmt' => 'bool'],
                 ['key' => 'cod', 'label' => self::L('Cash on delivery', 'الدفع عند الاستلام'), 'readonly' => true, 'fmt' => 'bool'],
                 ['key' => 'couriers', 'label' => self::L('Couriers', 'المندوبين'), 'fmt' => 'int', 'readonly' => true],
                 ['key' => 'orders30', 'label' => self::L('Orders (30d)', 'طلبات ٣٠ يوم'), 'fmt' => 'int', 'readonly' => true],
@@ -95,6 +96,7 @@ class ZonesResource extends Resource
             'surgePct' => (float) $r->increased_delivery_fee,
             'surgeNote' => (string) $r->increase_delivery_charge_message,
             'timedOffers' => $r->dispatch_mode === 'offers',
+            'autoAssign' => $r->dispatch_mode === 'auto',
             'cod' => (bool) $r->cash_on_delivery,
             'couriers' => (int) $r->couriers,
             'orders30' => (int) $r->orders30,
@@ -142,7 +144,7 @@ class ZonesResource extends Resource
             'increased_delivery_fee_status' => !empty($data['surge']) ? 1 : 0,
             'increased_delivery_fee' => $data['surgePct'] ?? 0,
             'increase_delivery_charge_message' => $data['surgeNote'] ?? null,
-            'dispatch_mode' => !empty($data['timedOffers']) ? 'offers' : 'waves',
+            'dispatch_mode' => !empty($data['autoAssign']) ? 'auto' : (!empty($data['timedOffers']) ? 'offers' : 'waves'),
             'updated_at' => now(),
         ]);
         $ids = Scope::ids($this->mod);

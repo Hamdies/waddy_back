@@ -8774,4 +8774,6 @@ Smartly or Earn. ',
   'account_suspended' => "Your access to this store is turned off. Ask the owner.",
   'store_chat_closed' => "Chat with stores is off. Call the store, or contact Waddy support.",
   'current_password_is_incorrect' => "Your current password is incorrect",
+  'dispatch_auto_decline_seconds' => "Seconds a rider has to hand back an auto-assigned order",
+  'dispatch_stack_detour_minutes' => "Most minutes a second order may add to a rider's route",
 );

@@ -459,32 +459,7 @@ class DeliverymanController extends Controller
             [$order, $dm] = $result;
             // After commit: neither the push nor the list refresh holds row locks.
             \App\Services\DispatchService::refreshRiderLists();
-            // The order is taken now: a failing push must not report a failed accept.
-            try {
-                $fcm_token = $order->is_guest == 0 ? $order?->customer?->cm_firebase_token : $order?->guest?->fcm_token;
-
-                $notificationValue = Helpers::order_status_update_message('accepted', $order->module->module_type);
-                $notificationValue = Helpers::text_variable_data_format(
-                    value: $notificationValue,
-                    store_name: $order->store?->name,
-                    order_id: $order->id,
-                    user_name: "{$order?->customer?->f_name} {$order?->customer?->l_name}",
-                    delivery_man_name: "{$dm->f_name} {$dm->l_name}"
-                );
-                if($notificationValue && $fcm_token && Helpers::getNotificationStatusData('customer','customer_order_notification','push_notification_status')) {
-                    $data = [
-                        'title' => translate('Order_Notification'),
-                        'description' => $notificationValue,
-                        'order_id' => $order['id'],
-                        'image' => '',
-                        'type' => 'order_status'
-                    ];
-                    Helpers::send_push_notif_to_device($fcm_token, $data);
-                }
-            } catch (\Exception $e) {
-                // Log notification failure but don't fail the order acceptance
-                info('Order acceptance notification failed: ' . $e->getMessage());
-            }
+            \App\Services\DispatchService::notifyCustomerAccepted($order, $dm);
 
             return response()->json(['message' => 'Order accepted successfully'], 200);
         } catch (\Exception $e) {

@@ -596,6 +596,16 @@ class BusinessSettingsController extends Controller
                 'value' => max(10, min(120, (int) $request['dispatch_offer_seconds']))
             ]);
         }
+        if ($request->filled('dispatch_auto_decline_seconds')) {
+            Helpers::businessUpdateOrInsert(['key' => 'dispatch_auto_decline_seconds'], [
+                'value' => max(10, min(120, (int) $request['dispatch_auto_decline_seconds']))
+            ]);
+        }
+        if ($request->filled('dispatch_stack_detour_minutes')) {
+            Helpers::businessUpdateOrInsert(['key' => 'dispatch_stack_detour_minutes'], [
+                'value' => max(0, min(20, (int) $request['dispatch_stack_detour_minutes']))
+            ]);
+        }
         if ($request->has('handover_code_status')) {
             Helpers::businessUpdateOrInsert(['key' => 'handover_code_status'], [
                 'value' => $request['handover_code_status'] ? 1 : 0

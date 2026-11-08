@@ -65,6 +65,8 @@ class DispatchOffersTest extends TestCase
         });
         (require database_path('migrations/2026_11_06_000001_create_order_dispatches.php'))->up();
         (require database_path('migrations/2026_11_06_000002_add_rider_arrival_times_to_orders.php'))->up();
+        (require database_path('migrations/2026_11_08_000001_add_dispatch_scoring_to_order_offers.php'))->up();
+        Schema::create('user_notifications', function ($t) { $t->id(); $t->text('data')->nullable(); $t->integer('delivery_man_id')->nullable(); $t->integer('user_id')->nullable(); $t->timestamps(); });
 
         DB::table('zones')->insert(['id' => 1, 'dispatch_mode' => 'offers', 'deliveryman_wise_topic' => 'zone_1']);
         DB::table('modules')->insert(['id' => 1, 'module_type' => 'food']);
@@ -161,9 +163,27 @@ class DispatchOffersTest extends TestCase
         $order = $this->order(['order_type' => 'delivery', 'store_id' => 1, 'delivery_address' => $near]);
         $this->assertSame(2, DispatchService::candidates($order)->first()['id']);
 
-        // The same order held by a customer across the area is not worth stacking.
-        DB::table('orders')->where('delivery_man_id', 2)->update(['delivery_address' => json_encode(['latitude' => '30.05', 'longitude' => '31'])]);
+        // Their other customer is the opposite way: two trips, not one.
+        DB::table('orders')->where('delivery_man_id', 2)->update(['delivery_address' => json_encode(['latitude' => '29.95', 'longitude' => '31'])]);
         $this->assertSame(1, DispatchService::candidates($order)->first()['id']);
+    }
+
+    public function test_an_order_on_the_way_to_another_customer_rides_along(): void
+    {
+        $this->riders(2);
+        config(['dispatch_wave_size_conf' => ['value' => 1]]);
+        DB::table('stores')->insert(['id' => 1, 'name' => 'Zaatar', 'latitude' => '30', 'longitude' => '31']);
+        DB::table('delivery_histories')->where('delivery_man_id', 1)->update(['latitude' => '30.002']);
+        DB::table('delivery_histories')->where('delivery_man_id', 2)->update(['latitude' => '30.003']);
+        DB::table('delivery_men')->where('id', 2)->update(['current_orders' => 1]);
+        // Rider 2's customer is 5.5 km north; the new one lives on that road, 1 km in.
+        $this->order(['order_type' => 'delivery', 'store_id' => 1, 'delivery_man_id' => 2, 'order_status' => 'processing',
+            'delivery_address' => json_encode(['latitude' => '30.05', 'longitude' => '31'])]);
+
+        $order = $this->order(['order_type' => 'delivery', 'store_id' => 1, 'delivery_address' => json_encode(['latitude' => '30.01', 'longitude' => '31'])]);
+        $best = DispatchService::candidates($order)->first();
+        $this->assertSame(2, $best['id']);
+        $this->assertTrue($best['stack']);
     }
 
     public function test_the_work_is_shared_between_riders_equally_close(): void
@@ -474,5 +494,117 @@ class DispatchOffersTest extends TestCase
         $parcel->forceFill(['order_type' => 'parcel', 'payment_method' => 'cash_on_delivery', 'scheduled' => 0, 'order_status' => 'pending', 'created_at' => '2026-10-26 12:50:00']);
         $d = OrderRescueService::diagnose($parcel, Carbon::parse('2026-10-26 13:00:00'), false);
         $this->assertSame(['problem' => 'rider', 'minutes' => 10], $d);
+    }
+
+    private function autoZone(): void
+    {
+        DB::table('zones')->update(['dispatch_mode' => 'auto']);
+    }
+
+    private function assignedTo(Order $order): ?int
+    {
+        $id = DB::table('orders')->where('id', $order->id)->value('delivery_man_id');
+        return $id === null ? null : (int) $id;
+    }
+
+    public function test_auto_mode_gives_the_order_to_the_best_rider_at_once(): void
+    {
+        $this->autoZone();
+        $this->riders(3);
+        $order = $this->order();
+        $this->start($order);
+
+        $this->assertSame(1, $this->assignedTo($order));
+        $this->assertSame('accepted', DB::table('orders')->where('id', $order->id)->value('order_status'));
+        $this->assertSame(1, (int) DB::table('delivery_men')->where('id', 1)->value('current_orders'));
+        $this->assertSame([['t1', 'assign']], array_map(fn ($p) => [$p[0], $p[1]['type']], $this->pushed));
+        $this->assertSame(30, $this->pushed[0][1]['decline_seconds']);
+        $this->assertSame('assigned', OrderOffer::where(['order_id' => $order->id, 'delivery_man_id' => 1])->value('status'));
+        // No one else can take it.
+        $this->assertSame(404, $this->accept(2, $order)->getStatusCode());
+        $this->assertSame(1, $this->assignedTo($order));
+    }
+
+    public function test_an_auto_assigned_rider_can_hand_it_back_and_the_next_best_gets_it(): void
+    {
+        $this->autoZone();
+        $this->riders(3);
+        $order = $this->order();
+        $this->start($order);
+
+        DispatchService::decline($order->id, DeliveryMan::find(1));
+
+        $this->assertSame(2, $this->assignedTo($order));
+        $this->assertSame(0, (int) DB::table('delivery_men')->where('id', 1)->value('current_orders'));
+        $this->assertSame('declined', OrderOffer::where(['order_id' => $order->id, 'delivery_man_id' => 1])->value('status'));
+        $this->assertSame('assigned', OrderOffer::where(['order_id' => $order->id, 'delivery_man_id' => 2])->value('status'));
+    }
+
+    public function test_after_the_decline_window_the_rider_keeps_the_order(): void
+    {
+        $this->autoZone();
+        $this->riders(2);
+        $order = $this->order();
+        $this->start($order);
+
+        Carbon::setTestNow(now()->addSeconds(34));
+        DispatchService::tick();
+        $this->assertSame('accepted', OrderOffer::where(['order_id' => $order->id, 'delivery_man_id' => 1])->value('status'));
+        $this->assertSame('closed', OrderDispatch::where('order_id', $order->id)->value('status'));
+
+        DispatchService::decline($order->id, DeliveryMan::find(1)); // too late
+        $this->assertSame(1, $this->assignedTo($order));
+    }
+
+    public function test_after_three_hand_backs_the_order_opens_to_the_zone(): void
+    {
+        $this->autoZone();
+        $this->riders(5);
+        $order = $this->order();
+        $this->start($order);
+        foreach ([1, 2, 3] as $id) {
+            DispatchService::decline($order->id, DeliveryMan::find($id));
+        }
+
+        $this->assertNull($this->assignedTo($order));
+        $this->assertSame('open', OrderDispatch::where('order_id', $order->id)->value('status'));
+        $this->assertSame('pending', DB::table('orders')->where('id', $order->id)->value('order_status'));
+        $this->assertCount(1, $this->listFor(5, $order)['orders']);
+    }
+
+    public function test_auto_mode_skips_a_rider_whose_phone_went_quiet(): void
+    {
+        $this->autoZone();
+        $this->riders(2);
+        DB::table('delivery_histories')->where('delivery_man_id', 1)->update(['time' => now()->subMinutes(3)]);
+        $order = $this->order();
+        $this->start($order);
+        $this->assertSame(2, $this->assignedTo($order));
+    }
+
+    public function test_orders_due_together_are_matched_together(): void
+    {
+        $this->autoZone();
+        // Rider 1 is close to both pickups, rider 2 only to the first.
+        DB::table('delivery_men')->insert([['id' => 1, 'fcm_token' => 't1'], ['id' => 2, 'fcm_token' => 't2']]);
+        DB::table('delivery_man_wallets')->insert([['delivery_man_id' => 1, 'collected_cash' => 0], ['delivery_man_id' => 2, 'collected_cash' => 0]]);
+        DB::table('delivery_histories')->insert([
+            ['delivery_man_id' => 1, 'latitude' => '30.005', 'longitude' => '31', 'time' => now()],
+            ['delivery_man_id' => 2, 'latitude' => '29.993', 'longitude' => '31', 'time' => now()],
+        ]);
+        // Both orders reach dispatch in the same tick (the food was timed).
+        $first = $this->order(['delivery_address' => json_encode(['latitude' => '30', 'longitude' => '31'])]);
+        $second = $this->order(['delivery_address' => json_encode(['latitude' => '30.01', 'longitude' => '31'])]);
+        foreach ([$first, $second] as $o) {
+            DB::table('order_dispatches')->insert(['order_id' => $o->id, 'mode' => 'auto', 'status' => 'waiting',
+                'next_at' => now(), 'data' => json_encode(['order_id' => $o->id]), 'created_at' => now(), 'updated_at' => now()]);
+        }
+
+        DispatchService::tick();
+
+        // One at a time, the first order would take rider 1 and send rider 2
+        // 1.9 km to the second. Together, each gets a rider about 600 m away.
+        $this->assertSame(2, $this->assignedTo($first));
+        $this->assertSame(1, $this->assignedTo($second));
     }
 }

@@ -831,6 +831,24 @@
                                     </div>
                                 </div>
 
+                                {{-- Zones with auto-assign on (Zones & fees): how long a rider has to hand an order back. --}}
+                                <div class="col-sm-6 col-lg-4">
+                                    <div class="form-group mb-0">
+                                        <label class="input-label" for="dispatch_auto_decline_seconds">{{ translate('messages.dispatch_auto_decline_seconds') }}</label>
+                                        <input type="number" min="10" max="120" class="form-control" id="dispatch_auto_decline_seconds" name="dispatch_auto_decline_seconds"
+                                            value="{{ \App\CentralLogics\Helpers::get_business_settings('dispatch_auto_decline_seconds') ?? 30 }}">
+                                    </div>
+                                </div>
+
+                                {{-- DispatchScorer: the most minutes a second order may add to a rider's route. 0 = never stack. --}}
+                                <div class="col-sm-6 col-lg-4">
+                                    <div class="form-group mb-0">
+                                        <label class="input-label" for="dispatch_stack_detour_minutes">{{ translate('messages.dispatch_stack_detour_minutes') }}</label>
+                                        <input type="number" min="0" max="20" class="form-control" id="dispatch_stack_detour_minutes" name="dispatch_stack_detour_minutes"
+                                            value="{{ \App\CentralLogics\Helpers::get_business_settings('dispatch_stack_detour_minutes') ?? 8 }}">
+                                    </div>
+                                </div>
+
                 {{-- XS-5: see HandoverCodeService. Turn on only once the rider app asks for the code. --}}
                                 <div class="col-sm-6 col-lg-4">
                                     @php($handover_code_status = \App\Services\HandoverCodeService::enabled())

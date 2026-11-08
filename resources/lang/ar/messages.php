@@ -6092,4 +6092,6 @@
   'account_suspended' => "تم إيقاف دخولك لهذا المتجر. تواصل مع المالك.",
   'store_chat_closed' => "المحادثة مع المتاجر متوقفة. اتصل بالمتجر أو تواصل مع دعم وددى.",
   'current_password_is_incorrect' => "كلمة المرور الحالية غير صحيحة",
+  'dispatch_auto_decline_seconds' => "مدة إرجاع الطلب المُسند تلقائيًا (ثوانٍ)",
+  'dispatch_stack_detour_minutes' => "أقصى دقائق يضيفها طلب ثانٍ لمسار المندوب",
 );
