@@ -129,7 +129,7 @@ class DeliverymanController extends Controller
             $dm['over_flow_warning'] = true;
         }
 
-        $dm['acceptance_rate'] = \App\Services\DispatchService::acceptanceRate($dm->id);
+        $dm['acceptance_rate'] = \App\Services\DispatchService::employeeModel() ? null : \App\Services\DispatchService::acceptanceRate($dm->id);
         $dm['busy_hint'] = $dm->type === 'zone_wise' ? \App\Services\DispatchService::busyHint((int) $dm->zone_id) : null;
 
         // Cash at which new cash orders stop; null when the cap is off.
@@ -262,6 +262,11 @@ class DeliverymanController extends Controller
         $limit = (int) $request->input('limit', 50);
         $offset = (int) $request->input('offset', 1);
 
+        // Employee model: zone riders are assigned their orders, there is no list to pick from.
+        if ($dm->type == 'zone_wise' && \App\Services\DispatchService::employeeModel()) {
+            return response()->json(['total_size' => 0, 'limit' => $limit, 'offset' => $offset, 'orders' => []], 200);
+        }
+
         // Every rider with the same zone/store/vehicle filter gets the same
         // list, and each polls every 10 s, so share it for 5 s (B5). A card
         // that is already taken just gets "can not accept": accept_order
@@ -379,7 +384,16 @@ class DeliverymanController extends Controller
         }
         
         $dm = $request['dm'];
-        
+
+        // Employee model: orders are assigned (DispatchService), not taken.
+        if ($dm->type == 'zone_wise' && \App\Services\DispatchService::employeeModel()) {
+            return response()->json([
+                'errors' => [
+                    ['code' => 'assigned_only', 'message' => translate('messages.orders_are_assigned_to_riders')]
+                ]
+            ], 403);
+        }
+
         // Pre-validation checks (before transaction)
         if($dm->active != 1) {
             return response()->json([

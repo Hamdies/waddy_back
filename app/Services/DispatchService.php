@@ -34,7 +34,16 @@ use Illuminate\Support\Facades\Log;
  * store only pays the detour), standing at the counter, fair shares, GPS
  * doubt. Speeds are the zone's own, learned by DeliveryTimeModel.
  *
- * Each zone runs one of three modes (zones.dispatch_mode):
+ * The rider business model (business setting rider_business_model) decides
+ * which of these apply:
+ *
+ * - employee (default): riders are staff. Every order is assigned to the best
+ *   rider, with no accept, decline or hand-back, in every zone. Nothing is
+ *   ever opened to the zone: with no rider free, dispatch retries every tick
+ *   and OrderRescueService alerts ops. smart_dispatch_status and the zone
+ *   modes below are ignored.
+ * - freelance: riders choose. Each zone runs one of three modes
+ *   (zones.dispatch_mode):
  *
  * - waves: everyone in the zone can see and take the order; only who is
  *   alerted first changes.
@@ -61,6 +70,8 @@ class DispatchService
     private const AUTO_FRESH_MINUTES = 2;
     /** Riders auto-assign tries before the order opens to the zone. */
     private const AUTO_MAX_TRIES = 3;
+    /** Employee model: how soon dispatch tries again when no rider is free. */
+    private const RETRY_SECONDS = 15;
     /** Riders scored per order: enough to match several orders at once. */
     private const SHORTLIST = 8;
     private const MAX_WAVES = 2;
@@ -72,6 +83,12 @@ class DispatchService
     /** Tests replace this; everything else pushes through FCM. */
     public static ?\Closure $pusher = null;
     private const LATEST_ORDERS_VERSION = 'dm_latest_orders_version';
+
+    /** Riders are staff and orders are assigned (see the class comment). */
+    public static function employeeModel(): bool
+    {
+        return (string) (Helpers::get_business_settings('rider_business_model') ?? 'employee') !== 'freelance';
+    }
 
     public static function enabled(): bool
     {
@@ -88,15 +105,20 @@ class DispatchService
     {
         // Before the push: the alert looks the order up in this list.
         self::refreshRiderLists();
-        if (!self::enabled() || !self::pickupPoint($order)) {
+        $employees = self::employeeModel();
+        if (!$employees && (!self::enabled() || !self::pickupPoint($order))) {
             self::broadcast($order, $data);
             return;
+        }
+        if ($employees && !self::pickupPoint($order)) {
+            return; // nowhere to score from: rescue alerts ops
         }
         $nextAt = self::firstWaveAt($order);
         // The unique order_id makes this once per order (status pushes can repeat).
         $created = OrderDispatch::insertOrIgnore([
             'order_id' => $order->id,
-            'mode' => in_array($order->zone?->dispatch_mode, ['offers', 'auto'], true) ? $order->zone->dispatch_mode : 'waves',
+            'mode' => $employees ? 'auto'
+                : (in_array($order->zone?->dispatch_mode, ['offers', 'auto'], true) ? $order->zone->dispatch_mode : 'waves'),
             'status' => 'waiting',
             'next_at' => $nextAt,
             'data' => json_encode($data),
@@ -145,7 +167,7 @@ class DispatchService
                 self::close($dispatch);
                 continue;
             }
-            if ($dispatch->mode === 'auto') {
+            if ($dispatch->mode === 'auto' || self::employeeModel()) {
                 $auto[$order->zone_id][] = [$order, $dispatch];
                 continue;
             }
@@ -174,7 +196,7 @@ class DispatchService
     /** The next wave, or the whole zone when there is no one left to offer it to. */
     private static function advance(Order $order, OrderDispatch $dispatch): void
     {
-        if ($dispatch->mode === 'auto') {
+        if ($dispatch->mode === 'auto' || self::employeeModel()) {
             self::autoAssign([[$order, $dispatch]]);
             return;
         }
@@ -223,6 +245,12 @@ class DispatchService
     /** No one left to offer it to: the whole zone, as before smart dispatch. */
     private static function open(Order $order, OrderDispatch $dispatch): void
     {
+        if (self::employeeModel()) {
+            // Staff riders never pick from a list: try again next tick. Kept
+            // 'offering' (not 'waiting') so rescue still sees a rider problem.
+            OrderDispatch::where('id', $dispatch->id)->update(['status' => 'offering', 'next_at' => now()->addSeconds(self::RETRY_SECONDS), 'updated_at' => now()]);
+            return;
+        }
         OrderDispatch::where('id', $dispatch->id)->update(['status' => 'open', 'opened_at' => now(), 'updated_at' => now()]);
         self::broadcast($order, $dispatch->data);
     }
@@ -242,7 +270,7 @@ class DispatchService
         foreach ($items as [$order, $dispatch]) {
             $byOrder[$order->id] = [$order, $dispatch];
             $tried = OrderOffer::where('order_id', $order->id)->pluck('delivery_man_id')->all();
-            $ranked = $dispatch->wave < self::AUTO_MAX_TRIES
+            $ranked = ($dispatch->wave < self::AUTO_MAX_TRIES || self::employeeModel())
                 ? self::candidates($order, $tried, self::AUTO_FRESH_MINUTES)->take(self::SHORTLIST)
                 : collect();
             if ($ranked->isEmpty()) {
@@ -267,13 +295,15 @@ class DispatchService
     /** Gives the order to the rider, under the same rules as accept_order. False when they can no longer take it. */
     private static function assignTo(Order $order, OrderDispatch $dispatch, array $rider): bool
     {
-        $seconds = max(10, min(120, self::setting('dispatch_auto_decline_seconds', 30)));
+        // Employees keep what they are given; freelancers may hand it back.
+        $handBack = !self::employeeModel();
+        $seconds = $handBack ? max(10, min(120, self::setting('dispatch_auto_decline_seconds', 30))) : 0;
         try {
-            [$order, $dm] = DB::transaction(function () use ($order, $dispatch, $rider, $seconds) {
+            [$order, $dm] = DB::transaction(function () use ($order, $dispatch, $rider, $seconds, $handBack) {
                 // Only one caller moves a dispatch on: a decline can race the scheduler.
                 $claimed = OrderDispatch::where('id', $dispatch->id)->where('wave', $dispatch->wave)
                     ->whereIn('status', ['waiting', 'offering'])
-                    ->update(['status' => 'assigned', 'wave' => $dispatch->wave + 1, 'next_at' => now()->addSeconds($seconds), 'updated_at' => now()]);
+                    ->update(['status' => $handBack ? 'assigned' : 'closed', 'wave' => $dispatch->wave + 1, 'next_at' => now()->addSeconds($seconds), 'updated_at' => now()]);
                 $locked = $claimed ? Order::withoutGlobalScopes()->whereKey($order->id)->whereNull('delivery_man_id')
                     ->whereIn('order_status', self::ACTIVE_STATUSES)->lockForUpdate()->first() : null;
                 $dm = $locked ? DeliveryMan::withoutGlobalScopes()->whereKey($rider['id'])
@@ -301,7 +331,7 @@ class DispatchService
 
                 OrderOffer::where('order_id', $locked->id)->where('status', 'offered')->update(['status' => 'expired', 'updated_at' => now()]);
                 OrderOffer::create([
-                    'order_id' => $locked->id, 'delivery_man_id' => $dm->id, 'wave' => $dispatch->wave + 1, 'status' => 'assigned',
+                    'order_id' => $locked->id, 'delivery_man_id' => $dm->id, 'wave' => $dispatch->wave + 1, 'status' => $handBack ? 'assigned' : 'accepted',
                     'distance_m' => (int) $rider['meters'], 'score' => $rider['cost'], 'pickup_minutes' => $rider['minutes'],
                     'prev_status' => $prev, 'offered_at' => now(), 'expires_at' => now()->addSeconds($seconds),
                 ]);
@@ -322,9 +352,11 @@ class DispatchService
             'order_type' => $order->order_type === 'parcel' ? 'parcel_order' : $order->order_type,
             'image' => '',
             'type' => 'assign',
-            // The rider app shows a countdown with "Decline" while this runs.
-            'decline_seconds' => $seconds,
         ];
+        if ($handBack) {
+            // The rider app shows a countdown with "Hand back" while this runs.
+            $data['decline_seconds'] = $seconds;
+        }
         try {
             self::push((string) $dm->fcm_token, $data);
             DB::table('user_notifications')->insert([
@@ -482,6 +514,9 @@ class DispatchService
     /** The rider said no: when the whole wave has, the next one goes now. */
     public static function decline(int $orderId, DeliveryMan $dm): void
     {
+        if (self::employeeModel()) {
+            return; // assigned work is not declined; ops reassign when needed
+        }
         $assigned = OrderOffer::where(['order_id' => $orderId, 'delivery_man_id' => $dm->id, 'status' => 'assigned'])
             ->where('expires_at', '>', now()->subSeconds(self::ACCEPT_GRACE_SECONDS))->first();
         if ($assigned) {
@@ -629,7 +664,8 @@ class DispatchService
             ->whereIn('delivery_man_id', $ids)
             ->where('delivered', '>=', now()->subHours(3))
             ->groupBy('delivery_man_id')->selectRaw('delivery_man_id, max(delivered) as at')->pluck('at', 'delivery_man_id');
-        $rates = self::acceptanceRates($ids->all());
+        // Staff are not offered anything, so there is nothing to accept.
+        $rates = self::employeeModel() ? [] : self::acceptanceRates($ids->all());
         // Only applies when checkout picked no vehicle; otherwise dm_vehicle_id already matched the distance.
         $vehicleIds = $order->dm_vehicle_id ? collect() : $riders->pluck('vehicle_id')->filter()->unique();
         $ranges = $vehicleIds->isEmpty() ? collect() : DMVehicle::whereIn('id', $vehicleIds)->pluck('maximum_coverage_area', 'id');
@@ -787,7 +823,7 @@ class DispatchService
     /** Today's behaviour: every rider subscribed to the zone (and vehicle) topic. */
     public static function broadcast(Order $order, array $data): void
     {
-        if (!$order->zone) {
+        if (!$order->zone || self::employeeModel()) {
             return;
         }
         if ($order->dm_vehicle_id) {

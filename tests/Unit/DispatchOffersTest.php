@@ -71,6 +71,8 @@ class DispatchOffersTest extends TestCase
         DB::table('zones')->insert(['id' => 1, 'dispatch_mode' => 'offers', 'deliveryman_wise_topic' => 'zone_1']);
         DB::table('modules')->insert(['id' => 1, 'module_type' => 'food']);
         config(['dispatch_wave_size_conf' => ['value' => 3]]); // room to tell the waves apart
+        // Offers, accept and decline exist only for freelancers; employee tests switch this.
+        config(['rider_business_model_conf' => ['value' => 'freelance']]);
 
         $this->pushed = [];
         DispatchService::$pusher = function (string $token, array $data) { $this->pushed[] = [$token, $data]; };
@@ -610,4 +612,86 @@ class DispatchOffersTest extends TestCase
         $this->assertSame(2, $this->assignedTo($first));
         $this->assertSame(1, $this->assignedTo($second));
     }
+
+    private function employees(): void
+    {
+        config(['rider_business_model_conf' => ['value' => 'employee']]);
+    }
+
+    public function test_employees_get_the_order_assigned_with_no_way_to_decline(): void
+    {
+        $this->employees();
+        DB::table('zones')->update(['dispatch_mode' => 'offers']); // ignored for staff
+        $this->riders(3);
+        $order = $this->order();
+        $this->start($order);
+
+        $this->assertSame(1, $this->assignedTo($order));
+        $this->assertSame('assign', $this->pushed[0][1]['type']);
+        $this->assertArrayNotHasKey('decline_seconds', $this->pushed[0][1]);
+        $this->assertSame('accepted', OrderOffer::where(['order_id' => $order->id, 'delivery_man_id' => 1])->value('status'));
+        $this->assertSame('closed', OrderDispatch::where('order_id', $order->id)->value('status'));
+        $this->assertSame([], DispatchService::handBackWindows(1, [$order->id]));
+
+        DispatchService::decline($order->id, DeliveryMan::find(1));
+        $this->assertSame(1, $this->assignedTo($order));
+    }
+
+    public function test_employees_cannot_take_orders_from_a_list(): void
+    {
+        $this->employees();
+        $this->riders(1);
+        DB::table('delivery_men')->where('id', 1)->update(['active' => 0]); // not assignable
+        $order = $this->order();
+        $this->start($order);
+
+        $response = $this->accept(1, $order);
+        $this->assertSame(403, $response->getStatusCode());
+        $this->assertSame('assigned_only', $response->getData(true)['errors'][0]['code']);
+    }
+
+    public function test_with_no_free_employee_it_keeps_trying_and_never_opens_to_the_zone(): void
+    {
+        $this->employees();
+        $order = $this->order();
+        $this->start($order);
+        $this->assertSame('offering', OrderDispatch::where('order_id', $order->id)->value('status'));
+        $this->assertSame([], $this->pushed);
+
+        // A rider comes online: the next tick gives it to them.
+        $this->riders(1);
+        Carbon::setTestNow(now()->addSeconds(16));
+        DB::table('delivery_histories')->update(['time' => now()]);
+        DispatchService::tick();
+        $this->assertSame(1, $this->assignedTo($order));
+    }
+
+    public function test_switching_back_to_freelance_restores_accept_and_decline(): void
+    {
+        $this->employees();
+        $this->assertTrue(DispatchService::employeeModel());
+        config(['rider_business_model_conf' => ['value' => 'freelance']]);
+        $this->assertFalse(DispatchService::employeeModel());
+
+        $this->riders(3);
+        $order = $this->order();
+        $this->start($order);
+        $this->assertSame([1, 2, 3], $this->offered($order)); // zone mode 'offers' again
+    }
+
+    public function test_with_no_free_employee_ops_hear_at_three_minutes(): void
+    {
+        $this->employees();
+        $order = $this->order();
+        $this->start($order);
+
+        Carbon::setTestNow(now()->addMinutes(3));
+        OrderRescueService::run();
+
+        // Each rescue step marks itself done before acting.
+        $this->assertTrue(\Illuminate\Support\Facades\Cache::has("order_rescue_{$order->id}_rider_escalate"));
+        $this->assertFalse(\Illuminate\Support\Facades\Cache::has("order_rescue_{$order->id}_rider_offer"));
+        $this->assertNotSame('open', OrderDispatch::where('order_id', $order->id)->value('status'));
+    }
 }
+

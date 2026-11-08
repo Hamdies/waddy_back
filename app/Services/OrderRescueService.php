@@ -26,6 +26,8 @@ class OrderRescueService
     public const STORE_ESCALATE = 10;
     public const RIDER_OFFER_AGAIN = 8;
     public const RIDER_ESCALATE = 15;
+    /** Employee model: dispatch retries by itself, so ops hear early. */
+    public const RIDER_ESCALATE_EMPLOYEES = 3;
 
     /** Orders older than this are someone else's problem (admin queue). */
     private const LOOKBACK_HOURS = 3;
@@ -114,12 +116,19 @@ class OrderRescueService
                 $acted++;
             }
         } elseif (!DispatchService::isWaitingForFood($order)) {
-            if (self::due($minutes, self::RIDER_OFFER_AGAIN) && self::once($order, 'rider_offer')) {
+            $employees = DispatchService::employeeModel();
+            // Freelance only: staff riders never pick from the zone list.
+            if (!$employees && self::due($minutes, self::RIDER_OFFER_AGAIN) && self::once($order, 'rider_offer')) {
                 self::offerToRidersAgain($order);
                 $acted++;
             }
-            if (self::due($minutes, self::RIDER_ESCALATE) && self::once($order, 'rider_escalate')) {
-                self::alertAdmin($order, "No rider for order #{$order->id} after {$minutes} min");
+            if (self::due($minutes, $employees ? self::RIDER_ESCALATE_EMPLOYEES : self::RIDER_ESCALATE) && self::once($order, 'rider_escalate')) {
+                self::alertAdmin($order, $employees
+                    ? "No free rider for order #{$order->id} after {$minutes} min: assign one by hand"
+                    : "No rider for order #{$order->id} after {$minutes} min");
+                $acted++;
+            }
+            if (self::due($minutes, self::RIDER_ESCALATE) && self::once($order, 'rider_tell')) {
                 self::tellCustomer($order, 'rider');
                 $acted++;
             }

@@ -6094,4 +6094,9 @@
   'current_password_is_incorrect' => "كلمة المرور الحالية غير صحيحة",
   'dispatch_auto_decline_seconds' => "مدة إرجاع الطلب المُسند تلقائيًا (ثوانٍ)",
   'dispatch_stack_detour_minutes' => "أقصى دقائق يضيفها طلب ثانٍ لمسار المندوب",
+  'rider_business_model' => "نظام المندوبين",
+  'rider_business_model_hint' => "موظفون: يُسند كل طلب لأنسب مندوب ولا يمكنه القبول أو الرفض. مستقلون: يقبل المندوب أو يرفض، ويُطبق نظام التوزيع لكل منطقة.",
+  'rider_model_employee' => "موظفون (إسناد)",
+  'rider_model_freelance' => "مستقلون (قبول أو رفض)",
+  'orders_are_assigned_to_riders' => "تُسند الطلبات إليك تلقائيًا.",
 );

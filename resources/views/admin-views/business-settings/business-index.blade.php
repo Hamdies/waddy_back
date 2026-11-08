@@ -787,6 +787,34 @@
                                     </div>
                                 </div>
 
+                                {{-- See DispatchService::employeeModel. Employees: orders are assigned, no accept/decline. --}}
+                                <div class="col-lg-4 col-sm-6">
+                                    @php($rider_business_model = \App\Services\DispatchService::employeeModel() ? 'employee' : 'freelance')
+                                    <div class="form-group mb-0">
+                                        <label class="input-label text-capitalize d-flex alig-items-center"><span
+                                                class="line--limit-1">{{ translate('messages.rider_business_model') }}
+                                            <span class="form-label-secondary" data-toggle="tooltip" data-placement="right" data-original-title="{{ translate('messages.rider_business_model_hint') }}">
+                                                <img src="{{asset('public/assets/admin/img/info-circle.svg')}}" alt="">
+                                            </span>
+                                            </span>
+                                        </label>
+                                        <div class="resturant-type-group border">
+                                            <label class="form-check form--check mr-2 mr-md-4">
+                                                <input class="form-check-input" type="radio" value="employee"
+                                                    name="rider_business_model" id="rider_business_model"
+                                                    {{ $rider_business_model == 'employee' ? 'checked' : '' }}>
+                                                <span class="form-check-label">{{ translate('messages.rider_model_employee') }}</span>
+                                            </label>
+                                            <label class="form-check form--check mr-2 mr-md-4">
+                                                <input class="form-check-input" type="radio" value="freelance"
+                                                    name="rider_business_model" id="rider_business_model2"
+                                                    {{ $rider_business_model == 'freelance' ? 'checked' : '' }}>
+                                                <span class="form-check-label">{{ translate('messages.rider_model_freelance') }}</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {{-- XS-2: see DispatchService. Off = every rider in the zone at once, as before. --}}
                                 <div class="col-sm-6 col-lg-4">
                                     @php($smart_dispatch_status = \App\Services\DispatchService::enabled())

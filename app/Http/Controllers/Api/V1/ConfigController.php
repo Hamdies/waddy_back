@@ -211,6 +211,8 @@ class ConfigController extends Controller
             'order_delivery_verification' => (boolean)$settings['order_delivery_verification'],
             // XS-5: rider app asks for the store's code at pickup.
             'handover_code_status' => \App\Services\HandoverCodeService::enabled(),
+            // employee: orders are assigned, the rider app hides requests and accept/decline.
+            'rider_business_model' => \App\Services\DispatchService::employeeModel() ? 'employee' : 'freelance',
             'cash_on_delivery' => (boolean)($cod['status'] == 1 ? true : false),
             'digital_payment' => (boolean)($digital_payment['status'] == 1 ? true : false),
             'digital_payment_info' => $digital_payment_infos,
