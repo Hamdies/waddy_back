@@ -523,6 +523,9 @@ class DispatchOffersTest extends TestCase
         // No one else can take it.
         $this->assertSame(404, $this->accept(2, $order)->getStatusCode());
         $this->assertSame(1, $this->assignedTo($order));
+        // The rider app shows the hand-back countdown from these.
+        $this->assertSame([$order->id => ['offer_seconds_left' => 30, 'offer_total_seconds' => 30]], DispatchService::handBackWindows(1, [$order->id]));
+        $this->assertSame([], DispatchService::handBackWindows(2, [$order->id]));
     }
 
     public function test_an_auto_assigned_rider_can_hand_it_back_and_the_next_best_gets_it(): void

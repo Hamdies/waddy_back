@@ -244,6 +244,13 @@ class DeliverymanController extends Controller
         ->dmOrder()
         ->get();
         $orders= Helpers::order_data_formatting($orders, true);
+        // Auto-assigned: the time left to hand it back (DispatchService).
+        $windows = \App\Services\DispatchService::handBackWindows($dm->id, collect($orders)->pluck('id')->all());
+        foreach ($orders as $order) {
+            foreach ($windows[$order['id']] ?? [] as $key => $value) {
+                $order[$key] = $value;
+            }
+        }
         return response()->json($orders, 200);
     }
 
@@ -866,7 +873,12 @@ class DeliverymanController extends Controller
                 ]
             ], 404); // was 204 (no body), which clients could not tell from an empty reply
         }
-        return response()->json(Helpers::order_data_formatting($order), 200);
+        $data = Helpers::order_data_formatting($order);
+        // Auto-assigned: the time left to hand it back (DispatchService).
+        foreach (\App\Services\DispatchService::handBackWindows($dm['id'], [$order->id])[$order->id] ?? [] as $key => $value) {
+            $data[$key] = $value;
+        }
+        return response()->json($data, 200);
     }
 
     public function get_all_orders(Request $request)

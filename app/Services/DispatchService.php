@@ -386,6 +386,25 @@ class DispatchService
         }
     }
 
+    /**
+     * Auto-assigned orders this rider may still hand back: order id =>
+     * offer_seconds_left, offer_total_seconds (the fields the rider app's
+     * offer countdown already reads).
+     */
+    public static function handBackWindows(int $deliveryManId, array $orderIds): array
+    {
+        if (!$orderIds) {
+            return [];
+        }
+        return OrderOffer::where(['delivery_man_id' => $deliveryManId, 'status' => 'assigned'])
+            ->whereIn('order_id', $orderIds)->where('expires_at', '>', now())
+            ->get()
+            ->mapWithKeys(fn ($o) => [$o->order_id => [
+                'offer_seconds_left' => max(1, (int) now()->diffInSeconds($o->expires_at)),
+                'offer_total_seconds' => (int) $o->offered_at->diffInSeconds($o->expires_at),
+            ]])->all();
+    }
+
     /** "A rider took your order", to the customer. Shared by accept_order and auto-assign. */
     public static function notifyCustomerAccepted(Order $order, DeliveryMan $dm): void
     {
