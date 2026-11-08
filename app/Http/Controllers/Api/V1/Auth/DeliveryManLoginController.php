@@ -135,6 +135,9 @@ class DeliveryManLoginController extends Controller
 
     public function store(Request $request)
     {
+        // The same form send_otp checked and the OTP was sent to, so spaces or
+        // dashes cannot slip a second account past the unique rule.
+        $request->merge(['phone' => AkedlyGateway::normalize_phone((string) $request->phone)]);
         $validator = Validator::make($request->all(), [
             'f_name' => 'required',
             'identity_type' => 'required|in:passport,driving_license,nid',
@@ -145,7 +148,10 @@ class DeliveryManLoginController extends Controller
             'password' => ['required', Password::min(8)->mixedCase()->letters()->numbers()->symbols()->uncompromised()],
             'zone_id' => 'required',
             'vehicle_id' => 'required',
-            'earning' => 'nullable'
+            'earning' => 'nullable',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'identity_image' => 'nullable|array|max:5',
+            'identity_image.*' => 'image|mimes:jpg,jpeg,png,webp|max:10240',
         ], [
             'f_name.required' => translate('messages.first_name_is_required'),
             'zone_id.required' => translate('messages.select_a_zone'),

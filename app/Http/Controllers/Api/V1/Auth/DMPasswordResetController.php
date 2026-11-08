@@ -20,6 +20,17 @@ use Illuminate\Validation\Rules\Password;
 
 class DMPasswordResetController extends Controller
 {
+    /** A rider's reset row: by phone, kept apart from customer rows (created_by 'user'). */
+    private static function key(string $phone): array
+    {
+        return ['phone' => $phone, 'created_by' => 'deliveryman'];
+    }
+
+    private static function resets(string $phone)
+    {
+        return DB::table('password_resets')->where(self::key($phone));
+    }
+
     public function reset_password_request(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -41,7 +52,7 @@ class DMPasswordResetController extends Controller
             // $interval_time = BusinessSetting::where('key', 'otp_interval_time')->first();
             // $otp_interval_time= isset($interval_time) ? $interval_time->value : 20;
             $otp_interval_time= 60; //seconds
-            $verification_data= DB::table('password_resets')->where('email', $deliveryman['email'])->first();
+            $verification_data= self::resets($deliveryman->phone)->first();
             if(isset($verification_data) &&  Carbon::parse($verification_data->created_at)->DiffInSeconds() < $otp_interval_time){
                 $time= $otp_interval_time - Carbon::parse($verification_data->created_at)->DiffInSeconds();
                 $errors = [];
@@ -51,8 +62,8 @@ class DMPasswordResetController extends Controller
                 ], 405);
             }
 
-            $token = rand(100000, 999999);
-            DB::table('password_resets')->updateOrInsert(['email' => $deliveryman['email']],
+            $token = random_int(100000, 999999);
+            DB::table('password_resets')->updateOrInsert(self::key($deliveryman->phone),
             [
                 'token' => $token,
                 'created_at' => now(),
@@ -61,7 +72,7 @@ class DMPasswordResetController extends Controller
 
             try {
                 $mailResponse=null;
-                if (config('mail.status') && Helpers::get_mail_status('forget_password_mail_status_dm') == '1' && Helpers::getNotificationStatusData('deliveryman','deliveryman_forget_password','mail_status')) {
+                if ($deliveryman['email'] && config('mail.status') && Helpers::get_mail_status('forget_password_mail_status_dm') == '1' && Helpers::getNotificationStatusData('deliveryman','deliveryman_forget_password','mail_status')) {
                     Mail::to($deliveryman['email'])->send(new \App\Mail\DmPasswordResetMail($token,$deliveryman['f_name']));
                 $mailResponse='success';
                 }
@@ -145,7 +156,7 @@ class DMPasswordResetController extends Controller
             return response()->json(['errors' => $errors
             ], 404);
         }
-        $data = DB::table('password_resets')->where(['token' => $request['reset_token'],'email'=>$user->email])->first();
+        $data = self::resets($user->phone)->where('token', $request['reset_token'])->first();
         if (isset($data)) {
             return response()->json(['message'=>"Token found, you can proceed"], 200);
         } else{
@@ -156,7 +167,7 @@ class DMPasswordResetController extends Controller
             // $max_otp_hit_time = isset($otp_hit_time) ? $otp_hit_time->value : 30 ;
             $max_otp_hit_time = 60; // seconds
             $temp_block_time = 600; // seconds
-            $verification_data= DB::table('password_resets')->where('email', $user->email)->first();
+            $verification_data= self::resets($user->phone)->first();
 
             if(isset($verification_data)){
                 $time= $temp_block_time - Carbon::parse($verification_data->temp_block_time)->DiffInSeconds();
@@ -173,7 +184,7 @@ class DMPasswordResetController extends Controller
                 }
 
                 if($verification_data->is_temp_blocked == 1 && Carbon::parse($verification_data->created_at)->DiffInSeconds() >= $max_otp_hit_time){
-                    DB::table('password_resets')->updateOrInsert(['email' => $user->email],
+                    DB::table('password_resets')->updateOrInsert(self::key($user->phone),
                         [
                             'otp_hit_count' => 0,
                             'is_temp_blocked' => 0,
@@ -184,7 +195,7 @@ class DMPasswordResetController extends Controller
 
                 if($verification_data->otp_hit_count >= $max_otp_hit &&  Carbon::parse($verification_data->created_at)->DiffInSeconds() < $max_otp_hit_time &&  $verification_data->is_temp_blocked == 0){
 
-                    DB::table('password_resets')->updateOrInsert(['email' => $user->email],                        [
+                    DB::table('password_resets')->updateOrInsert(self::key($user->phone),                        [
                         'is_temp_blocked' => 1,
                         'temp_block_time' => now(),
                         'created_at' => now(),
@@ -197,7 +208,7 @@ class DMPasswordResetController extends Controller
                 }
             }
 
-            DB::table('password_resets')->updateOrInsert(['email' => $user->email],
+            DB::table('password_resets')->updateOrInsert(self::key($user->phone),
             [
             'otp_hit_count' => DB::raw('otp_hit_count + 1'),
             'created_at' => now(),
@@ -231,13 +242,17 @@ class DMPasswordResetController extends Controller
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
-        $data = DB::table('password_resets')->where(['token' => $request['reset_token']])->first();
+        // Phone and token together, and only the rider's own row: rows are
+        // never matched by email, which is empty for most riders and for
+        // every customer reset.
+        $user = DeliveryMan::where('phone', $request->phone)->first();
+        $data = $user ? self::resets($user->phone)->where('token', $request['reset_token'])->first() : null;
         if (isset($data)) {
             if ($request['password'] == $request['confirm_password']) {
-                DB::table('delivery_men')->where(['email' => $data->email])->update([
-                    'password' => bcrypt($request['confirm_password'])
-                ]);
-                DB::table('password_resets')->where(['token' => $request['reset_token']])->delete();
+                $user->password = bcrypt($request['confirm_password']);
+                $user->auth_token = null; // sign out a session the reset was meant to end
+                $user->save();
+                self::resets($user->phone)->delete();
                 return response()->json(['message' => 'Password changed successfully.'], 200);
             }
             $errors = [];
@@ -285,7 +300,7 @@ class DMPasswordResetController extends Controller
         $user = DeliveryMan::Where(['phone' => $request->phoneNumber])->first();
 
         if (isset($user)){
-            DB::table('password_resets')->updateOrInsert(['email' => $user->email],
+            DB::table('password_resets')->updateOrInsert(self::key($user->phone),
                 [
                     'token' => $request->code,
                     'created_at' => now(),

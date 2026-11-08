@@ -55,15 +55,15 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
         Route::post('guest/request','CustomerAuthController@guest_request');
 
         Route::group(['prefix' => 'delivery-man'], function () {
-            Route::post('login', 'DeliveryManLoginController@login');
-            Route::post('store', 'DeliveryManLoginController@store');
+            Route::post('login', 'DeliveryManLoginController@login')->middleware('throttle:auth');
+            Route::post('store', 'DeliveryManLoginController@store')->middleware('throttle:auth');
             Route::post('send-otp', 'DeliveryManLoginController@send_otp')->middleware('throttle:otp');
-            Route::post('verify-otp', 'DeliveryManLoginController@verify_otp');
+            Route::post('verify-otp', 'DeliveryManLoginController@verify_otp')->middleware('throttle:otp');
 
-            Route::post('forgot-password', 'DMPasswordResetController@reset_password_request');
-            Route::post('verify-token', 'DMPasswordResetController@verify_token');
-            Route::post('firebase-verify-token', 'DMPasswordResetController@firebase_auth_verify');
-            Route::put('reset-password', 'DMPasswordResetController@reset_password_submit');
+            Route::post('forgot-password', 'DMPasswordResetController@reset_password_request')->middleware('throttle:otp');
+            Route::post('verify-token', 'DMPasswordResetController@verify_token')->middleware('throttle:otp');
+            Route::post('firebase-verify-token', 'DMPasswordResetController@firebase_auth_verify')->middleware('throttle:otp');
+            Route::put('reset-password', 'DMPasswordResetController@reset_password_submit')->middleware('throttle:otp');
         });
         Route::group(['prefix' => 'vendor'], function () {
             Route::post('login', 'VendorLoginController@login');
@@ -117,7 +117,6 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
     Route::get('flutter-landing-page', 'ConfigController@flutter_landing_page');
 
     Route::group(['prefix' => 'delivery-man' ], function () {
-        Route::get('last-location', 'DeliverymanController@get_last_location');
 
 
         Route::group(['prefix' => 'reviews','middleware'=>['auth:api']], function () {
@@ -138,7 +137,6 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
             Route::put('accept-order', 'DeliverymanController@accept_order');
             Route::put('decline-order', 'DeliverymanController@decline_order');
             Route::put('update-order-status', 'DeliverymanController@update_order_status');
-            Route::put('update-payment-status', 'DeliverymanController@order_payment_status_update');
             Route::get('order-details', 'DeliverymanController@get_order_details');
             Route::get('order', 'DeliverymanController@get_order');
             Route::get('order-status', 'DeliverymanController@get_order_status');
