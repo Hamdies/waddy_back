@@ -1917,13 +1917,53 @@ class Helpers
         }
     }
 
+    /**
+     * Hands a new order to rider dispatch. Runs before, and apart from, every
+     * push in send_order_notification: a failing customer or store push used
+     * to throw into that function's catch-all and skip dispatch, so the order
+     * sat with no rider and no order_dispatches row.
+     */
+    private static function startRiderDispatch($order, $push_notification_status): void
+    {
+        try {
+            if (!$order->zone || !self::getNotificationStatusData('deliveryman','deliveryman_order_notification','push_notification_status')) {
+                return;
+            }
+            $storeDelivers = $order->store?->sub_self_delivery && $push_notification_status;
+            $cod = $order->payment_method == 'cash_on_delivery';
+            $model = config('order_confirmation_model');
+            $start = match (true) {
+                $order->order_type == 'parcel' => in_array($order->order_status, ['pending', 'confirmed']),
+                $order->order_type != 'delivery' || $order->scheduled || $storeDelivers => false,
+                $order->order_status == 'pending' => $cod && $model == 'deliveryman',
+                $order->order_status == 'confirmed' => !$cod || $model == 'store',
+                default => false,
+            };
+            if (!$start) {
+                return;
+            }
+            // Nearest riders first (or straight assignment for staff riders).
+            \App\Services\DispatchService::start($order, [
+                'title' => translate('Order_Notification'),
+                'description' => translate('messages.new_order_push_description'),
+                'order_id' => $order->id,
+                'module_id' => $order->module_id,
+                'order_type' => $order->order_type == 'parcel' ? 'parcel_order' : $order->order_type,
+                'image' => '',
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Rider dispatch failed to start for order {$order->id}: " . $e->getMessage());
+        }
+    }
+
     public static function send_order_notification($order)
     {
+        $push_notification_status = self::getNotificationStatusData('store','store_order_notification','push_notification_status', $order?->store?->id);
+        self::startRiderDispatch($order, $push_notification_status);
+
         // The customer's iOS Live Activity only moves on APNs pushes while the
         // app is in the background; the FCM push below can't reach it.
         app(\App\Services\OrderNotificationService::class)->sendLiveActivityUpdate($order);
-
-        $push_notification_status = self::getNotificationStatusData('store','store_order_notification','push_notification_status', $order?->store?->id);
 
         try {
 
@@ -2028,38 +2068,8 @@ class Helpers
                         ]);
                     }
                 }
-                // Riders: the same condition as the old else branch.
-                if (!($order->store->sub_self_delivery && $push_notification_status)) {
-                    $data = [
-                        'title' => translate('Order_Notification'),
-                        'description' => translate('messages.new_order_push_description'),
-                        'order_id' => $order->id,
-                        'module_id' => $order->module_id,
-                        'order_type' => $order->order_type,
-                        'image' => '',
-                    ];
-                    if($order->zone && self::getNotificationStatusData('deliveryman','deliveryman_order_notification','push_notification_status')){
-                        // XS-2: nearest riders first, then the whole zone.
-                        \App\Services\DispatchService::start($order, $data);
-                    }
-                }
+                // Riders: started up front by startRiderDispatch().
                 // self::send_push_notif_to_topic($data, 'admin_message', 'order_request', url('/').'/admin/order/list/all');
-            }
-
-            if ($order->order_type == 'parcel' && in_array($order->order_status, ['pending', 'confirmed'])) {
-                $data = [
-                    'title' => translate('Order_Notification'),
-                    'description' => translate('messages.new_order_push_description'),
-                    'order_id' => $order->id,
-                    'module_id' => $order->module_id,
-                    'order_type' => 'parcel_order',
-                    'image' => '',
-                ];
-                if($order->zone && self::getNotificationStatusData('deliveryman','deliveryman_order_notification','push_notification_status')){
-                    // Nearest riders to the sender first, then the whole zone.
-                    \App\Services\DispatchService::start($order, $data);
-                }
-                // self::send_push_notif_to_topic($data, 'admin_message', 'order_request');
             }
 
             if ($order->order_type == 'delivery' && !$order->scheduled && $order->order_status == 'pending' && $order->payment_method == 'cash_on_delivery' && config('order_confirmation_model') == 'store') {
@@ -2158,13 +2168,9 @@ class Helpers
                     'order_type' => $order->order_type,
                     'image' => '',
                 ];
+                // Otherwise riders were started up front by startRiderDispatch().
                 if ($order->store->sub_self_delivery && $push_notification_status) {
                     self::send_push_notif_to_topic($data, "restaurant_dm_" . $order->store_id, 'order_request',null);
-                } else
-                {if($order->zone && self::getNotificationStatusData('deliveryman','deliveryman_order_notification','push_notification_status')){
-                    // XS-2: nearest riders first, then the whole zone.
-                    \App\Services\DispatchService::start($order, $data);
-                }
                 }
             }
 
