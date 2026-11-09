@@ -10,7 +10,8 @@
             </div>
             <div class="chat-user-info-content">
                 <h5 class="mb-0 text-capitalize">
-                    {{$user['f_name'].' '.$user['l_name']}}</h5>
+                    {{$user['f_name'].' '.$user['l_name']}}
+                    @if ($user->deliveryman_id)<span class="badge badge-soft-info ml-1">{{ translate('messages.deliveryman') }}</span>@endif</h5>
                 <span dir="ltr">{{ $user['phone'] }}</span>
             </div>
         </div>
@@ -24,17 +25,25 @@
                     <a href="{{ route('admin.users.customer.view', [$user->user_id]) }}">{{ translate('View_Details') }}</a>
                 </li>
                 @endif
+                @if ($user->deliveryman_id)
+                <li>
+                    <a href="{{ route('admin.users.delivery-man.preview', [$user->deliveryman_id]) }}">{{ translate('View_Details') }}</a>
+                </li>
+                @endif
             </ul>
         </div>
     </div>
 
     <div class="card-body">
         <div class="scroll-down">
+            @php($shownOrderId = null)
             @foreach($convs as $con)
             @if($con->sender_id == $receiver->id)
 
 
-            @if ($con?->order)
+            {{-- One card each time the conversation moves to another order, not on every message. --}}
+            @if ($con?->order && $con->order_id != $shownOrderId)
+            @php($shownOrderId = $con->order_id)
             <div class="conv-reply-1 p-0 m-0 bg-transparent">
 
                 <div class="card shadow-sm my-3" >
@@ -43,7 +52,7 @@
                         <div class="d-flex justify-content-between gap-2">
                             <div>
                                 <div class="d-flex align-items-center gap-2">
-                                    <h5 class="card-title">{{ translate('Order ID') }} # {{ $con?->order?->id }}</h5>
+                                    <h5 class="card-title"><a href="{{ route('admin.order.details', [$con?->order?->id]) }}" target="_blank">{{ translate('Order ID') }} # {{ $con?->order?->id }}</a></h5>
                                     @if (in_array($con?->order?->order_status ,['pending' ,'confirmed',
                                     'accepted','processing','handover','picked_up']))
                                     <span class="badge badge-soft-info">
@@ -309,7 +318,7 @@
                 }
             });
             $.post({
-                url: '{{ $user->vendor_id ? route('admin.message.store-vendor', [$user->vendor_id]) : route('admin.message.store', [$user->user_id]) }}',
+                url: '{{ $user->vendor_id ? route('admin.message.store-vendor', [$user->vendor_id]) : ($user->deliveryman_id ? route('admin.message.store-delivery-man', [$user->deliveryman_id]) : route('admin.message.store', [$user->user_id])) }}',
                 data: $('reply-form').serialize(),
                 data: formData,
                 cache: false,

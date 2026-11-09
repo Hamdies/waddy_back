@@ -15,7 +15,9 @@
             <div class="chat-user-info-content">
                 <h5 class="mb-0 d-flex justify-content-between">
                     <span>
-                        <span class=" mr-2">{{$user['f_name'].' '.$user['l_name']}}</span> <span
+                        <span class=" mr-2">{{$user['f_name'].' '.$user['l_name']}}</span>
+                        @if ($user->deliveryman_id)<span class="badge badge-soft-info mr-2">{{ translate('messages.deliveryman') }}</span>@endif
+                        <span
                             class="{{$unchecked ? 'badge badge-info' : ''}}">{{$unchecked ? $unchecked : ''}}</span>
                     </span>
                     <small>{{date(config('timeformat'),strtotime($conv->last_message?->created_at))}}</small>

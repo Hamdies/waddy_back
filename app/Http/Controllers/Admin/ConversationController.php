@@ -9,6 +9,7 @@ use App\Models\UserInfo;
 use App\Models\Message;
 use App\Models\User;
 use App\Models\Admin;
+use App\Models\DeliveryMan;
 use App\Models\Vendor;
 use App\Services\StorePushService;
 use Carbon\Carbon;
@@ -238,6 +239,96 @@ class ConversationController extends Controller
             } catch (\Exception $e) {
                 info($e->getMessage());
             }
+        }
+
+        $convs = Message::where(['conversation_id' => $conversation->id])->get();
+        $user = $receiver;
+        return response()->json([
+            'view' => view('admin-views.messages.partials._conversations', compact('convs', 'user', 'receiver'))->render()
+        ]);
+    }
+
+    /**
+     * Support answers a rider. Same thread as the rider app's "Waddy
+     * support" chat (the rider's user_info and 0), pushed to the rider's phone.
+     */
+    public function storeDeliveryMan(Request $request, $delivery_man_id)
+    {
+        if ($request->has('images')) {
+            $image_name = [];
+            foreach ($request->images as $img) {
+                $image_name[] = ['img' => Helpers::upload('conversation/', 'png', $img), 'storage' => Helpers::getDisk()];
+            }
+        } else {
+            $image_name = null;
+            $validator = Validator::make($request->all(), ['reply' => 'required']);
+            if ($validator->fails()) {
+                return response()->json(['errors' => Helpers::error_processor($validator)]);
+            }
+        }
+
+        $admin = Admin::find(auth('admin')->id());
+        $sender = UserInfo::where('admin_id', $admin->id)->first();
+        if (!$sender) {
+            $sender = new UserInfo();
+            $sender->admin_id = $admin->id;
+            $sender->f_name = $admin->f_name;
+            $sender->l_name = $admin->l_name;
+            $sender->phone = $admin->phone;
+            $sender->email = $admin->email;
+            $sender->image = $admin->image;
+            $sender->save();
+        }
+
+        $dm = DeliveryMan::findOrFail($delivery_man_id);
+        $receiver = UserInfo::where('deliveryman_id', $dm->id)->first();
+        if (!$receiver) {
+            $receiver = new UserInfo();
+            $receiver->deliveryman_id = $dm->id;
+            $receiver->f_name = $dm->f_name;
+            $receiver->l_name = $dm->l_name;
+            $receiver->phone = $dm->phone;
+            $receiver->email = $dm->email;
+            $receiver->image = $dm->image;
+            $receiver->save();
+        }
+
+        $conversation = Conversation::whereConversation($receiver->id, 0)->first();
+        if (!$conversation) {
+            $conversation = Conversation::create([
+                'sender_id' => 0, 'sender_type' => 'admin',
+                'receiver_id' => $receiver->id, 'receiver_type' => 'delivery_man',
+                'unread_message_count' => 0, 'last_message_time' => now(),
+            ]);
+        }
+
+        $message = new Message();
+        $message->conversation_id = $conversation->id;
+        $message->sender_id = $sender->id;
+        $message->message = $request->reply;
+        if ($image_name) {
+            $message->file = json_encode($image_name, JSON_UNESCAPED_SLASHES);
+        }
+        $message->save();
+
+        $conversation->unread_message_count = ($conversation->unread_message_count ?? 0) + 1;
+        $conversation->last_message_id = $message->id;
+        $conversation->last_message_time = now();
+        $conversation->save();
+
+        try {
+            Helpers::send_push_notif_to_device($dm->fcm_token, [
+                'title' => translate('messages.message_from_admin'),
+                'description' => $message->message ?? translate('attachment'),
+                'order_id' => '',
+                'image' => '',
+                'message' => json_encode($message),
+                'type' => 'message',
+                'conversation_id' => $conversation->id,
+                'sender_type' => 'admin',
+            ]);
+        } catch (\Exception $e) {
+            info($e->getMessage());
         }
 
         $convs = Message::where(['conversation_id' => $conversation->id])->get();

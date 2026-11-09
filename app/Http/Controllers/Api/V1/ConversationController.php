@@ -38,6 +38,39 @@ class ConversationController extends Controller
         return response()->json(['errors' => [['code' => 'store_chat', 'message' => translate('messages.store_chat_closed')]]], 403);
     }
 
+    /** A chat with Waddy support: one side is 0 (what the apps write) or an admin. */
+    private static function isSupport(Conversation $conversation): bool
+    {
+        return $conversation->sender_type === 'admin' || $conversation->receiver_type === 'admin'
+            || $conversation->sender_id === 0 || $conversation->receiver_id === 0;
+    }
+
+    /**
+     * The rider's latest order for the customer on the other side of this
+     * chat, so the rider app can show which order a thread is about. Null for
+     * support chats and customers the rider never delivered to.
+     */
+    private static function dmOrderFor(Conversation $conversation, DeliveryMan $dm): ?array
+    {
+        $customer = collect([$conversation->sender, $conversation->receiver])->first(fn ($info) => $info?->user_id);
+        if (!$customer) {
+            return null;
+        }
+        $order = Order::where('delivery_man_id', $dm->id)->where('user_id', $customer->user_id)
+            ->latest()->first(['id', 'order_status', 'delivery_address', 'order_amount', 'payment_method']);
+        if (!$order) {
+            return null;
+        }
+        $address = is_string($order->delivery_address) ? json_decode($order->delivery_address, true) : $order->delivery_address;
+        return [
+            'id' => (int) $order->id,
+            'order_status' => $order->order_status,
+            'address' => $address['address'] ?? null,
+            'order_amount' => (float) $order->order_amount,
+            'payment_method' => $order->payment_method,
+        ];
+    }
+
     public function messages_store(Request $request)
     {
         if (self::isStoreChat($request)) {
@@ -564,6 +597,7 @@ class ConversationController extends Controller
 
         $limit = $request['limit']??10;
         $offset = $request['offset']??1;
+        $fcm_token = null;
         $fcm_token_web = null;
 
         $dm = $request['dm'];
@@ -582,8 +616,15 @@ class ConversationController extends Controller
 
         if($request->conversation_id){
             $conversation = Conversation::find($request->conversation_id);
+            // Only this rider's own chats.
+            if (!$conversation || ($conversation->sender_id != $sender->id && $conversation->receiver_id != $sender->id)) {
+                return response()->json(['errors' => [['code' => 'conversation', 'message' => translate('messages.not_found')]]], 404);
+            }
 
-            if($conversation->sender_id == $sender->id){
+            if(self::isSupport($conversation)){
+                // Rider <-> Waddy support. Support reads it in the admin panel.
+                $receiver_id = 0;
+            }elseif($conversation->sender_id == $sender->id){
                 $receiver_id = $conversation->receiver_id;
                 $receiver = UserInfo::find($receiver_id);
                 if($receiver->vendor_id){
@@ -607,7 +648,9 @@ class ConversationController extends Controller
                 }
             }
         }else{
-            if($request->receiver_type == 'vendor'){
+            if($request->receiver_type == 'admin'){
+                $receiver_id = 0;
+            }else if($request->receiver_type == 'vendor'){
                 $receiver = UserInfo::where('vendor_id',$request->receiver_id)->first();
                 $vendor = Vendor::find($request->receiver_id);
 
@@ -650,7 +693,7 @@ class ConversationController extends Controller
             $conversation = new Conversation;
             $conversation->sender_id = $sender->id;
             $conversation->sender_type = 'delivery_man';
-            $conversation->receiver_id = $receiver->id;
+            $conversation->receiver_id = $receiver_id;
             $conversation->receiver_type = $request->receiver_type;
             $conversation->unread_message_count = 0;
             $conversation->last_message_time = Carbon::now()->toDateTimeString();
@@ -663,6 +706,11 @@ class ConversationController extends Controller
         $message->conversation_id = $conversation->id;
         $message->sender_id = $sender->id;
         $message->message = $request->message;
+        // Which order the rider means, so support sees it next to the message.
+        // Only one of the rider's own orders.
+        if($request->order_id){
+            $message->order_id = Order::where('id', $request->order_id)->where('delivery_man_id', $dm->id)->value('id');
+        }
         if($image_name && count($image_name)>0){
             $message->file = json_encode($image_name, JSON_UNESCAPED_SLASHES);
         }
@@ -683,7 +731,11 @@ class ConversationController extends Controller
                     'conversation_id'=> $conversation->id,
                     'sender_type'=> 'delivery_man'
                 ];
-                Helpers::send_push_notif_to_device($fcm_token, $data);
+                if($receiver_id == 0){
+                    Helpers::send_push_notif_to_topic($data,'admin_message','message');
+                }elseif($fcm_token){
+                    Helpers::send_push_notif_to_device($fcm_token, $data);
+                }
                 if($fcm_token_web){
                     Helpers::send_push_notif_to_topic($data, $fcm_token_web, 'message');
                 }
@@ -697,7 +749,9 @@ class ConversationController extends Controller
 
         $conv = Conversation::with('sender','receiver','last_message')->find($conversation->id);
 
-        if($conv->sender_type == 'vendor' && $conversation->sender){
+        if(self::isSupport($conv)){
+            $order=1;
+        }else if($conv->sender_type == 'vendor' && $conversation->sender){
             $vd = Vendor::find($conv->sender->vendor_id);
             $order = Order::where('delivery_man_id',$dm->id)->where('store_id', $vd->stores[0]->id)->whereIn('order_status', ['pending','accepted','confirmed','processing','handover','picked_up'])->count();
         }else if($conv->receiver_type == 'vendor' && $conversation->receiver){
@@ -714,6 +768,8 @@ class ConversationController extends Controller
             $order=0;
         }
 
+
+        $conv->setAttribute('order', self::dmOrderFor($conv, $dm));
 
         $data =  [
             'total_size' => intval($messages->total()),
@@ -748,7 +804,9 @@ class ConversationController extends Controller
 
 
         $conversations = Conversation::with('sender','receiver','last_message')->where(['sender_id' => $sender->id])->orWhere(['receiver_id' => $sender->id])->orderBy('last_message_time', 'DESC')->paginate($limit, ['*'], 'page', $offset);
-
+        foreach ($conversations->items() as $conversation) {
+            $conversation->setAttribute('order', self::dmOrderFor($conversation, $delivery_man));
+        }
 
         $data =  [
             'total_size' => intval($conversations->total()),
@@ -833,8 +891,15 @@ class ConversationController extends Controller
             $delivery_man->save();
         }
 
+        $conversation = null;
         if($request->conversation_id){
             $conversation = Conversation::with(['sender','receiver','last_message'])->find($request->conversation_id);
+            // Only this rider's own chats.
+            if ($conversation && $conversation->sender_id != $delivery_man->id && $conversation->receiver_id != $delivery_man->id) {
+                $conversation = null;
+            }
+        }else if($request->boolean('admin')){
+            $conversation = Conversation::with(['sender','receiver','last_message'])->WhereConversation($delivery_man->id, 0)->first();
         }else if($request->vendor_id){
             $vendor = UserInfo::where('vendor_id', $request->vendor_id)->first();
             if(!$vendor){
@@ -868,7 +933,9 @@ class ConversationController extends Controller
 
         if($conversation){
 
-            if($conversation->sender_type == 'vendor' && $conversation->sender){
+            if(self::isSupport($conversation)){
+                $order=1;
+            }else if($conversation->sender_type == 'vendor' && $conversation->sender){
                 $vd = Vendor::find($conversation->sender->vendor_id);
                 $order = Order::where('delivery_man_id',$dm->id)->where('store_id', $vd->stores[0]->id)->whereIn('order_status', ['pending','accepted','confirmed','processing','handover','picked_up'])->count();
             }else if($conversation->receiver_type == 'vendor' && $conversation->receiver){
@@ -894,9 +961,11 @@ class ConversationController extends Controller
 
             Message::where(['conversation_id' => $conversation->id])->where('sender_id','!=',$delivery_man->id)->update(['is_seen' => 1]);
             $messages = Message::where(['conversation_id' => $conversation->id])->latest()->paginate($limit, ['*'], 'page', $offset);
+            $conversation->setAttribute('order', self::dmOrderFor($conversation, $dm));
         }else{
             $messages =[];
-            $order=0;
+            // Support is always open, even before the first message.
+            $order = $request->boolean('admin') ? 1 : 0;
         }
 
         $data =  [

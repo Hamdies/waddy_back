@@ -212,6 +212,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('list', 'ConversationController@list')->name('list');
             Route::post('store/{user_id}', 'ConversationController@store')->name('store');
             Route::post('store-vendor/{vendor_id}', 'ConversationController@storeVendor')->name('store-vendor');
+            Route::post('store-delivery-man/{delivery_man_id}', 'ConversationController@storeDeliveryMan')->name('store-delivery-man');
             Route::get('view/{conversation_id}/{user_id}', 'ConversationController@view')->name('view');
         });
 
