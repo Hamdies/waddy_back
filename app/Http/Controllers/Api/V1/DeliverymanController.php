@@ -57,8 +57,10 @@ class DeliverymanController extends Controller
         // (B1). Same windows as todaysorders / this_week_orders.
         $weekStart = now()->startOfWeek();
         $weekEnd = now()->endOfWeek();
-        $orderCounts = $dm->orders()->withoutGlobalScope('storage')->selectRaw(
-            'count(*) as total, coalesce(sum(date(accepted) = ?), 0) as today, coalesce(sum(accepted between ? and ?), 0) as week',
+        // Deliveries, not assignments: the home screen labels these "deliveries"
+        // and earning-summary pays per delivered order, so both must agree.
+        $orderCounts = $dm->orders()->withoutGlobalScope('storage')->where('order_status', 'delivered')->selectRaw(
+            'count(*) as total, coalesce(sum(date(delivered) = ?), 0) as today, coalesce(sum(delivered between ? and ?), 0) as week',
             [now()->toDateString(), $weekStart, $weekEnd]
         )->first();
         $dm['order_count'] = (integer) ($orderCounts?->total ?? 0);
