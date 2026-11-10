@@ -235,16 +235,29 @@ class DeliverymanController extends Controller
         return response()->json(['message' => translate('messages.active_status_updated'), 'active' => (int) $dm->active], 200);
     }
 
+    /**
+     * Rider order responses only read `module_type` (an Order append). Without
+     * this, the accessor lazy-loads each order's module, and the Module global
+     * scopes add storage and translations: three queries per order, and the
+     * whole module (HTML description included) serialized into every order.
+     * Load just id + module_type in one query; callers hide the relation.
+     */
+    private static function riderOrderWith(array $with): array
+    {
+        return array_merge($with, ['module' => fn ($q) => $q->withoutGlobalScopes()->select('id', 'module_type')]);
+    }
+
     public function get_current_orders(Request $request)
     {
         $dm = $request['dm'];
-        $orders = Order::with(['customer', 'store','parcel_category'])
+        $orders = Order::with(self::riderOrderWith(['customer', 'store','parcel_category']))
         ->whereIn('order_status', ['accepted','confirmed','pending', 'processing', 'picked_up', 'handover'])
         ->where(['delivery_man_id' => $dm['id']])
         ->orderBy('accepted')
         ->orderBy('schedule_at', 'desc')
         ->dmOrder()
         ->get();
+        $orders->each->makeHidden('module');
         $orders= Helpers::order_data_formatting($orders, true);
         // Auto-assigned: the time left to hand it back (DispatchService).
         $windows = \App\Services\DispatchService::handBackWindows($dm->id, collect($orders)->pluck('id')->all());
@@ -287,7 +300,7 @@ class DeliverymanController extends Controller
 
     private function latest_orders_payload(DeliveryMan $dm, int $limit, int $offset): array
     {
-        $orders = Order::with(['customer', 'store','parcel_category']);
+        $orders = Order::with(self::riderOrderWith(['customer', 'store','parcel_category']));
 
         if($dm->type == 'zone_wise')
         {
@@ -337,6 +350,9 @@ class DeliverymanController extends Controller
             ->orderBy('schedule_at', 'desc')
             ->paginate($limit, ['*'], 'page', $offset);
             
+        foreach ($paginator->items() as $item) {
+            $item->makeHidden('module');
+        }
         $formattedOrders = Helpers::order_data_formatting($paginator->items(), true);
         
         return [
@@ -880,7 +896,8 @@ class DeliverymanController extends Controller
         }
         $dm = $request['dm'];
 
-        $order = Order::with(['customer', 'store','details','parcel_category','payments'])->where(['delivery_man_id' => $dm['id'], 'id' => $request['order_id']])->Notpos()->first();
+        $order = Order::with(self::riderOrderWith(['customer', 'store','details','parcel_category','payments']))->where(['delivery_man_id' => $dm['id'], 'id' => $request['order_id']])->Notpos()->first();
+        $order?->makeHidden('module');
         if(!$order)
         {
             return response()->json([
@@ -910,12 +927,15 @@ class DeliverymanController extends Controller
 
         $dm = $request['dm'];
 
-        $paginator = Order::with(['customer', 'store','parcel_category'])
+        $paginator = Order::with(self::riderOrderWith(['customer', 'store','parcel_category']))
         ->where(['delivery_man_id' => $dm['id']])
         ->whereIn('order_status', ['delivered','canceled','refund_requested','refunded','failed'])
         ->orderBy('schedule_at', 'desc')
         ->dmOrder()
         ->paginate($request['limit'], ['*'], 'page', $request['offset']);
+        foreach ($paginator->items() as $item) {
+            $item->makeHidden('module');
+        }
         $orders= Helpers::order_data_formatting($paginator->items(), true);
         $data = [
             'total_size' => $paginator->total(),
