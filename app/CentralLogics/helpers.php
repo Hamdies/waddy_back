@@ -1965,6 +1965,28 @@ class Helpers
         }
     }
 
+    /**
+     * Q-2: each push runs on its own, so one failure (bad FCM token, missing
+     * store vendor, mail server down) no longer skips the rest, and it is
+     * logged at warning with the order and the step. Production hides info(),
+     * which is how rider dispatch stayed off for weeks.
+     */
+    private static function orderStep($order, string $step, callable $run): bool
+    {
+        try {
+            $run();
+            return true;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Order notification step failed', [
+                'order_id' => $order?->id,
+                'step' => $step,
+                'error' => $e->getMessage(),
+                'at' => $e->getFile() . ':' . $e->getLine(),
+            ]);
+            return false;
+        }
+    }
+
     public static function send_order_notification($order)
     {
         $push_notification_status = self::getNotificationStatusData('store','store_order_notification','push_notification_status', $order?->store?->id);
@@ -1972,10 +1994,9 @@ class Helpers
 
         // The customer's iOS Live Activity only moves on APNs pushes while the
         // app is in the background; the FCM push below can't reach it.
-        app(\App\Services\OrderNotificationService::class)->sendLiveActivityUpdate($order);
+        $ok = self::orderStep($order, 'live_activity', fn () => app(\App\Services\OrderNotificationService::class)->sendLiveActivityUpdate($order));
 
-        try {
-
+        $ok = self::orderStep($order, 'admin_topic', function () use ($order) {
             if((in_array($order->payment_method, ['cash_on_delivery', 'offline_payment'])
                 && $order->order_status == 'pending' ) ||
                 (!in_array($order->payment_method, ['cash_on_delivery', 'offline_payment'])
@@ -1994,10 +2015,12 @@ class Helpers
 
                 self::send_push_notif_to_topic($data, 'admin_message', 'order_request', url('/').'/admin/order/list/all');
             }
+        }) && $ok;
 
-            $status = ($order->order_status == 'delivered' && $order->delivery_man) ? 'delivery_boy_delivered' : $order->order_status;
-
-
+        $status = ($order->order_status == 'delivered' && $order->delivery_man) ? 'delivery_boy_delivered' : $order->order_status;
+        $value = null;
+        $user_fcm = null;
+        $ok = self::orderStep($order, 'status_message', function () use ($order, $status, &$value, &$user_fcm) {
             if($order->is_guest){
                 $customer_details = json_decode($order['delivery_address'],true);
                 $value = self::order_status_update_message($status,$order->module->module_type,'en');
@@ -2011,7 +2034,9 @@ class Helpers
                 $value = self::text_variable_data_format(value:$value,store_name:$order->store?->name,order_id:$order->id,user_name:"{$order->customer?->f_name} {$order->customer?->l_name}",delivery_man_name:"{$order->delivery_man?->f_name} {$order->delivery_man?->l_name}");
                 $user_fcm = $order?->customer?->cm_firebase_token;
             }
+        }) && $ok;
 
+        $ok = self::orderStep($order, 'customer', function () use ($order, $status, $value, $user_fcm) {
             if (self::getNotificationStatusData('customer','customer_order_notification','push_notification_status') &&  $value && $user_fcm) {
                 $data = [
                     'title' => translate('Order_Notification'),
@@ -2030,7 +2055,9 @@ class Helpers
                     'updated_at' => now()
                 ]);
             }
+        }) && $ok;
 
+        $ok = self::orderStep($order, 'store_picked_up', function () use ($order, $status, $value, $push_notification_status) {
             if ($status == 'picked_up') {
                 $data = [
                     'title' => translate('Order_Notification'),
@@ -2050,7 +2077,9 @@ class Helpers
                     ]);
                 }
             }
+        }) && $ok;
 
+        $ok = self::orderStep($order, 'store_new_order_rider_model', function () use ($order, $status, $value, $push_notification_status) {
             if ($order->order_type == 'delivery' && !$order->scheduled && $status == 'pending' && $order->payment_method == 'cash_on_delivery' && config('order_confirmation_model') == 'deliveryman') {
                 if ($push_notification_status && ($order->store->sub_self_delivery || StorePushService::newOrderAtPlacement())) {
                     $data = [
@@ -2080,7 +2109,9 @@ class Helpers
                 // Riders: started up front by startRiderDispatch().
                 // self::send_push_notif_to_topic($data, 'admin_message', 'order_request', url('/').'/admin/order/list/all');
             }
+        }) && $ok;
 
+        $ok = self::orderStep($order, 'store_new_order_store_model', function () use ($order, $status, $value, $push_notification_status) {
             if ($order->order_type == 'delivery' && !$order->scheduled && $order->order_status == 'pending' && $order->payment_method == 'cash_on_delivery' && config('order_confirmation_model') == 'store') {
                 $data = [
                     'title' => translate('Order_Notification'),
@@ -2105,7 +2136,9 @@ class Helpers
                     ]);
                 }
             }
+        }) && $ok;
 
+        $ok = self::orderStep($order, 'store_new_order_takeaway_or_paid', function () use ($order, $status, $value, $push_notification_status) {
             if (!$order->scheduled && (($order->order_type == 'take_away' && $order->order_status == 'pending') || ($order->payment_method != 'cash_on_delivery' && $order->order_status == 'confirmed'))) {
                 $data = [
                     'title' => translate('Order_Notification'),
@@ -2127,7 +2160,9 @@ class Helpers
                     ]);
                 }
             }
+        }) && $ok;
 
+        $ok = self::orderStep($order, 'store_confirmed_cod', function () use ($order, $status, $value, $push_notification_status) {
             if ($order->order_status == 'confirmed' && $order->order_type != 'take_away' && config('order_confirmation_model') == 'deliveryman' && $order->payment_method == 'cash_on_delivery') {
                 if ($order->store->sub_self_delivery && $push_notification_status) {
                     $data = [
@@ -2167,7 +2202,9 @@ class Helpers
                     }
                 }
             }
+        }) && $ok;
 
+        $ok = self::orderStep($order, 'self_delivery_riders', function () use ($order, $status, $value, $push_notification_status) {
             if ($order->order_type == 'delivery' && !$order->scheduled && $order->order_status == 'confirmed'  && ($order->payment_method != 'cash_on_delivery' || config('order_confirmation_model') == 'store')) {
                 $data = [
                     'title' => translate('Order_Notification'),
@@ -2182,7 +2219,9 @@ class Helpers
                     self::send_push_notif_to_topic($data, "restaurant_dm_" . $order->store_id, 'order_request',null);
                 }
             }
+        }) && $ok;
 
+        $ok = self::orderStep($order, 'rider_processing_handover', function () use ($order, $status, $value, $push_notification_status) {
             if (in_array($order->order_status, ['processing', 'handover']) && $order->delivery_man && self::getNotificationStatusData('deliveryman','deliveryman_order_notification','push_notification_status')) {
                 $data = [
                     'title' => translate('Order_Notification'),
@@ -2199,23 +2238,20 @@ class Helpers
                     'updated_at' => now()
                 ]);
             }
+        }) && $ok;
 
-            try {
-                if ($order->order_status == 'confirmed' && $order->payment_method != 'cash_on_delivery' && config('mail.status') && Helpers::get_mail_status('place_order_mail_status_user') == '1' && $order->is_guest == 0 && Helpers::getNotificationStatusData('customer','customer_order_notification','mail_status')) {
-                    Mail::to($order->customer->email)->send(new PlaceOrder($order->id));
-                }
-                $order_verification_mail_status = Helpers::get_mail_status('order_verification_mail_status_user');
-                if ($order->order_status == 'pending' && config('order_delivery_verification') == 1  && config('mail.status') && $order_verification_mail_status == '1' && $order->is_guest == 0 && Helpers::getNotificationStatusData('customer','customer_delivery_verification','mail_status')) {
-                    Mail::to($order->customer->email)->send(new OrderVerificationMail($order->otp,$order->customer->f_name));
-                }
-            } catch (\Exception $ex) {
-                info($ex->getMessage());
+        // Mail never counted as a failed push (it had its own catch before).
+        self::orderStep($order, 'mail', function () use ($order) {
+            if ($order->order_status == 'confirmed' && $order->payment_method != 'cash_on_delivery' && config('mail.status') && Helpers::get_mail_status('place_order_mail_status_user') == '1' && $order->is_guest == 0 && Helpers::getNotificationStatusData('customer','customer_order_notification','mail_status')) {
+                Mail::to($order->customer->email)->send(new PlaceOrder($order->id));
             }
-            return true;
-        } catch (\Exception $e) {
-            info($e->getMessage());
-        }
-        return false;
+            $order_verification_mail_status = Helpers::get_mail_status('order_verification_mail_status_user');
+            if ($order->order_status == 'pending' && config('order_delivery_verification') == 1  && config('mail.status') && $order_verification_mail_status == '1' && $order->is_guest == 0 && Helpers::getNotificationStatusData('customer','customer_delivery_verification','mail_status')) {
+                Mail::to($order->customer->email)->send(new OrderVerificationMail($order->otp,$order->customer->f_name));
+            }
+        });
+
+        return $ok;
     }
 
     public static function day_part()

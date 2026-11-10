@@ -689,7 +689,8 @@ trait PlaceNewOrder
             return $securityService->placedResponse($order);
         } catch (\Exception $exception) {
 
-            info([$exception->getFile(), $exception->getLine(), $exception->getMessage()]);
+            // Q-2: a failed checkout was logged at info, invisible in production.
+            \Illuminate\Support\Facades\Log::error('Order placement failed', ['error' => $exception->getMessage(), 'at' => $exception->getFile() . ':' . $exception->getLine()]);
             DB::rollBack();
             return response()->json([$exception], 403);
         }
@@ -1112,8 +1113,9 @@ trait PlaceNewOrder
                     }
                 }
             }
-        } catch (\Exception $exception) {
-            info([$exception->getFile(), $exception->getLine(), $exception->getMessage()]);
+        } catch (\Throwable $exception) {
+            // Q-2: was info(), hidden in production.
+            \Illuminate\Support\Facades\Log::warning('Order placed but its notifications failed', ['order_id' => $order->id, 'error' => $exception->getMessage(), 'at' => $exception->getFile() . ':' . $exception->getLine()]);
         }
         return true;
     }
