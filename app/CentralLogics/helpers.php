@@ -81,9 +81,18 @@ class Helpers
         return $err_keeper;
     }
 
+    private static ?array $scheduleOrderMemo = null;
+
     public static function schedule_order()
     {
-        return (bool)BusinessSetting::where(['key' => 'schedule_order'])->first()->value;
+        // Store::getScheduleOrderAttribute calls this for every store it
+        // serializes: a rider order list read the setting once per order.
+        // Kept 60 s so queue workers still see an admin change.
+        $now = time();
+        if (self::$scheduleOrderMemo === null || $now - self::$scheduleOrderMemo[1] >= 60) {
+            self::$scheduleOrderMemo = [(bool) BusinessSetting::where(['key' => 'schedule_order'])->first()?->value, $now];
+        }
+        return self::$scheduleOrderMemo[0];
     }
 
 
