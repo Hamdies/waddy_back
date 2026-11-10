@@ -141,6 +141,8 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
             Route::get('order-status', 'DeliverymanController@get_order_status');
             Route::put('send-order-otp', 'DeliverymanController@send_order_otp');
             Route::put('update-fcm-token', 'DeliverymanController@update_fcm_token');
+            // SEC-3: ends this session on the server, not only in the app.
+            Route::post('logout', 'DeliverymanController@logout');
             //Remove account
             Route::delete('remove-account', 'DeliverymanController@remove_account');
 

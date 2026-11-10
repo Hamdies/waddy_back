@@ -26,7 +26,7 @@ class DmTokenIsValid
                 ]
             ], 401);
         }
-        $dm = \App\Models\DeliveryMan::where('auth_token', $token)->first();
+        $dm = \App\Support\RiderToken::resolve($token);
         if(!$dm) {
             return response()->json([
                 'errors' => [

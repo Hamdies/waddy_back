@@ -990,6 +990,13 @@ class DeliverymanController extends Controller
         }
     }
 
+    /** SEC-3: the token stops working everywhere it was copied. */
+    public function logout(Request $request)
+    {
+        \App\Support\RiderToken::revoke($request['dm']);
+        return response()->json(['message' => 'logged out'], 200);
+    }
+
     public function remove_account(Request $request)
     {
         $dm = $request['dm'];

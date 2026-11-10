@@ -22,6 +22,7 @@ class DeliveryMan extends Authenticatable
         'earning'=>'float',
         'store_id'=>'integer',
         'current_orders'=>'integer',
+        'auth_token_used_at'=>'datetime',
         'vehicle_id'=>'integer',
     ];
 

@@ -40,8 +40,6 @@ class DeliveryManLoginController extends Controller
         ];
 
         if (auth('delivery_men')->attempt($data)) {
-            $token = Str::random(120);
-
             if(auth('delivery_men')->user()->application_status != 'approved')
             {
                 return response()->json([
@@ -60,8 +58,8 @@ class DeliveryManLoginController extends Controller
             }
 
             $delivery_man =  DeliveryMan::where(['phone' => $request['phone']])->first();
-            $delivery_man->auth_token = $token;
-            $delivery_man->save();
+            // SEC-3: a new token per login, stored hashed.
+            $token = \App\Support\RiderToken::issue($delivery_man);
 
             return response()->json(['token' => $token] + $delivery_man->pushTopics(), 200);
         } else {
