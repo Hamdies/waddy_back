@@ -720,6 +720,66 @@ class DispatchService
     }
 
     /** What a rider still has to do, in order: pickups not made yet, then drop-offs. */
+    /**
+     * Q-5. Why each rider of the order's zone was or wasn't a candidate, in the
+     * same order candidates() filters them. Read-only. `reason` is null for a
+     * rider who would be scored; `rank` and `minutes` then come from
+     * candidates() itself, so this can't drift from what dispatch does.
+     */
+    public static function explain(Order $order): array
+    {
+        $dispatch = OrderDispatch::where('order_id', $order->id)->first();
+        $tried = OrderOffer::where('order_id', $order->id)->pluck('delivery_man_id')->all();
+        $fresh = self::employeeModel() || ($dispatch && $dispatch->mode === 'auto') ? self::AUTO_FRESH_MINUTES : self::LOCATION_FRESH_MINUTES;
+        $max = (int) (config('dm_maximum_orders') ?: 1);
+        $cashCeiling = self::cashCeiling($order);
+        $ranked = self::candidates($order, $tried, $fresh)->values();
+
+        $riders = DeliveryMan::withoutGlobalScopes()->where('zone_id', $order->zone_id)->with('wallet')
+            ->get(['id', 'f_name', 'l_name', 'active', 'status', 'application_status', 'current_orders', 'fcm_token', 'vehicle_id']);
+        $locations = DeliveryHistory::whereIn('delivery_man_id', $riders->pluck('id'))->get()->keyBy('delivery_man_id');
+
+        $rows = $riders->map(function ($r) use ($order, $tried, $fresh, $max, $cashCeiling, $ranked, $locations) {
+            $loc = $locations[$r->id] ?? null;
+            $age = $loc && $loc->time ? (int) Carbon::parse($loc->time)->diffInSeconds(now()) : null;
+            $reason = match (true) {
+                $r->application_status !== 'approved' => 'not approved',
+                !$r->status => 'suspended',
+                !$r->active => 'offline',
+                (int) $r->current_orders >= $max => "full ({$r->current_orders}/{$max})",
+                !$r->fcm_token || $r->fcm_token === '@' => 'no FCM token',
+                $order->dm_vehicle_id && (int) $r->vehicle_id !== (int) $order->dm_vehicle_id => 'vehicle mismatch',
+                in_array($r->id, $tried) => 'already offered',
+                $cashCeiling !== null && (float) ($r->wallet?->collected_cash ?? 0) >= $cashCeiling => 'cash cap',
+                $age === null => 'no location',
+                $age > $fresh * 60 => 'stale location (' . intdiv($age, 60) . ' min)',
+                default => null,
+            };
+            $rank = $ranked->search(fn ($c) => $c['id'] === $r->id);
+            if ($reason === null && $rank === false) {
+                $reason = 'scorer rejected (out of vehicle range?)';
+            }
+            return [
+                'id' => $r->id,
+                'name' => trim("{$r->f_name} {$r->l_name}"),
+                'reason' => $reason,
+                'rank' => $rank === false ? null : $rank + 1,
+                'minutes' => $rank === false ? null : round($ranked[$rank]['minutes'], 1),
+                'location_age_s' => $age,
+            ];
+        })->sortBy(fn ($row) => [$row['rank'] === null ? 1 : 0, $row['rank'] ?? 0, $row['id']])->values()->all();
+
+        return [
+            'order' => ['id' => $order->id, 'status' => $order->order_status, 'zone_id' => $order->zone_id, 'delivery_man_id' => $order->delivery_man_id, 'payment' => $order->payment_method, 'type' => $order->order_type],
+            'pickup' => self::pickupPoint($order),
+            'dispatch' => $dispatch ? ['mode' => $dispatch->mode, 'status' => $dispatch->status, 'wave' => $dispatch->wave, 'next_at' => (string) $dispatch->next_at, 'opened_at' => (string) $dispatch->opened_at] : null,
+            'fresh_minutes' => $fresh,
+            'cash_ceiling' => $cashCeiling,
+            'riders' => $rows,
+            'reasons' => collect($rows)->countBy(fn ($row) => $row['reason'] === null ? 'candidate' : preg_replace('/ \(.*\)$/', '', $row['reason']))->all(),
+        ];
+    }
+
     private static function heldStops($held): array
     {
         $pickups = $held->where('order_status', '!=', 'picked_up')
