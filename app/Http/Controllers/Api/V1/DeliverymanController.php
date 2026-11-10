@@ -242,9 +242,15 @@ class DeliverymanController extends Controller
      * whole module (HTML description included) serialized into every order.
      * Load just id + module_type in one query; callers hide the relation.
      */
-    private static function riderOrderWith(array $with): array
+    private static function riderOrderWith(array $with, bool $list = true): array
     {
-        return array_merge($with, ['module' => fn ($q) => $q->withoutGlobalScopes()->select('id', 'module_type')]);
+        $with['module'] = fn ($q) => $q->withoutGlobalScopes()->select('id', 'module_type');
+        if ($list) {
+            // order_data_formatting reads details only for the campaign flag
+            // and the item count: one slim query instead of one per order.
+            $with['details'] = fn ($q) => $q->select('id', 'order_id', 'item_campaign_id');
+        }
+        return $with;
     }
 
     public function get_current_orders(Request $request)
@@ -896,7 +902,7 @@ class DeliverymanController extends Controller
         }
         $dm = $request['dm'];
 
-        $order = Order::with(self::riderOrderWith(['customer', 'store','details','parcel_category','payments']))->where(['delivery_man_id' => $dm['id'], 'id' => $request['order_id']])->Notpos()->first();
+        $order = Order::with(self::riderOrderWith(['customer', 'store','details','parcel_category','payments'], false))->where(['delivery_man_id' => $dm['id'], 'id' => $request['order_id']])->Notpos()->first();
         $order?->makeHidden('module');
         if(!$order)
         {
