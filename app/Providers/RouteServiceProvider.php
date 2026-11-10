@@ -128,6 +128,23 @@ class RouteServiceProvider extends ServiceProvider
         RateLimiter::for('otp', function (Request $request) {
             return self::identity_limits($request, 5, 30);
         });
+
+        // SEC-2. Rider tokens aren't Passport JWTs, so `api` counts riders by IP
+        // (600/min). This runs after `dm.api`, which has put the rider on the
+        // request. Normal use is ~6 location posts and a few polls a minute.
+        RateLimiter::for('rider', function (Request $request) {
+            $dm = $request->input('dm');
+            $key = $dm ? 'dm:' . $dm->id : 'ip:' . $request->ip();
+            $respond = fn () => response()->json([
+                'errors' => [['code' => 'too_many_requests', 'message' => translate('messages.too_many_requests_try_again_shortly')]],
+            ], 429);
+
+            $limits = [Limit::perMinute(120)->by('rider:' . $key)->response($respond)];
+            if ($request->is('api/v1/delivery-man/record-location-data')) {
+                $limits[] = Limit::perMinute(20)->by('rider-loc:' . $key)->response($respond);
+            }
+            return $limits;
+        });
     }
 
     /**
