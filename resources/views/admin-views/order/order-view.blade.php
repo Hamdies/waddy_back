@@ -1384,6 +1384,19 @@
                         </div>
                     </div>
                 @endif
+                @if ($order['order_type'] != 'take_away')
+                    {{-- Q-5: why this order has (or hasn't) got a rider. Loaded on click: it scores every rider in the zone. --}}
+                    <div class="card mt-2">
+                        <div class="card-body">
+                            <h5 class="card-title mb-2 d-flex align-items-center justify-content-between">
+                                <span><i class="tio-search"></i> Dispatch</span>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="dispatch-explain-btn"
+                                        data-url="{{ route('admin.order.dispatch-explain', [$order->id]) }}">Why this rider?</button>
+                            </h5>
+                            <div id="dispatch-explain" class="small text-muted">Shows the dispatch state and why each rider in the zone was or wasn't eligible.</div>
+                        </div>
+                    </div>
+                @endif
                 @if ($parcel_order || ($order['order_type'] != 'take_away' && $order->store ))
                     @if ($order->delivery_man)
                         <div class="card mt-2">
@@ -3064,4 +3077,36 @@
             });
         });
     </script>
+<script>
+    // Q-5: dispatch explanation, built with textContent only (rider names are user data).
+    (function () {
+        const btn = document.getElementById('dispatch-explain-btn');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+            const box = document.getElementById('dispatch-explain');
+            box.textContent = 'Loading…';
+            fetch(btn.dataset.url, {headers: {'Accept': 'application/json'}, credentials: 'same-origin'})
+                .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+                .then(x => {
+                    box.textContent = '';
+                    const line = (text) => { const d = document.createElement('div'); d.textContent = text; box.appendChild(d); };
+                    const d = x.dispatch;
+                    line('Pickup: ' + (x.pickup ? x.pickup.join(', ') : 'none (dispatch cannot score this order)'));
+                    line('Dispatch: ' + (d ? d.mode + ' / ' + d.status + ', wave ' + d.wave + (d.opened_at ? ', opened to zone ' + d.opened_at : '') : 'no order_dispatches row (dispatch never started)'));
+                    line('Location must be under ' + x.fresh_minutes + ' min old');
+                    const table = document.createElement('table');
+                    table.className = 'table table-sm table-borderless mt-2 mb-1';
+                    const head = table.insertRow();
+                    ['Rider', 'Eligible?', 'Rank', 'Pickup min'].forEach(t => { const th = document.createElement('th'); th.textContent = t; head.appendChild(th); });
+                    x.riders.forEach(r => {
+                        const row = table.insertRow();
+                        [r.id + ' ' + r.name, r.reason || 'yes', r.rank ?? '', r.minutes ?? ''].forEach(v => { row.insertCell().textContent = v; });
+                    });
+                    box.appendChild(table);
+                    line('Summary: ' + Object.entries(x.reasons).map(([k, n]) => k + ' ' + n).join(', '));
+                })
+                .catch(e => { box.textContent = 'Could not load: ' + e.message; });
+        });
+    })();
+</script>
 @endpush

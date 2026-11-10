@@ -218,6 +218,13 @@ class OrderController extends Controller
         return view('admin-views.order.distaptch_list', compact('orders','module', 'status', 'orderstatus', 'scheduled', 'vendor_ids', 'zone_ids', 'from_date', 'to_date', 'total'));
     }
 
+    /** Q-5: the same as `php artisan dispatch:explain`, for the order page. */
+    public function dispatch_explain($id)
+    {
+        $order = Order::withoutGlobalScopes()->with(['store', 'zone'])->findOrFail($id);
+        return response()->json(\App\Services\DispatchService::explain($order));
+    }
+
     public function details(Request $request, $id)
     {
         $order = Order::with(['details','offline_payments','refund', 'store' => function ($query) {

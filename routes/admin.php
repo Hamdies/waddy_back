@@ -301,6 +301,8 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('list/{status}', 'OrderController@list')->name('list');
             Route::get('details/{id}', 'OrderController@details')->name('details');
             Route::get('all-details/{id}', 'OrderController@all_details')->name('all-details');
+            // Q-5: why this order has (no) rider, loaded on demand.
+            Route::get('dispatch-explain/{id}', 'OrderController@dispatch_explain')->name('dispatch-explain');
 
             // Route::put('status-update/{id}', 'OrderController@status')->name('status-update');
             Route::get('view/{id}', 'OrderController@view')->name('view');
