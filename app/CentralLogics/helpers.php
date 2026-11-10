@@ -1932,23 +1932,32 @@ class Helpers
      * to throw into that function's catch-all and skip dispatch, so the order
      * sat with no rider and no order_dispatches row.
      */
+    /**
+     * Whether this order status hands the order to riders now. Pure, so it is
+     * unit tested (Q-4): parcels on pending/confirmed; deliveries that riders
+     * (not the store) carry, once the order is payable: a cash order at
+     * pending under the rider-confirms model, otherwise at confirmed.
+     */
+    public static function riderDispatchStarts($order, bool $storeDelivers, ?string $model): bool
+    {
+        $cod = $order->payment_method == 'cash_on_delivery';
+        return match (true) {
+            $order->order_type == 'parcel' => in_array($order->order_status, ['pending', 'confirmed']),
+            $order->order_type != 'delivery' || $order->scheduled || $storeDelivers => false,
+            $order->order_status == 'pending' => $cod && $model == 'deliveryman',
+            $order->order_status == 'confirmed' => !$cod || $model == 'store',
+            default => false,
+        };
+    }
+
     private static function startRiderDispatch($order, $push_notification_status): void
     {
         try {
             if (!$order->zone || !self::getNotificationStatusData('deliveryman','deliveryman_order_notification','push_notification_status')) {
                 return;
             }
-            $storeDelivers = $order->store?->sub_self_delivery && $push_notification_status;
-            $cod = $order->payment_method == 'cash_on_delivery';
-            $model = config('order_confirmation_model');
-            $start = match (true) {
-                $order->order_type == 'parcel' => in_array($order->order_status, ['pending', 'confirmed']),
-                $order->order_type != 'delivery' || $order->scheduled || $storeDelivers => false,
-                $order->order_status == 'pending' => $cod && $model == 'deliveryman',
-                $order->order_status == 'confirmed' => !$cod || $model == 'store',
-                default => false,
-            };
-            if (!$start) {
+            $storeDelivers = (bool) ($order->store?->sub_self_delivery && $push_notification_status);
+            if (!self::riderDispatchStarts($order, $storeDelivers, config('order_confirmation_model'))) {
                 return;
             }
             // Nearest riders first (or straight assignment for staff riders).
