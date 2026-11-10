@@ -543,8 +543,9 @@ class DeliverymanController extends Controller
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
-        DeliveryHistory::recordFix($request['dm']['id'], $request->only(['latitude', 'longitude', 'location', 'heading', 'speed', 'accuracy']));
-        \App\Services\RiderArrivalService::check($request['dm'], $request['latitude'], $request['longitude']);
+        if (DeliveryHistory::recordFix($request['dm']['id'], $request->only(['latitude', 'longitude', 'location', 'heading', 'speed', 'accuracy']))) {
+            \App\Services\RiderArrivalService::check($request['dm'], $request['latitude'], $request['longitude']);
+        }
 
         return response()->json(['message' => translate('location recorded')], 200);
     }
