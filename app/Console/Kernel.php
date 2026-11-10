@@ -31,6 +31,9 @@ class Kernel extends ConsoleKernel
         $schedule->call(fn () => \App\Services\OrderRescueService::run())->everyMinute()->name('orders:rescue')->withoutOverlapping();
 
         // SM-7: end-of-day summary push to each store that had orders.
+        // Q-1: fix drifted rider counters, report orders stuck for 6 h+.
+        $schedule->command('riders:reconcile')->dailyAt('04:00')->timezone('Africa/Cairo')->withoutOverlapping();
+
         $schedule->command('stores:daily-summary')->dailyAt('23:30')->timezone(config('placestovisit.timezone', 'Africa/Cairo'));
 
         // Busy mode (SM-4): reopen paused stores, drop expired extra minutes.
